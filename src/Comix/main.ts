@@ -97,14 +97,16 @@ export class ComixExtension implements ComixImplementation {
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
     return {
       mangaId,
-      titles: ['Test Manga'],
-      coverUrl: '',
-      author: '',
-      artist: '',
-      synopsis: 'Loading...',
-      status: 'Unknown',
-      contentRating: ContentRating.EVERYONE,
-      tags: [],
+      mangaInfo: {
+        thumbnailUrl: '',
+        synopsis: 'Loading...',
+        primaryTitle: 'Test Manga',
+        secondaryTitles: [],
+        contentRating: ContentRating.EVERYONE,
+        status: 'Unknown',
+        author: '',
+        artist: '',
+      },
     };
   }
 
@@ -114,8 +116,8 @@ export class ComixExtension implements ComixImplementation {
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     return {
-      id: chapter.id,
-      mangaId: chapter.mangaId,
+      id: chapter.chapterId,
+      mangaId: chapter.sourceManga.mangaId,
       pages: [],
     };
   }
