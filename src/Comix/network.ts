@@ -6,7 +6,6 @@ import {
   type Request,
   type Response,
 } from "@paperback/types";
-import { filter } from "./main";
 import type {
   ApiResponseChapter,
   ApiResponseChapterPages,
@@ -68,10 +67,10 @@ export class ApiMaker {
     }
   }
   private buildApiUrl(section: string, page: number): string {
-    const hidden_gen = filter.getHiddenGenresSettings();
-    const hidden_them = filter.getHiddenThemesSettings();
-    const show_only = filter.getShowOnlySettings();
-    const limit = filter.getLimitSettings();
+    const hidden_gen = (Application.getState("hide_genres") as string[] | undefined) ?? [];
+    const hidden_them = (Application.getState("hide_themes") as string[] | undefined) ?? [];
+    const show_only = (Application.getState("show_only") as string[] | undefined) ?? [];
+    const limit = (Application.getState("limit") as string[] | undefined) ?? ["7"];
     const additionalInfo = ["author"];
     switch (section) {
       case "popular": {

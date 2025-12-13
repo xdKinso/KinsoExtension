@@ -1,5 +1,4 @@
 import type { SearchFilter } from "@paperback/types";
-import { parse } from "./main";
 import type { OptionItem } from "./models";
 
 export class globalFilters {
@@ -58,9 +57,9 @@ export class globalFilters {
     { id: "365", value: "1 Year" },
   ];
 
-  async getFilters() {
+  async getFilters(parseFilterUpdate: (type: string) => Promise<OptionItem[]>) {
     const filters: SearchFilter[] = [];
-    await this.updateFilters(false);
+    await this.updateFilters(false, parseFilterUpdate);
     const genresHidden = this.getHiddenGenresSettings();
     const getExcludedGenreObject = Object.fromEntries(
       this.genres
@@ -169,7 +168,7 @@ export class globalFilters {
     return (Application.getState("limit") as string[] | undefined) ?? ["7"];
   }
 
-  async updateFilters(force: boolean) {
+  async updateFilters(force: boolean, parseFilterUpdate: (type: string) => Promise<OptionItem[]>) {
     const lastFilterFetch = Number(Application.getState("last-filter-fetch") ?? 0);
     const cached = lastFilterFetch + 172800 > new Date().valueOf() / 1000;
     if (cached && !force) {
@@ -182,7 +181,7 @@ export class globalFilters {
         themes === undefined ||
         formats === undefined
       ) {
-        await this.updateFilters(true);
+        await this.updateFilters(true, parseFilterUpdate);
         return;
       }
 
@@ -191,10 +190,10 @@ export class globalFilters {
       this.setThemesFilter(JSON.parse(themes) as OptionItem[]);
       this.setFormatsFilter(JSON.parse(formats) as OptionItem[]);
     } else {
-      this.genres = await parse.parseFilterUpdate("genre");
-      this.demographic = await parse.parseFilterUpdate("demographic");
-      this.themes = await parse.parseFilterUpdate("theme");
-      this.formats = await parse.parseFilterUpdate("format");
+      this.genres = await parseFilterUpdate("genre");
+      this.demographic = await parseFilterUpdate("demographic");
+      this.themes = await parseFilterUpdate("theme");
+      this.formats = await parseFilterUpdate("format");
       Application.setState(String(new Date().valueOf() / 1000), "last-filter-fetch");
     }
   }

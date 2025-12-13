@@ -98,7 +98,7 @@ export class ComixToExtension implements ComixToImplementation {
   }
 
   async getSearchFilters(): Promise<SearchFilter[]> {
-    return filter.getFilters();
+    return filter.getFilters(parse.parseFilterUpdate.bind(parse));
   }
 
   getSearchResults(

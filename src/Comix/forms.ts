@@ -6,7 +6,7 @@ import {
   SelectRow,
   type FormSectionElement,
 } from "@paperback/types";
-import { filter } from "./main";
+import { filter, parse } from "./main";
 
 export class Forms extends Form {
   override getSections(): FormSectionElement[] {
@@ -33,7 +33,7 @@ export class Forms extends Form {
   }
   async refreshFilters() {
     Application.invalidateSearchFilters();
-    await filter.updateFilters(true);
+    await filter.updateFilters(true, parse.parseFilterUpdate.bind(parse));
   }
 }
 
