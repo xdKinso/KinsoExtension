@@ -26,14 +26,14 @@ import { globalFilters } from "./utils";
 
 export const parse = new JsonParser();
 export const filter = new globalFilters();
-type ComixToImplementation = SettingsFormProviding &
+type ComixGalleryImplementation = SettingsFormProviding &
   Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding;
 
-export class ComixToExtension implements ComixToImplementation {
+export class ComixGalleryExtension implements ComixGalleryImplementation {
   async getSettingsForm(): Promise<Form> {
     return new Forms();
   }
@@ -124,4 +124,4 @@ export class ComixToExtension implements ComixToImplementation {
   }
 }
 
-export default new ComixToExtension();
+export default new ComixGalleryExtension();
