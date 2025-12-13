@@ -26,7 +26,7 @@ export class JsonParser {
         const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "simpleCarouselItem",
-          contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+          contentRating: ContentRating.EVERYONE,
           imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
@@ -48,7 +48,7 @@ export class JsonParser {
         const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "prominentCarouselItem",
-          contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+          contentRating: ContentRating.EVERYONE,
           imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
@@ -70,7 +70,7 @@ export class JsonParser {
         const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "featuredCarouselItem",
-          contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+          contentRating: ContentRating.EVERYONE,
           imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
@@ -92,7 +92,7 @@ export class JsonParser {
       json.result.items.forEach((item) => {
         const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
-          contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+          contentRating: ContentRating.EVERYONE,
           imageUrl: imageUrl,
           chapterId: item.hash_id,
           mangaId: item.hash_id,
@@ -186,7 +186,7 @@ export class JsonParser {
       synopsis: manga.synopsis,
       primaryTitle: manga.title,
       secondaryTitles: manga.alt_titles,
-      contentRating: manga.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+      contentRating: ContentRating.EVERYONE,
       status: manga.status,
       bannerUrl:
         manga.poster.medium.length > 0
@@ -281,7 +281,7 @@ export class JsonParser {
             item.poster.large.length > 0
               ? item.poster.large
               : "https://comix.to/images/no-poster.png",
-          contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
+          contentRating: ContentRating.EVERYONE,
         });
       });
       return {
