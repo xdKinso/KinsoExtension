@@ -20,7 +20,9 @@ export class MainInterceptor extends PaperbackInterceptor {
     request.headers = {
       ...request.headers,
       referer: "https://comix.to/",
-      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      origin: "https://comix.to",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      accept: "image/webp,image/apng,image/*,*/*;q=0.8",
     };
     return request;
   }
@@ -40,7 +42,7 @@ export class MainInterceptor extends PaperbackInterceptor {
 export const mainRateLimiter = new BasicRateLimiter("main", {
   numberOfRequests: 5,
   bufferInterval: 1,
-  ignoreImages: true,
+  ignoreImages: false,
 });
 
 export class ApiMaker {

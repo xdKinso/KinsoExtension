@@ -10,6 +10,7 @@ import {
     type Extension,
     type MangaProviding,
     type PagedResults,
+    type Request,
     type SearchFilter,
     type SearchQuery,
     type SearchResultItem,
@@ -127,6 +128,19 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
     }
     getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
         return parse.parseChapterDetails(chapter.chapterId);
+    }
+
+    async getImageRequest(url: string): Promise<Request> {
+        return {
+            url: url,
+            method: "GET",
+            headers: {
+                referer: "https://comix.to/",
+                origin: "https://comix.to",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+            },
+        };
     }
 }
 

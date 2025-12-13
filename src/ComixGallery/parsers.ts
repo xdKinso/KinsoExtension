@@ -23,13 +23,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, page);
     if (json.result?.items) {
       for (const item of json.result.items) {
+        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "simpleCarouselItem",
           contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
-          imageUrl:
-            item.poster.large.length > 0
-              ? item.poster.large
-              : "https://comix.to/images/no-poster.png",
+          imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
           subtitle: item.author?.[0]?.title ?? "",
@@ -47,13 +45,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, 1);
     if (json.result?.items) {
       for (const item of json.result.items) {
+        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "prominentCarouselItem",
           contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
-          imageUrl:
-            item.poster.large.length > 0
-              ? item.poster.large
-              : "https://comix.to/images/no-poster.png",
+          imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
           subtitle: item.author?.[0]?.title ?? "",
@@ -71,13 +67,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, 1);
     if (json.result?.items) {
       for (const item of json.result.items) {
+        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           type: "featuredCarouselItem",
           contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
-          imageUrl:
-            item.poster.large.length > 0
-              ? item.poster.large
-              : "https://comix.to/images/no-poster.png",
+          imageUrl: imageUrl,
           mangaId: item.hash_id,
           title: item.title,
           supertitle: item.author?.[0]?.title ?? "",
@@ -96,12 +90,10 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, page);
     if (json.result?.items) {
       json.result.items.forEach((item) => {
+        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
         latest.push({
           contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
-          imageUrl:
-            item.poster.large.length > 0
-              ? item.poster.large
-              : "https://comix.to/images/no-poster.png",
+          imageUrl: imageUrl,
           chapterId: item.hash_id,
           mangaId: item.hash_id,
           subtitle: "Chapter " + item.latest_chapter.toString(),
@@ -190,10 +182,7 @@ export class JsonParser {
       },
     ];
     const mangaInfo = {
-      thumbnailUrl:
-        manga.poster.large.length > 0
-          ? manga.poster.large
-          : "https://comix.to/images/no-poster.png",
+      thumbnailUrl: manga.poster.large || manga.poster.medium || manga.poster.small || "https://comix.to/images/no-poster.png",
       synopsis: manga.synopsis,
       primaryTitle: manga.title,
       secondaryTitles: manga.alt_titles,
