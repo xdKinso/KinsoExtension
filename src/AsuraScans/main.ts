@@ -337,6 +337,17 @@ export class AsuraScansExtension
         return false;
     }
 
+    async getSortingOptions(): Promise<import("@paperback/types").SortingOption[]> {
+        return [
+            { id: "default", label: "Default" },
+            { id: "title_az", label: "Title (A-Z)" },
+            { id: "title_za", label: "Title (Z-A)" },
+            { id: "latest_added", label: "Latest Added" },
+            { id: "latest_updated", label: "Latest Updated" },
+            { id: "most_viewed", label: "Most Viewed" },
+        ];
+    }
+
     async getSearchFilters(): Promise<SearchFilter[]> {
         const tags = await this.getSearchTags();
         return tags.map((tag) => ({
@@ -354,6 +365,7 @@ export class AsuraScansExtension
     async getSearchResults(
         query: SearchQuery,
         metadata: AsuraScansMetadata | undefined,
+        sortingOption?: import("@paperback/types").SortingOption,
     ): Promise<PagedResults<SearchResultItem>> {
         const page: number = metadata?.page ?? 1;
         let newUrlBuilder: URLBuilder = new URLBuilder(AS_DOMAIN)
@@ -379,11 +391,15 @@ export class AsuraScansExtension
             }
         }
 
+        // Add sorting
+        if (sortingOption?.id && sortingOption.id !== "default") {
+            newUrlBuilder = newUrlBuilder.addQuery("order", sortingOption.id);
+        }
+
         newUrlBuilder = newUrlBuilder
             .addQuery("genres", getFilterTagsBySection("genres", includedTags))
             .addQuery("status", getFilterTagsBySection("status", includedTags))
-            .addQuery("types", getFilterTagsBySection("type", includedTags))
-            .addQuery("order", getFilterTagsBySection("order", includedTags));
+            .addQuery("types", getFilterTagsBySection("type", includedTags));
 
         const response = await Application.scheduleRequest({
             url: newUrlBuilder.build(),
