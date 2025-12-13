@@ -557,8 +557,23 @@ export class MangaFireExtension implements MangaFireImplementation {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
-    const mangaId = sourceManga.mangaId.split(".")[1];
-    if (!mangaId) return [];
+    let mangaId = sourceManga.mangaId.split(".")[1];
+    
+    // If no numeric ID, fetch it from the manga page
+    if (!mangaId) {
+      const slug = sourceManga.mangaId;
+      const request = {
+        url: new URLBuilder(baseUrl).addPath("manga").addPath(slug).build(),
+        method: "GET",
+      };
+      
+      const $ = await this.fetchCheerio(request);
+      mangaId = $(".manga-detail").attr("data-id") || 
+                $("#manga-reading-list").attr("data-id") ||
+                $("[data-id]").first().attr("data-id") || "";
+      
+      if (!mangaId) return [];
+    }
 
     const languages = getLanguages();
     const allRequests = [];
