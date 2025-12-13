@@ -421,7 +421,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a");
       const title = infoLink.text().trim();
-      const image = unit.find("img").attr("src") || "";
+      const image = unit.find("img").attr("src") || "https://mangafire.to/images/no-image.jpg";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latestChapter = unit
         .find(".content[data-name='chap'] a")
@@ -473,7 +473,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     const title = $(".manga-detail .info h1").text().trim();
     const altTitles = [$(".manga-detail .info h6").text().trim()];
-    const image = $(".manga-detail .poster img").attr("src") || "";
+    const image = $(".manga-detail .poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
     const description =
       $("#synopsis .modal-content").text().trim() ||
       $(".manga-detail .info .description").text().trim();
@@ -758,7 +758,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "";
+      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latest_chapter = unit
         .find(".content[data-name='chap']")
@@ -821,7 +821,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "";
+      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
@@ -876,7 +876,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "";
+      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
