@@ -421,7 +421,10 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a");
       const title = infoLink.text().trim();
-      const image = unit.find("img").attr("src") || "";
+      let image = unit.find("img").attr("data-src") || unit.find("img").attr("src") || "";
+      if (image && !image.startsWith("http")) {
+        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
+      }
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latestChapter = unit
         .find(".content[data-name='chap'] a")
@@ -767,7 +770,10 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "";
+      let image = unit.find(".poster img").attr("data-src") || unit.find(".poster img").attr("src") || "";
+      if (image && !image.startsWith("http")) {
+        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
+      }
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latest_chapter = unit
         .find(".content[data-name='chap']")
@@ -830,7 +836,10 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "";
+      let image = unit.find(".poster img").attr("data-src") || unit.find(".poster img").attr("src") || "";
+      if (image && !image.startsWith("http")) {
+        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
+      }
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
