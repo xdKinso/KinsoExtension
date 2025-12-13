@@ -1,4 +1,4 @@
-import { CloudflareError, PaperbackInterceptor, type Request, type Response } from "@paperback/types";
+import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
 export class FireInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
@@ -15,13 +15,6 @@ export class FireInterceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    // Check for Cloudflare challenge
-    if (response.status === 503 || response.status === 403) {
-      const htmlStr = Application.arrayBufferToUTF8String(data);
-      if (htmlStr.includes('cloudflare') || htmlStr.includes('cf-browser-verification')) {
-        throw new CloudflareError(request);
-      }
-    }
     return data;
   }
 }
