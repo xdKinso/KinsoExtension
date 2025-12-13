@@ -21,7 +21,7 @@ export class JsonParser {
     const latest: DiscoverSectionItem[] = [];
     const page = metadata?.page ?? 1;
     const json = await api.getJsonMangaApi(section, page);
-    if (json.status === 200) {
+    if (json.result?.items) {
       for (const item of json.result.items) {
         latest.push({
           type: "simpleCarouselItem",
@@ -45,7 +45,7 @@ export class JsonParser {
   async parseSectionFollow(section: string) {
     const latest: DiscoverSectionItem[] = [];
     const json = await api.getJsonMangaApi(section, 1);
-    if (json.status === 200) {
+    if (json.result?.items) {
       for (const item of json.result.items) {
         latest.push({
           type: "prominentCarouselItem",
@@ -69,7 +69,7 @@ export class JsonParser {
   async parseSectionPopular(section: string) {
     const latest: DiscoverSectionItem[] = [];
     const json = await api.getJsonMangaApi(section, 1);
-    if (json.status === 200) {
+    if (json.result?.items) {
       for (const item of json.result.items) {
         latest.push({
           type: "featuredCarouselItem",
@@ -94,7 +94,7 @@ export class JsonParser {
     const latest: DiscoverSectionItem[] = [];
     const page = metadata?.page ?? 1;
     const json = await api.getJsonMangaApi(section, page);
-    if (json.status === 200) {
+    if (json.result?.items) {
       json.result.items.forEach((item) => {
         latest.push({
           contentRating: item.is_nsfw ? ContentRating.ADULT : ContentRating.EVERYONE,
@@ -283,7 +283,7 @@ export class JsonParser {
       orderBy ?? "",
     );
     const items: SearchResultItem[] = [];
-    if (search.status === 200) {
+    if (search.result?.items) {
       search.result.items.forEach((item) => {
         items.push({
           mangaId: item.hash_id,

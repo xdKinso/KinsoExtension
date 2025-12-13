@@ -1,15 +1,12 @@
 export interface ApiResponseMangaInfo {
-  status: number;
   result: MangaItem;
 }
 
 export interface ApiResponseManga {
-  status: number;
   result: ResultManga;
 }
 
 export interface ApiResponseChapter {
-  status: number;
   result: ResultChapter;
 }
 
@@ -27,7 +24,6 @@ export interface ResultChapter {
 }
 
 export interface ApiResponseChapterPages {
-  status: number;
   result: ChapterPages;
 }
 
@@ -96,7 +92,6 @@ export interface Metadata {
 }
 
 export interface ApiResponseFilter {
-  status: number;
   result: ResultFilter;
 }
 
