@@ -7,7 +7,7 @@ import {
 export default {
     name: "Asura Scans",
     description: "Extension that pulls content from asuracomic.net.",
-    version: "0.0.04",
+    version: "0.0.05",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,

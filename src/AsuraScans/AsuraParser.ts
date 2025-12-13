@@ -227,7 +227,7 @@ export const parseUpdateSection = async (
             title: load(title).text(),
             mangaId: id,
             subtitle: subtitle,
-            chapterId: subtitle.split(" ")[1],
+            chapterId: subtitle.split(" ")[1] ?? "",
             type: "chapterUpdatesCarouselItem",
             contentRating: pbconfig.contentRating,
         });

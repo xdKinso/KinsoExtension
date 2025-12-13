@@ -27,6 +27,7 @@ import { URLBuilder } from "../utils/url-builder/base";
 import { genreOptions } from "./genreOptions";
 import { genres } from "./genres";
 import { isLastPage, parseSearch, parseTags } from "./MangaKatanaParser";
+import pbconfig from "./pbconfig";
 
 const DOMAIN_NAME = "https://mangakatana.com/";
 
@@ -168,15 +169,14 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
             const chapter = unit.find(".chapter a").first().text().trim();
 
             if (mangaId && title && image) {
-                items.push(
-                    createDiscoverSectionItem({
-                        id: mangaId,
-                        image: image,
-                        title: title,
-                        subtitle: chapter,
-                        type: "simpleCarouselItem",
-                    }),
-                );
+                items.push({
+                    imageUrl: image,
+                    title: title,
+                    mangaId: mangaId,
+                    subtitle: chapter,
+                    type: "simpleCarouselItem",
+                    contentRating: pbconfig.contentRating,
+                });
             }
         });
 
@@ -231,15 +231,14 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
-                items.push(
-                    createDiscoverSectionItem({
-                        id: mangaId,
-                        image: image,
-                        title: title,
-                        subtitle: subtitle,
-                        type: "simpleCarouselItem",
-                    }),
-                );
+                items.push({
+                    imageUrl: image,
+                    title: title,
+                    mangaId: mangaId,
+                    subtitle: subtitle,
+                    type: "simpleCarouselItem",
+                    contentRating: pbconfig.contentRating,
+                });
             }
         });
 
@@ -307,15 +306,14 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
-                items.push(
-                    createDiscoverSectionItem({
-                        id: mangaId,
-                        image: image,
-                        title: title,
-                        subtitle: subtitle,
-                        type: "simpleCarouselItem",
-                    }),
-                );
+                items.push({
+                    imageUrl: image,
+                    title: title,
+                    mangaId: mangaId,
+                    subtitle: subtitle,
+                    type: "simpleCarouselItem",
+                    contentRating: pbconfig.contentRating,
+                });
             }
         });
 
