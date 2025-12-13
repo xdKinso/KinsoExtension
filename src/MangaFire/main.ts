@@ -7,8 +7,6 @@ import {
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
-  type CloudflareBypassRequestProviding,
-  type Cookie,
   type DiscoverSection,
   type DiscoverSectionItem,
   type DiscoverSectionProviding,
@@ -50,8 +48,7 @@ type MangaFireImplementation = Extension &
   MangaProviding &
   ChapterProviding &
   SettingsFormProviding &
-  DiscoverSectionProviding &
-  CloudflareBypassRequestProviding;
+  DiscoverSectionProviding;
 
 export class MangaFireExtension implements MangaFireImplementation {
   requestManager = new FireInterceptor("main");
@@ -64,10 +61,6 @@ export class MangaFireExtension implements MangaFireImplementation {
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
-  }
-
-  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Cloudflare cookies are automatically saved by Paperback
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -421,7 +414,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a");
       const title = infoLink.text().trim();
-      const image = unit.find("img").attr("src") || "https://mangafire.to/images/no-image.jpg";
+      const image = unit.find("img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latestChapter = unit
         .find(".content[data-name='chap'] a")
@@ -466,14 +459,9 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    // Extract numeric manga ID from data-id attribute
-    const numericId = $(".manga-detail").attr("data-id") || 
-                      $("#manga-reading-list").attr("data-id") ||
-                      $("[data-id]").first().attr("data-id") || "";
-
     const title = $(".manga-detail .info h1").text().trim();
     const altTitles = [$(".manga-detail .info h6").text().trim()];
-    const image = $(".manga-detail .poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
+    const image = $(".manga-detail .poster img").attr("src") || "";
     const description =
       $("#synopsis .modal-content").text().trim() ||
       $(".manga-detail .info .description").text().trim();
@@ -542,7 +530,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     }
 
     return {
-      mangaId: numericId ? `${mangaId}.${numericId}` : mangaId,
+      mangaId: mangaId,
       mangaInfo: {
         primaryTitle: title,
         secondaryTitles: altTitles,
@@ -557,23 +545,8 @@ export class MangaFireExtension implements MangaFireImplementation {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
-    let mangaId = sourceManga.mangaId.split(".")[1];
-    
-    // If no numeric ID, fetch it from the manga page
-    if (!mangaId) {
-      const slug = sourceManga.mangaId;
-      const request = {
-        url: new URLBuilder(baseUrl).addPath("manga").addPath(slug).build(),
-        method: "GET",
-      };
-      
-      const $ = await this.fetchCheerio(request);
-      mangaId = $(".manga-detail").attr("data-id") || 
-                $("#manga-reading-list").attr("data-id") ||
-                $("[data-id]").first().attr("data-id") || "";
-      
-      if (!mangaId) return [];
-    }
+    const mangaId = sourceManga.mangaId.split(".")[1];
+    if (!mangaId) return [];
 
     const languages = getLanguages();
     const allRequests = [];
@@ -728,8 +701,7 @@ export class MangaFireExtension implements MangaFireImplementation {
   }
 
   getMangaShareUrl(mangaId: string): string {
-    const slug = mangaId.split(".")[0];
-    return `${baseUrl}/manga/${slug}`;
+    return `${baseUrl}/manga/${mangaId}`;
   }
 
   async getUpdatedSectionItems(
@@ -758,7 +730,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
+      const image = unit.find(".poster img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latest_chapter = unit
         .find(".content[data-name='chap']")
@@ -821,7 +793,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
+      const image = unit.find(".poster img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
@@ -876,7 +848,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      const image = unit.find(".poster img").attr("src") || "https://mangafire.to/images/no-image.jpg";
+      const image = unit.find(".poster img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
