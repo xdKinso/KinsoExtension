@@ -7,8 +7,6 @@ import {
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
-  type CloudflareBypassRequestProviding,
-  type Cookie,
   type DiscoverSection,
   type DiscoverSectionItem,
   type DiscoverSectionProviding,
@@ -50,8 +48,7 @@ type MangaFireImplementation = Extension &
   MangaProviding &
   ChapterProviding &
   SettingsFormProviding &
-  DiscoverSectionProviding &
-  CloudflareBypassRequestProviding;
+  DiscoverSectionProviding;
 
 export class MangaFireExtension implements MangaFireImplementation {
   requestManager = new FireInterceptor("main");
@@ -64,10 +61,6 @@ export class MangaFireExtension implements MangaFireImplementation {
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
-  }
-
-  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Cloudflare cookies are automatically saved by Paperback
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
