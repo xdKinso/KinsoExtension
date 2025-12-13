@@ -56,7 +56,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
         for (const manga of $("div.item", "#book_list").toArray()) {
             const title: string = $(".title a", manga).text().trim();
             let id = $("a", manga).attr("href")?.split("/").pop() ?? "";
-            const image = $("img", manga).attr("src") ?? "";
+            const image = $("img", manga).attr("data-src") ?? $("img", manga).attr("src") ?? "";
             const subtitle: string = $(".chapter", manga).first().text().trim();
 
             id = decodeURIComponent(id)

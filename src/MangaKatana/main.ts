@@ -226,7 +226,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("src") ?? "";
+            const image = unit.find(".wrap_img img").attr("data-src") ?? unit.find(".wrap_img img").attr("src") ?? "";
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -301,7 +301,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("src") ?? "";
+            const image = unit.find(".wrap_img img").attr("data-src") ?? unit.find(".wrap_img img").attr("src") ?? "";
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
