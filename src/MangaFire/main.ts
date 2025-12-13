@@ -421,10 +421,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a");
       const title = infoLink.text().trim();
-      let image = unit.find("img").attr("data-src") || unit.find("img").attr("src") || "";
-      if (image && !image.startsWith("http")) {
-        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
-      }
+      const image = unit.find("img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latestChapter = unit
         .find(".content[data-name='chap'] a")
@@ -476,16 +473,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     const title = $(".manga-detail .info h1").text().trim();
     const altTitles = [$(".manga-detail .info h6").text().trim()];
-    let image = $(".manga-detail .poster img").attr("data-src") || 
-                $(".manga-detail .poster img").attr("src") || 
-                $(".poster img").attr("data-src") ||
-                $(".poster img").attr("src") || "";
-    
-    // Ensure absolute URL
-    if (image && !image.startsWith("http")) {
-      image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image.startsWith("/") ? "" : "/"}${image}`;
-    }
-    
+    const image = $(".manga-detail .poster img").attr("src") || "";
     const description =
       $("#synopsis .modal-content").text().trim() ||
       $(".manga-detail .info .description").text().trim();
@@ -770,10 +758,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      let image = unit.find(".poster img").attr("data-src") || unit.find(".poster img").attr("src") || "";
-      if (image && !image.startsWith("http")) {
-        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
-      }
+      const image = unit.find(".poster img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
       const latest_chapter = unit
         .find(".content[data-name='chap']")
@@ -836,10 +821,7 @@ export class MangaFireExtension implements MangaFireImplementation {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
-      let image = unit.find(".poster img").attr("data-src") || unit.find(".poster img").attr("src") || "";
-      if (image && !image.startsWith("http")) {
-        image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image}`;
-      }
+      const image = unit.find(".poster img").attr("src") || "";
       const mangaId = infoLink.attr("href")?.replace("/manga/", "") || "";
 
       const latestChapter = unit
