@@ -1,15 +1,15 @@
 import {
+    DiscoverSectionType,
+} from "@paperback/types";
+import type {
     DiscoverSection,
     DiscoverSectionItem,
     DiscoverSectionProviding,
-    DiscoverSectionType,
     PagedResults,
 } from "@paperback/types";
-import {
-    discoverSectionsAndSearchQuery,
-    DiscoverSectionsAndSearchVariables,
-} from "../../GraphQL/DiscoverSectionsAndSearch";
-import { CountryCode, MediaSort } from "../../GraphQL/General";
+import { discoverSectionsAndSearchQuery } from "../../GraphQL/DiscoverSectionsAndSearch";
+import type { DiscoverSectionsAndSearchVariables } from "../../GraphQL/DiscoverSectionsAndSearch";
+import type { CountryCode, MediaSort } from "../../GraphQL/General";
 import { getItems } from "../helper";
 
 export class DiscoverSectionImplementation implements DiscoverSectionProviding {

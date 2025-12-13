@@ -1,9 +1,10 @@
-import { ContentRating, PagedResults } from "@paperback/types";
-import {
+import { ContentRating } from "@paperback/types";
+import type { PagedResults } from "@paperback/types";
+import type {
     DiscoverSectionsAndSearch,
     DiscoverSectionsAndSearchVariables,
 } from "../GraphQL/DiscoverSectionsAndSearch";
-import { MediaFormat, MediaStatus } from "../GraphQL/General";
+import type { MediaFormat, MediaStatus } from "../GraphQL/General";
 import makeRequest from "../Services/Requests";
 import { getSynonymsSetting } from "./SettingsForm/form";
 

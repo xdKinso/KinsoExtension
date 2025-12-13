@@ -1,33 +1,37 @@
 import {
     ButtonRow,
-    ButtonRowProps,
     Form,
-    FormItemElement,
-    FormSectionElement,
     InputRow,
-    InputRowProps,
     LabelRow,
-    LabelRowProps,
     NavigationRow,
-    NavigationRowProps,
     Section,
     SelectRow,
-    SelectRowProps,
     StepperRow,
-    StepperRowProps,
     ToggleRow,
+} from "@paperback/types";
+import type {
+    ButtonRowProps,
+    FormItemElement,
+    FormSectionElement,
+    InputRowProps,
+    LabelRowProps,
+    NavigationRowProps,
+    SelectRowProps,
+    StepperRowProps,
     ToggleRowProps,
 } from "@paperback/types";
 import {
+    titleProgressDeletionMutation,
+    titleProgressMutationMutation,
+    titleProgressQuery,
+} from "../../GraphQL/Tracking";
+import type {
     MediaListStatus,
     TitleProgress,
     TitleProgressDeletion,
-    titleProgressDeletionMutation,
     TitleProgressDeletionVariables,
     TitleProgressMediaList,
-    titleProgressMutationMutation,
     TitleProgressMutationVariables,
-    titleProgressQuery,
     TitleProgressQueryVeriables,
 } from "../../GraphQL/Tracking";
 import makeRequest from "../../Services/Requests";
@@ -103,7 +107,7 @@ export class TrackingForm extends Form {
             });
     }
 
-    get requiresExplicitSubmission(): boolean {
+    override get requiresExplicitSubmission(): boolean {
         return true;
     }
 
@@ -279,7 +283,9 @@ export class TrackingForm extends Form {
     }
 
     async statusUpdate(newStatus: string[]): Promise<void> {
-        this.titleProgress!.MediaList.status = newStatus[0];
+        if (this.titleProgress && newStatus[0]) {
+            this.titleProgress.MediaList.status = newStatus[0] as MediaListStatus;
+        }
     }
 
     async chapterProgressUpdate(newChapterProgress: number): Promise<void> {

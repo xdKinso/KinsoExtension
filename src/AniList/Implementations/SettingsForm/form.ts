@@ -1,21 +1,24 @@
 // TODO: Expand upon this by showing more profile data and allowing mutations
 import {
     ButtonRow,
-    ButtonRowProps,
     Form,
-    FormItemElement,
-    FormSectionElement,
     LabelRow,
-    LabelRowProps,
     NavigationRow,
-    NavigationRowProps,
     OAuthButtonRow,
-    OAuthButtonRowProps,
     Section,
     ToggleRow,
+} from "@paperback/types";
+import type {
+    ButtonRowProps,
+    FormItemElement,
+    FormSectionElement,
+    LabelRowProps,
+    NavigationRowProps,
+    OAuthButtonRowProps,
     ToggleRowProps,
 } from "@paperback/types";
-import { JwtPayload, Viewer, viewerQuery } from "../../GraphQL/Viewer";
+import type { JwtPayload, Viewer } from "../../GraphQL/Viewer";
+import { viewerQuery } from "../../GraphQL/Viewer";
 import makeRequest from "../../Services/Requests";
 
 export function getSynonymsSetting(): boolean {
@@ -213,9 +216,13 @@ class ProfileViewForm extends Form {
 
     getSessionSection(): FormSectionElement {
         const token = String(Application.getSecureState("session"));
+        const tokenParts = token.split(".");
+        if (!tokenParts[1]) {
+            throw new Error("Invalid session token");
+        }
 
         const payload = JSON.parse(
-            Buffer.from(token.split(".")[1], "base64").toString(),
+            Buffer.from(tokenParts[1], "base64").toString(),
         ) as JwtPayload;
 
         const rows: FormItemElement<unknown>[] = [];

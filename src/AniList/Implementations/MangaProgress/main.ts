@@ -1,18 +1,22 @@
 import {
+    Form,
+} from "@paperback/types";
+import type {
     Chapter,
     ChapterReadActionQueueProcessingResult,
-    Form,
     MangaProgress,
     MangaProgressProviding,
     SourceManga,
     TrackedMangaChapterReadAction,
 } from "@paperback/types";
 import {
+    titleProgressMutationMutation,
+    titleProgressQuery,
+} from "../../GraphQL/Tracking";
+import type {
     MediaListStatus,
     TitleProgress,
-    titleProgressMutationMutation,
     TitleProgressMutationVariables,
-    titleProgressQuery,
     TitleProgressQueryVeriables,
 } from "../../GraphQL/Tracking";
 import makeRequest from "../../Services/Requests";

@@ -1,5 +1,5 @@
-import { Request, Response } from "../GraphQL/General";
-import { JwtPayload } from "../GraphQL/Viewer";
+import type { Request, Response } from "../GraphQL/General";
+import type { JwtPayload } from "../GraphQL/Viewer";
 
 const GRAPHQL_ENDPOINT = "https://graphql.anilist.co";
 
@@ -33,8 +33,12 @@ export default async function makeRequest<
             );
         }
 
+        const tokenParts = token.split(".");
+        if (!tokenParts[1]) {
+            throw new Error("Invalid authentication token");
+        }
         const payload = JSON.parse(
-            Buffer.from(token.split(".")[1], "base64").toString(),
+            Buffer.from(tokenParts[1], "base64").toString(),
         ) as JwtPayload;
 
         if (Number(payload.exp) < new Date().valueOf() / 1000) {
@@ -78,7 +82,10 @@ export default async function makeRequest<
                 errorMessages += "\n";
             }
 
-            errorMessages += `AniList returned an error: [${response.errors[i].status}] ${response.errors[i].message}`;
+            const error = response.errors[i];
+            if (error) {
+                errorMessages += `AniList returned an error: [${error.status}] ${error.message}`;
+            }
         }
 
         throw new Error(errorMessages);

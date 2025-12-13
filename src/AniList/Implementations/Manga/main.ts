@@ -1,14 +1,16 @@
 import {
     ContentRating,
+} from "@paperback/types";
+import type {
     MangaProviding,
     SourceManga,
     Tag,
     TagSection,
 } from "@paperback/types";
-import { MediaFormat, MediaStatus } from "../../GraphQL/General";
-import {
+import type { MediaFormat, MediaStatus } from "../../GraphQL/General";
+import { titleViewQuery } from "../../GraphQL/TitleView";
+import type {
     TitleView,
-    titleViewQuery,
     TitleViewQueryVariables,
 } from "../../GraphQL/TitleView";
 import makeRequest from "../../Services/Requests";

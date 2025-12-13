@@ -1,4 +1,4 @@
-import {
+import type {
     PagedResults,
     SearchFilter,
     SearchQuery,
@@ -6,11 +6,9 @@ import {
     SearchResultsProviding,
     SortingOption,
 } from "@paperback/types";
-import {
-    discoverSectionsAndSearchQuery,
-    DiscoverSectionsAndSearchVariables,
-} from "../../GraphQL/DiscoverSectionsAndSearch";
-import {
+import { discoverSectionsAndSearchQuery } from "../../GraphQL/DiscoverSectionsAndSearch";
+import type { DiscoverSectionsAndSearchVariables } from "../../GraphQL/DiscoverSectionsAndSearch";
+import type {
     CountryCode,
     MediaFormat,
     MediaSort,
@@ -18,10 +16,12 @@ import {
     MediaStatus,
 } from "../../GraphQL/General";
 import {
-    Genres,
     genresQuery,
-    Tags,
     tagsQuery,
+} from "../../GraphQL/SearchFilters";
+import type {
+    Genres,
+    Tags,
 } from "../../GraphQL/SearchFilters";
 import makeRequest from "../../Services/Requests";
 import { getItems } from "../helper";
@@ -414,32 +414,32 @@ export class SearchResultsImplementation
 
                     switch (startYears.length) {
                         case 1:
-                            variables.startDateGreater =
-                                Number(
-                                    (startYears[0] - 1)
-                                        .toString()
-                                        .padStart(4, "0"),
-                                ) * 10000;
-                            variables.startDateLesser =
-                                Number(
-                                    (startYears[0] + 1)
-                                        .toString()
-                                        .padStart(4, "0"),
-                                ) * 10000;
+                            if (startYears[0] !== undefined) {
+                                variables.startDateGreater =
+                                    Number(
+                                        (startYears[0] - 1)
+                                            .toString()
+                                            .padStart(4, "0"),
+                                    ) * 10000;
+                                variables.startDateLesser =
+                                    Number(
+                                        (startYears[0] + 1)
+                                            .toString()
+                                            .padStart(4, "0"),
+                                    ) * 10000;
+                            }
                             break;
                         case 2:
-                            if (startYears[0] > startYears[1]) {
-                                break;
+                            if (startYears[0] !== undefined && startYears[1] !== undefined && startYears[0] <= startYears[1]) {
+                                variables.startDateGreater =
+                                    Number(
+                                        startYears[0].toString().padStart(4, "0"),
+                                    ) * 10000;
+                                variables.startDateLesser =
+                                    Number(
+                                        startYears[1].toString().padStart(4, "0"),
+                                    ) * 10000;
                             }
-
-                            variables.startDateGreater =
-                                Number(
-                                    startYears[0].toString().padStart(4, "0"),
-                                ) * 10000;
-                            variables.startDateLesser =
-                                Number(
-                                    startYears[1].toString().padStart(4, "0"),
-                                ) * 10000;
 
                             break;
                     }
@@ -471,16 +471,16 @@ export class SearchResultsImplementation
 
                     switch (chapterCounts.length) {
                         case 1:
-                            variables.chaptersGreater = chapterCounts[0] - 1;
-                            variables.chaptersLesser = chapterCounts[0] + 1;
+                            if (chapterCounts[0] !== undefined) {
+                                variables.chaptersGreater = chapterCounts[0] - 1;
+                                variables.chaptersLesser = chapterCounts[0] + 1;
+                            }
                             break;
                         case 2:
-                            if (chapterCounts[0] > chapterCounts[1]) {
-                                break;
+                            if (chapterCounts[0] !== undefined && chapterCounts[1] !== undefined && chapterCounts[0] <= chapterCounts[1]) {
+                                variables.chaptersGreater = chapterCounts[0];
+                                variables.chaptersLesser = chapterCounts[1];
                             }
-
-                            variables.chaptersGreater = chapterCounts[0];
-                            variables.chaptersLesser = chapterCounts[1];
 
                             break;
                     }
@@ -512,16 +512,16 @@ export class SearchResultsImplementation
 
                     switch (volumeCounts.length) {
                         case 1:
-                            variables.volumesGreater = volumeCounts[0] - 1;
-                            variables.volumesLesser = volumeCounts[0] + 1;
+                            if (volumeCounts[0] !== undefined) {
+                                variables.volumesGreater = volumeCounts[0] - 1;
+                                variables.volumesLesser = volumeCounts[0] + 1;
+                            }
                             break;
                         case 2:
-                            if (volumeCounts[0] > volumeCounts[1]) {
-                                break;
+                            if (volumeCounts[0] !== undefined && volumeCounts[1] !== undefined && volumeCounts[0] <= volumeCounts[1]) {
+                                variables.volumesGreater = volumeCounts[0];
+                                variables.volumesLesser = volumeCounts[1];
                             }
-
-                            variables.volumesGreater = volumeCounts[0];
-                            variables.volumesLesser = volumeCounts[1];
 
                             break;
                     }
@@ -538,13 +538,15 @@ export class SearchResultsImplementation
                         break;
                     }
 
-                    switch (adult[0][1]) {
-                        case "included":
-                            variables.isAdult = true;
-                            break;
-                        case "excluded":
-                            variables.isAdult = false;
-                            break;
+                    if (adult[0]?.[1]) {
+                        switch (adult[0][1]) {
+                            case "included":
+                                variables.isAdult = true;
+                                break;
+                            case "excluded":
+                                variables.isAdult = false;
+                                break;
+                        }
                     }
 
                     break;
@@ -559,13 +561,15 @@ export class SearchResultsImplementation
                         break;
                     }
 
-                    switch (doujin[0][1]) {
-                        case "included":
-                            variables.isLicensed = false;
-                            break;
-                        case "excluded":
-                            variables.isLicensed = true;
-                            break;
+                    if (doujin[0]?.[1]) {
+                        switch (doujin[0][1]) {
+                            case "included":
+                                variables.isLicensed = false;
+                                break;
+                            case "excluded":
+                                variables.isLicensed = true;
+                                break;
+                        }
                     }
 
                     break;
@@ -580,15 +584,17 @@ export class SearchResultsImplementation
                         break;
                     }
 
-                    switch (trackedTitles[0][1]) {
-                        case "included":
-                            variables.onList = true;
-                            needsAuth = true;
-                            break;
-                        case "excluded":
-                            variables.onList = false;
-                            needsAuth = true;
-                            break;
+                    if (trackedTitles[0]?.[1]) {
+                        switch (trackedTitles[0][1]) {
+                            case "included":
+                                variables.onList = true;
+                                needsAuth = true;
+                                break;
+                            case "excluded":
+                                variables.onList = false;
+                                needsAuth = true;
+                                break;
+                        }
                     }
 
                     break;

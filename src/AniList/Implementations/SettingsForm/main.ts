@@ -1,4 +1,5 @@
-import { Form, SettingsFormProviding } from "@paperback/types";
+import { Form } from "@paperback/types";
+import type { SettingsFormProviding } from "@paperback/types";
 import { SettingsForm } from "./form";
 
 export class SettingsFormImplementation implements SettingsFormProviding {

@@ -1,4 +1,5 @@
-import { PaperbackInterceptor, Request, Response } from "@paperback/types";
+import { PaperbackInterceptor } from "@paperback/types";
+import type { Request, Response } from "@paperback/types";
 
 export default class AniListInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
