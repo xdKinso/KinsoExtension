@@ -7,7 +7,7 @@ import {
 export default {
     name: "MangaKatana",
     description: "Extension that pulls content from mangakatana.com.",
-    version: "0.0.08",
+    version: "0.0.09",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
