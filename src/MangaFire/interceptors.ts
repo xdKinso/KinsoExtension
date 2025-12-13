@@ -1,6 +1,6 @@
-import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
+import { CloudflareBypassInterceptor, type Request, type Response } from "@paperback/types";
 
-export class FireInterceptor extends PaperbackInterceptor {
+export class FireInterceptor extends CloudflareBypassInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
