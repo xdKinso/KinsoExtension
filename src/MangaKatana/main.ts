@@ -30,6 +30,21 @@ import { isLastPage, parseSearch, parseTags } from "./MangaKatanaParser";
 
 const DOMAIN_NAME = "https://mangakatana.com/";
 
+// Helper function to convert relative URLs to absolute
+function toAbsoluteURL(url: string): string {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+    }
+    if (url.startsWith("//")) {
+        return "https:" + url;
+    }
+    if (url.startsWith("/")) {
+        return DOMAIN_NAME.replace(/\/$/, "") + url;
+    }
+    return DOMAIN_NAME + url;
+}
+
 // Define CloudflareError class for handling Cloudflare protection
 class CloudflareError extends Error {
     constructor(request: { url: string; method: string }) {
@@ -174,7 +189,8 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const imageRaw = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const image = toAbsoluteURL(imageRaw);
             const chapter = unit.find(".chapter a").first().text().trim();
 
             if (mangaId && title && image) {
@@ -226,7 +242,8 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const imageRaw = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const image = toAbsoluteURL(imageRaw);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -301,7 +318,8 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const imageRaw = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
+            const image = toAbsoluteURL(imageRaw);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -753,7 +771,8 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
         // Extract basic manga details
         const title = $("h1.heading").text().trim();
-        const image = $(".cover img").attr("data-src") || $(".cover img").attr("src") || "";
+        const imageRaw = $(".cover img").attr("data-src") || $(".cover img").attr("src") || "";
+        const image = toAbsoluteURL(imageRaw);
         const description = $(".summary p").text().trim();
 
         // Extract alternative titles
