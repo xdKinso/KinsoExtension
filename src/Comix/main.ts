@@ -33,7 +33,7 @@ type ComixToImplementation = SettingsFormProviding &
     MangaProviding &
     ChapterProviding;
 
-export class ComiToExtension implements ComixToImplementation {
+export class ComixToExtension implements ComixToImplementation {
     async getSettingsForm(): Promise<Form> {
         return new Forms();
     }
@@ -130,4 +130,4 @@ export class ComiToExtension implements ComixToImplementation {
     }
 }
 
-export default new ComiToExtension();
+export default new ComixToExtension();
