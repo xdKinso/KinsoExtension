@@ -38,11 +38,8 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
     return new Forms();
   }
 
-  mainInterceptor = new MainInterceptor("main");
-
   async initialise(): Promise<void> {
-    mainRateLimiter.registerInterceptor();
-    this.mainInterceptor.registerInterceptor();
+    // Extension initialized
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
