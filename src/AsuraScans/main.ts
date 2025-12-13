@@ -340,11 +340,11 @@ export class AsuraScansExtension
     async getSortingOptions(): Promise<import("@paperback/types").SortingOption[]> {
         return [
             { id: "default", label: "Default" },
-            { id: "title_az", label: "Title (A-Z)" },
-            { id: "title_za", label: "Title (Z-A)" },
-            { id: "latest_added", label: "Latest Added" },
-            { id: "latest_updated", label: "Latest Updated" },
-            { id: "most_viewed", label: "Most Viewed" },
+            { id: "asc", label: "Title (A-Z)" },
+            { id: "desc", label: "Title (Z-A)" },
+            { id: "update", label: "Latest Updated" },
+            { id: "rating", label: "Rating" },
+            { id: "bookmarks", label: "Bookmarks" },
         ];
     }
 
@@ -396,10 +396,14 @@ export class AsuraScansExtension
             newUrlBuilder = newUrlBuilder.addQuery("order", sortingOption.id);
         }
 
+        const genres = getFilterTagsBySection("genres", includedTags);
+        const status = getFilterTagsBySection("status", includedTags);
+        const types = getFilterTagsBySection("type", includedTags);
+
         newUrlBuilder = newUrlBuilder
-            .addQuery("genres", getFilterTagsBySection("genres", includedTags))
-            .addQuery("status", getFilterTagsBySection("status", includedTags))
-            .addQuery("types", getFilterTagsBySection("type", includedTags));
+            .addQuery("genres", genres.length > 0 ? genres : "")
+            .addQuery("status", status.length > 0 ? status : "-1")
+            .addQuery("types", types.length > 0 ? types : "-1");
 
         const response = await Application.scheduleRequest({
             url: newUrlBuilder.build(),
