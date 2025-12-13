@@ -68,7 +68,6 @@ export class MangaFireExtension implements MangaFireImplementation {
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
     // Cloudflare cookies are automatically saved by Paperback
-    // This method just needs to exist for the interface
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -467,6 +466,11 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     const $ = await this.fetchCheerio(request);
 
+    // Extract numeric manga ID from data-id attribute
+    const numericId = $(".manga-detail").attr("data-id") || 
+                      $("#manga-reading-list").attr("data-id") ||
+                      $("[data-id]").first().attr("data-id") || "";
+
     const title = $(".manga-detail .info h1").text().trim();
     const altTitles = [$(".manga-detail .info h6").text().trim()];
     const image = $(".manga-detail .poster img").attr("src") || "";
@@ -538,7 +542,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     }
 
     return {
-      mangaId: mangaId,
+      mangaId: numericId ? `${mangaId}.${numericId}` : mangaId,
       mangaInfo: {
         primaryTitle: title,
         secondaryTitles: altTitles,
@@ -709,7 +713,8 @@ export class MangaFireExtension implements MangaFireImplementation {
   }
 
   getMangaShareUrl(mangaId: string): string {
-    return `${baseUrl}/manga/${mangaId}`;
+    const slug = mangaId.split(".")[0];
+    return `${baseUrl}/manga/${slug}`;
   }
 
   async getUpdatedSectionItems(
