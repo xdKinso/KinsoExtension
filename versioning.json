@@ -1,0 +1,33 @@
+{
+  "buildTime": "2025-12-13",
+  "sources": [
+    {
+      "id": "AniList",
+      "name": "AniList",
+      "version": "0.0.03",
+      "icon": "icon.png",
+      "url": "https://xdkinso.github.io/KinsoExtension/AniList.pbsource"
+    },
+    {
+      "id": "AsuraScans",
+      "name": "Asura Scans",
+      "version": "0.0.05",
+      "icon": "icon.png",
+      "url": "https://xdkinso.github.io/KinsoExtension/AsuraScans.pbsource"
+    },
+    {
+      "id": "MangaKatana",
+      "name": "MangaKatana",
+      "version": "0.0.19",
+      "icon": "icon.png",
+      "url": "https://xdkinso.github.io/KinsoExtension/MangaKatana.pbsource"
+    },
+    {
+      "id": "ComixGallery",
+      "name": "Comix Gallery",
+      "version": "0.0.01",
+      "icon": "icon.png",
+      "url": "https://xdkinso.github.io/KinsoExtension/ComixGallery.pbsource"
+    }
+  ]
+}

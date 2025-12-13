@@ -4,7 +4,7 @@ export default {
     name: "AniList",
     description:
         "Extension that integrates with anilist.co for tracking and collection management.",
-    version: "0.0.02",
+    version: "0.0.03",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
