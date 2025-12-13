@@ -19,8 +19,8 @@ export default {
     badges: [],
     developers: [
         {
-            name: "Catta1997",
-            github: "https://github.com/Catta1997",
+            name: "Kinso",
+            github: "https://github.com/Kinso",
         },
     ],
 } satisfies ExtensionInfo;

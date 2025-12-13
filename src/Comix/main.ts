@@ -130,4 +130,4 @@ export class ComiToExtension implements ComixToImplementation {
     }
 }
 
-export const ComixTo = new ComiToExtension();
+export default new ComiToExtension();
