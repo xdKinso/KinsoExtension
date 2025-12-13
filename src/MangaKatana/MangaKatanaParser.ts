@@ -36,7 +36,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
         const title = $("h1.heading").first().text().trim() ?? "";
         let id =
             $("meta[property$=url]").attr("content")?.split("/")?.pop() ?? "";
-        const image = $("div.media div.cover img").attr("src") ?? "";
+        const image = $("div.media div.cover img").attr("data-src") || $("div.media div.cover img").attr("src") || "";
 
         id = decodeURIComponent(id)
             .replace(/[^\w@.]/g, "_")
@@ -54,7 +54,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
         for (const manga of $("div.item", "#book_list").toArray()) {
             const title: string = $(".title a", manga).text().trim();
             let id = $("a", manga).attr("href")?.split("/").pop() ?? "";
-            const image = $("img", manga).attr("src") ?? "";
+            const image = $("img", manga).attr("data-src") || $("img", manga).attr("src") || "";
             const subtitle: string = $(".chapter", manga).first().text().trim();
 
             id = decodeURIComponent(id)

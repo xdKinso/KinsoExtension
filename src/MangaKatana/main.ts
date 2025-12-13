@@ -164,7 +164,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("src") || "";
+            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
             const chapter = unit.find(".chapter a").first().text().trim();
 
             if (mangaId && title && image) {
@@ -216,7 +216,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("src") || "";
+            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -291,7 +291,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("src") || "";
+            const image = unit.find(".wrap_img img").attr("data-src") || unit.find(".wrap_img img").attr("src") || "";
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -743,7 +743,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
         // Extract basic manga details
         const title = $("h1.heading").text().trim();
-        const image = $(".cover img").attr("src") || "";
+        const image = $(".cover img").attr("data-src") || $(".cover img").attr("src") || "";
         const description = $(".summary p").text().trim();
 
         // Extract alternative titles
