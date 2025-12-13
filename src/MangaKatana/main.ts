@@ -381,12 +381,10 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     // Populate search filters
     async getSortingOptions(): Promise<import("@paperback/types").SortingOption[]> {
         return [
-            { id: "latest", label: "New manga" },
+            { id: "latest", label: "New Updates" },
+            { id: "new", label: "Newest" },
             { id: "az", label: "A-Z" },
-            { id: "za", label: "Z-A" },
-            { id: "newest", label: "Newest" },
-            { id: "oldest", label: "Oldest" },
-            { id: "views", label: "Most Views" },
+            { id: "numc", label: "Number Of Chapters" },
         ];
     }
 
@@ -398,7 +396,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
             id: "genres",
             type: "multiselect",
             options: genreOptions,
-            allowExclusion: false,
+            allowExclusion: true,
             value: {},
             title: "Genres",
             allowEmptySelection: true,
