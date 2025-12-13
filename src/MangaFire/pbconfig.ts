@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types"
 export default {
   name: "MangaFire",
   description: "Extension that pulls content from mangafire.to.",
-  version: "0.0.03",
+  version: "0.1.5",
   icon: "icon.png",
   language: "multi",
   contentRating: ContentRating.EVERYONE,
@@ -12,6 +12,7 @@ export default {
     SourceIntents.MANGA_SEARCH,
     SourceIntents.MANGA_CHAPTERS,
     SourceIntents.SETTINGS_UI,
+    SourceIntents.CLOUDFLARE_BYPASS_PROVIDING,
   ],
   badges: [],
   developers: [

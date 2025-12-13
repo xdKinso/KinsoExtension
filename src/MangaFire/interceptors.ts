@@ -1,11 +1,14 @@
-import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
+import { CloudflareError, PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
 export class FireInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
       referer: `https://mangafire.to/`,
+      origin: `https://mangafire.to`,
       "user-agent": await Application.getDefaultUserAgent(),
+      "x-requested-with": "XMLHttpRequest",
+      accept: "application/json, text/javascript, */*; q=0.01",
     };
     return request;
   }
@@ -15,6 +18,19 @@ export class FireInterceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
+    // Only throw CloudflareError if we actually detect Cloudflare challenge
+    if (response.status === 403 || response.status === 503) {
+      const htmlStr = Application.arrayBufferToUTF8String(data);
+      // Check for actual Cloudflare challenge page indicators
+      if (
+        htmlStr.includes('__cf_chl_tk') || 
+        htmlStr.includes('cf-challenge-running') ||
+        htmlStr.includes('Checking your browser') ||
+        htmlStr.includes('ray ID')
+      ) {
+        throw new CloudflareError(request);
+      }
+    }
     return data;
   }
 }
