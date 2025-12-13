@@ -1,33 +1,57 @@
 {
-  "buildTime": "2025-12-13",
+  "buildTime": "2025-12-13T00:00:00.000Z",
+  "builtWith": {
+    "toolchain": "1.0.0-alpha.57",
+    "types": "1.0.0-alpha.57"
+  },
+  "repository": {
+    "name": "Kinso Extensions",
+    "description": "Paperback extensions by Kinso"
+  },
   "sources": [
     {
       "id": "AniList",
       "name": "AniList",
+      "description": "AniList tracking extension",
       "version": "0.0.03",
       "icon": "icon.png",
-      "url": "https://xdkinso.github.io/KinsoExtension/AniList.pbsource"
+      "language": "en",
+      "contentRating": "SAFE",
+      "badges": [],
+      "capabilities": 102
     },
     {
       "id": "AsuraScans",
       "name": "Asura Scans",
+      "description": "Extension that pulls content from asuracomic.net",
       "version": "0.0.05",
       "icon": "icon.png",
-      "url": "https://xdkinso.github.io/KinsoExtension/AsuraScans.pbsource"
+      "language": "en",
+      "contentRating": "SAFE",
+      "badges": [],
+      "capabilities": 117
     },
     {
       "id": "MangaKatana",
       "name": "MangaKatana",
+      "description": "Extension that pulls content from mangakatana.com",
       "version": "0.0.19",
       "icon": "icon.png",
-      "url": "https://xdkinso.github.io/KinsoExtension/MangaKatana.pbsource"
+      "language": "en",
+      "contentRating": "MATURE",
+      "badges": [],
+      "capabilities": 117
     },
     {
       "id": "ComixGallery",
       "name": "Comix Gallery",
+      "description": "Extension that pulls content from comixgallery",
       "version": "0.0.01",
       "icon": "icon.png",
-      "url": "https://xdkinso.github.io/KinsoExtension/ComixGallery.pbsource"
+      "language": "en",
+      "contentRating": "SAFE",
+      "badges": [],
+      "capabilities": 117
     }
   ]
 }
