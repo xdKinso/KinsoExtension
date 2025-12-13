@@ -226,7 +226,10 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("data-src") ?? unit.find(".wrap_img img").attr("src") ?? "";
+            const dataSrc = unit.find(".wrap_img img").attr("data-src");
+            const src = unit.find(".wrap_img img").attr("src");
+            const image = dataSrc || src || "";
+            console.log(`[Latest] ${title}: data-src="${dataSrc}", src="${src}"`);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -301,7 +304,10 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .replace(/[^\w@.]/g, "_")
                 .trim();
 
-            const image = unit.find(".wrap_img img").attr("data-src") ?? unit.find(".wrap_img img").attr("src") ?? "";
+            const dataSrc = unit.find(".wrap_img img").attr("data-src");
+            const src = unit.find(".wrap_img img").attr("src");
+            const image = dataSrc || src || "";
+            console.log(`[NewManga] ${title}: data-src="${dataSrc}", src="${src}"`);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
