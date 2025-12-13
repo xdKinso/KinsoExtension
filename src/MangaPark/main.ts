@@ -97,9 +97,10 @@ export class MangaParkExtension implements MangaParkImplementation {
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
     return {
       mangaId,
-      primaryTitle: 'Test Manga',
-      secondaryTitles: [],
+      titles: ['Test Manga'],
       coverUrl: '',
+      author: '',
+      artist: '',
       synopsis: 'Loading...',
       status: 'Unknown',
       contentRating: ContentRating.EVERYONE,
@@ -113,6 +114,8 @@ export class MangaParkExtension implements MangaParkImplementation {
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     return {
+      id: chapter.id,
+      mangaId: chapter.mangaId,
       pages: [],
     };
   }
