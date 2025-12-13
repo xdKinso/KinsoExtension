@@ -88,6 +88,16 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         this.mangaKatanaInterceptor.registerInterceptor();
     }
 
+    async getImageRequest(url: string): Promise<Request> {
+        return {
+            url,
+            method: "GET",
+            headers: {
+                referer: DOMAIN_NAME,
+            },
+        };
+    }
+
     async getDiscoverSections(): Promise<DiscoverSection[]> {
         const get_Hot_Updates_Section: DiscoverSection = {
             id: "hot-updates",
