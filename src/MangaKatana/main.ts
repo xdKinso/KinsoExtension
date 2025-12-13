@@ -247,7 +247,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         let nextPage: number | undefined;
         if (nextPageHref) {
             const pageMatch = nextPageHref.match(/\/page\/(\d+)/);
-            if (pageMatch) {
+            if (pageMatch && pageMatch[1]) {
                 nextPage = parseInt(pageMatch[1], 10);
             } else {
                 nextPage = page + 1;
@@ -322,7 +322,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         let nextPage: number | undefined;
         if (nextPageHref) {
             const pageMatch = nextPageHref.match(/\/page\/(\d+)/);
-            if (pageMatch) {
+            if (pageMatch && pageMatch[1]) {
                 nextPage = parseInt(pageMatch[1], 10);
             } else {
                 nextPage = page + 1;
@@ -379,19 +379,74 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     }
 
     // Populate search filters
+    async getSortingOptions(): Promise<import("@paperback/types").SortingOption[]> {
+        return [
+            { id: "latest", label: "New manga" },
+            { id: "az", label: "A-Z" },
+            { id: "za", label: "Z-A" },
+            { id: "newest", label: "Newest" },
+            { id: "oldest", label: "Oldest" },
+            { id: "views", label: "Most Views" },
+        ];
+    }
+
     async getSearchFilters(): Promise<SearchFilter[]> {
         const filters: SearchFilter[] = [];
 
-        // Type filter dropdown
+        // Genre filter
         filters.push({
             id: "genres",
             type: "multiselect",
             options: genreOptions,
-            allowExclusion: true,
+            allowExclusion: false,
             value: {},
-            title: "Genre Filter",
-            allowEmptySelection: false,
+            title: "Genres",
+            allowEmptySelection: true,
             maximum: undefined,
+        });
+
+        // Include mode toggle
+        filters.push({
+            id: "include_mode",
+            type: "dropdown",
+            options: [
+                { id: "and", value: "AND (All Selected Genres)" },
+                { id: "or", value: "OR (Any Selected Genre)" },
+            ],
+            value: "and",
+            title: "Genre Inclusion Mode",
+        });
+
+        // Status filter
+        filters.push({
+            id: "status",
+            type: "multiselect",
+            options: [
+                { id: "cancelled", value: "Cancelled" },
+                { id: "ongoing", value: "Ongoing" },
+                { id: "completed", value: "Completed" },
+            ],
+            allowExclusion: false,
+            value: {},
+            title: "Status",
+            allowEmptySelection: true,
+            maximum: undefined,
+        });
+
+        // Chapters filter
+        filters.push({
+            id: "chapters",
+            type: "dropdown",
+            options: [
+                { id: "1", value: "1+" },
+                { id: "10", value: "10+" },
+                { id: "20", value: "20+" },
+                { id: "30", value: "30+" },
+                { id: "50", value: "50+" },
+                { id: "100", value: "100+" },
+            ],
+            value: "1",
+            title: "Chapters",
         });
 
         return filters;
@@ -410,6 +465,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     async getSearchResults(
         query: SearchQuery,
         metadata: Katana.Metadata | undefined,
+        sortingOption?: import("@paperback/types").SortingOption,
     ): Promise<PagedResults<SearchResultItem>> {
         const page = (metadata as { page?: number } | undefined)?.page ?? 1;
 
@@ -455,17 +511,48 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
             // Join multiple genres with underscores
             const includeValue = includedGenreValues.join("_");
 
+            // Get include mode
+            const includeModeFilter = query.filters?.find((f) => f.id === "include_mode");
+            const includeMode = (includeModeFilter?.value as string) || "and";
+
+            // Get status filter
+            const statusFilter = query.filters?.find((f) => f.id === "status");
+            const statusValue = statusFilter?.value;
+            const includedStatuses = Object.entries(statusValue || {})
+                .filter(([, value]) => value === "included")
+                .map(([id]) => id)
+                .join("_");
+
+            // Get chapters filter
+            const chaptersFilter = query.filters?.find((f) => f.id === "chapters");
+            const chaptersValue = (chaptersFilter?.value as string) || "1";
+
+            const urlBuilder = new URLBuilder(DOMAIN_NAME)
+                .addPath("latest")
+                .addPath("page")
+                .addPath(String(page))
+                .addQuery("filter", "1")
+                .addQuery("include_mode", includeMode)
+                .addQuery("bookmark_opts", "off")
+                .addQuery("chapters", chaptersValue);
+
+            // Add genres if any selected
+            if (includeValue) {
+                urlBuilder.addQuery("include", includeValue);
+            }
+
+            // Add status if any selected
+            if (includedStatuses) {
+                urlBuilder.addQuery("status", includedStatuses);
+            }
+
+            // Add sorting
+            if (sortingOption?.id) {
+                urlBuilder.addQuery("order", sortingOption.id);
+            }
+
             request = {
-                url: new URLBuilder(DOMAIN_NAME)
-                    .addPath("genres")
-                    .addPath("page")
-                    .addPath(String(page))
-                    .addQuery("filter", "1")
-                    .addQuery("include", includeValue)
-                    .addQuery("include_mode", "and")
-                    .addQuery("bookmark_opts", "off")
-                    .addQuery("chapters", "1")
-                    .build(),
+                url: urlBuilder.build(),
                 method: "GET",
             };
         }
@@ -521,8 +608,8 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
             const chapterMatch = rawChapterText.match(
                 /Chapter\s+([\d.]+)(?:\s*-\s*(.*))?/i,
             );
-            const chapterNumber = chapterMatch
-                ? parseFloat(chapterMatch[1])
+            const chapterNumber = chapterMatch && chapterMatch[1]
+                ? parseFloat(chapterMatch[1] ?? "0")
                 : 0;
             const chapterSubtitle = chapterMatch?.[2]?.trim() || "";
 
@@ -593,7 +680,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
             const thzqMatch = scripts.match(/var thzq\s*=\s*\[([^\]]+)\]/);
 
             const parseUrls = (matchStr: RegExpMatchArray | null) => {
-                if (!matchStr) return [];
+                if (!matchStr || !matchStr[1]) return [];
                 return matchStr[1]
                     .split(",")
                     .map((url) => url.trim().replace(/['"]/g, ""))
