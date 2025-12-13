@@ -217,7 +217,6 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .trim();
 
             const image = unit.find(".wrap_img img").attr("src") ?? "";
-            console.log(`[Latest] ${title}: image="${image}"`);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");
@@ -292,7 +291,6 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
                 .trim();
 
             const image = unit.find(".wrap_img img").attr("src") ?? "";
-            console.log(`[NewManga] ${title}: image="${image}"`);
 
             // Extract latest chapter info
             const chapters = unit.find(".chapters .chapter a");

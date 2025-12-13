@@ -39,6 +39,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
         let id =
             $("meta[property$=url]").attr("content")?.split("/")?.pop() ?? "";
         const image = $("div.media div.cover img").attr("src") ?? "";
+        console.log(`[Search Single] ${title}: image="${image}"`);
 
         id = decodeURIComponent(id)
             .replace(/[^\w@.]/g, "_")
@@ -57,6 +58,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
             const title: string = $(".title a", manga).text().trim();
             let id = $("a", manga).attr("href")?.split("/").pop() ?? "";
             const image = $("img", manga).attr("src") ?? "";
+            console.log(`[Search List] ${title}: image="${image}"`);
             const subtitle: string = $(".chapter", manga).first().text().trim();
 
             id = decodeURIComponent(id)
