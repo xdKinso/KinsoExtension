@@ -4,6 +4,7 @@ import {
     type TagSection,
 } from "@paperback/types";
 import { type CheerioAPI } from "cheerio";
+import pbconfig from "./pbconfig";
 
 const DOMAIN_NAME = "https://mangakatana.com/";
 
@@ -51,6 +52,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
             title: title,
             mangaId: id,
             subtitle: undefined,
+            contentRating: pbconfig.contentRating,
         });
         collectedIds.push(id);
     } else {
@@ -71,6 +73,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
                 title: title,
                 mangaId: id,
                 subtitle: subtitle,
+                contentRating: pbconfig.contentRating,
             });
             collectedIds.push(id);
         }
