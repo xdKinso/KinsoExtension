@@ -1,4 +1,4 @@
-import { ContentRating, SourceInfo, SourceIntents } from "@paperback/types";
+import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types";
 
 export default {
   name: "MangaFire",
@@ -16,10 +16,8 @@ export default {
   badges: [],
   developers: [
     {
-      name: "Karrot",
-    },
-    {
-      name: "nyzzik",
+      name: "Kinso",
+      github: "https://github.com/Kinso",
     },
   ],
 } satisfies SourceInfo;

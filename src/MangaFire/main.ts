@@ -1,32 +1,31 @@
 import {
   BasicRateLimiter,
-  Chapter,
-  ChapterDetails,
-  ChapterProviding,
   CloudflareError,
   ContentRating,
-  DiscoverSection,
-  DiscoverSectionItem,
-  DiscoverSectionProviding,
   DiscoverSectionType,
-  Extension,
   Form,
-  MangaProviding,
-  PagedResults,
-  Request,
-  SearchFilter,
-  SearchQuery,
-  SearchResultItem,
-  SearchResultsProviding,
-  SettingsFormProviding,
-  SortingOption,
-  SourceManga,
-  TagSection,
+  type Chapter,
+  type ChapterDetails,
+  type ChapterProviding,
+  type DiscoverSection,
+  type DiscoverSectionItem,
+  type DiscoverSectionProviding,
+  type Extension,
+  type MangaProviding,
+  type PagedResults,
+  type Request,
+  type SearchFilter,
+  type SearchQuery,
+  type SearchResultItem,
+  type SearchResultsProviding,
+  type SettingsFormProviding,
+  type SortingOption,
+  type SourceManga,
+  type TagSection,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
-import { CheerioAPI } from "cheerio";
-import * as htmlparser2 from "htmlparser2";
-import { URLBuilder } from "../utils/url-builder/base";
+import { type CheerioAPI } from "cheerio";
+import { URLBuilder } from "./URLBuilder";
 import {
   getBlacklistGenres,
   getLanguages,
@@ -35,7 +34,7 @@ import {
   setGenres,
 } from "./forms";
 import { FireInterceptor } from "./interceptors";
-import {
+import type {
   MangaFireImageData,
   MangaFireMetadata,
   MangaFirePageResponse,
@@ -143,7 +142,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Type']) .dropdown-menu.noclose.c1 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label) {
@@ -151,7 +150,7 @@ export class MangaFireExtension implements MangaFireImplementation {
         }
       });
 
-      $(".genres li").each((_, element) => {
+      $(".genres li").each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -163,7 +162,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Status']) .dropdown-menu.noclose.c1 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -173,7 +172,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Language']) .dropdown-menu.noclose.c1 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -183,7 +182,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Year']) .dropdown-menu.noclose.md.c3 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -193,7 +192,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Length']) .dropdown-menu.noclose.c1 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -203,7 +202,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
       $(
         ".dropdown:has(button .value[data-placeholder='Sort by']) .dropdown-menu.noclose.c1 li",
-      ).each((_, element) => {
+      ).each((_: any, element: any) => {
         const id = $(element).find("input").attr("value") ?? "";
         const label = $(element).find("label").text().trim();
         if (label && id) {
@@ -364,7 +363,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const year = getFilterValue("year");
     const length = getFilterValue("length");
 
-    if (type && type != "all") {
+    if (type && type != "all" && typeof type === "string") {
       searchUrl.addQuery("type[]", type);
     }
 
@@ -411,7 +410,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const $ = await this.fetchCheerio(request);
     const searchResults: SearchResultItem[] = [];
 
-    $(".original.card-lg .unit .inner").each((_, element) => {
+    $(".original.card-lg .unit .inner").each((_: any, element: any) => {
       const unit = $(element);
       const infoLink = unit.find(".info > a");
       const title = infoLink.text().trim();
@@ -467,19 +466,19 @@ export class MangaFireExtension implements MangaFireImplementation {
       $("#synopsis .modal-content").text().trim() ||
       $(".manga-detail .info .description").text().trim();
     const authors: string[] = [];
-    $("#info-rating .meta div").each((_, element) => {
+    $("#info-rating .meta div").each((_: any, element: any) => {
       const label = $(element).find("span").first().text().trim();
       if (label === "Author:") {
         $(element)
           .find("a")
-          .each((_, authorElement) => {
+          .each((_: any, authorElement: any) => {
             authors.push($(authorElement).text().trim());
           });
       }
     });
     let status = "UNKNOWN";
     let statusText = "Unknown";
-    $(".manga-detail .info p").each((_, element) => {
+    $(".manga-detail .info p").each((_: any, element: any) => {
       statusText = $(element).text().trim();
     });
 
@@ -500,12 +499,12 @@ export class MangaFireExtension implements MangaFireImplementation {
     const genres: string[] = [];
     let rating = 1;
 
-    $("#info-rating .meta div").each((_, element) => {
+    $("#info-rating .meta div").each((_: any, element: any) => {
       const label = $(element).find("span").first().text().trim();
       if (label === "Genres:") {
         $(element)
           .find("a")
-          .each((_, genreElement) => {
+          .each((_: any, genreElement: any) => {
             genres.push($(genreElement).text().trim());
           });
       }
@@ -547,6 +546,7 @@ export class MangaFireExtension implements MangaFireImplementation {
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const mangaId = sourceManga.mangaId.split(".")[1];
+    if (!mangaId) return [];
 
     const languages = getLanguages();
     const allRequests = [];
@@ -601,7 +601,7 @@ export class MangaFireExtension implements MangaFireImplementation {
             const $r2 = cheerio.load(html);
             const timestampMap = new Map<string, string>();
 
-            $r2("li").each((_, el) => {
+            $r2("li").each((_: any, el: any) => {
               const li = $r2(el);
               const chapterNumber = li.attr("data-number") || "0";
               const dateText = li.find("span").last().text().trim();
@@ -635,7 +635,7 @@ export class MangaFireExtension implements MangaFireImplementation {
             const $1 = cheerio.load(r1.result.html);
             const timestampMap = timestampMaps.get(language);
 
-            $1("li").each((_, el) => {
+            $1("li").each((_: any, el: any) => {
               const li = $1(el);
               const link = li.find("a");
               const chapterNumber = link.attr("data-number") || "0";
@@ -726,7 +726,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
 
-    $(".unit .inner").each((_, element) => {
+    $(".unit .inner").each((_: any, element: any) => {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
@@ -789,7 +789,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
 
-    $(".unit .inner").each((_, element) => {
+    $(".unit .inner").each((_: any, element: any) => {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
@@ -844,7 +844,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
 
-    $(".unit .inner").each((_, element) => {
+    $(".unit .inner").each((_: any, element: any) => {
       const unit = $(element);
       const infoLink = unit.find(".info > a").last();
       const title = infoLink.text().trim();
@@ -1009,8 +1009,7 @@ export class MangaFireExtension implements MangaFireImplementation {
     const [response, data] = await Application.scheduleRequest(request);
     this.checkCloudflareStatus(response.status);
     const htmlStr = Application.arrayBufferToUTF8String(data);
-    const dom = htmlparser2.parseDocument(htmlStr);
-    return cheerio.load(dom);
+    return cheerio.load(htmlStr);
   }
 }
 
@@ -1046,6 +1045,8 @@ function convertToISO8601(dateText: string): string {
   );
   if (relativeMatch) {
     const [_, value, unit] = relativeMatch;
+    if (!value || !unit) return now.toISOString();
+    
     switch (unit.toLowerCase()) {
       case "second":
         now.setSeconds(now.getSeconds() - +value);
@@ -1112,3 +1113,4 @@ function getLanguageVersion(language: string): string {
 }
 
 export const MangaFire = new MangaFireExtension();
+

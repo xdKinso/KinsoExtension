@@ -14,7 +14,7 @@ export class State<T> {
   /**
    * Returns selector for binding to form elements
    */
-  public get selector(): SelectorID<(value: T) => Promise<void>> {
+  public get selector(): any {
     return Application.Selector(this as State<T>, "updateValue");
   }
 

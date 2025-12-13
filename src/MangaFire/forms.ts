@@ -1,10 +1,10 @@
 import {
   Form,
-  FormSectionElement,
   LabelRow,
   NavigationRow,
   Section,
   SelectRow,
+  type FormSectionElement,
 } from "@paperback/types";
 
 // Language Helper Class
