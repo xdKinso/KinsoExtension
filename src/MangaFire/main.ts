@@ -473,7 +473,16 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     const title = $(".manga-detail .info h1").text().trim();
     const altTitles = [$(".manga-detail .info h6").text().trim()];
-    const image = $(".manga-detail .poster img").attr("src") || "";
+    let image = $(".manga-detail .poster img").attr("data-src") || 
+                $(".manga-detail .poster img").attr("src") || 
+                $(".poster img").attr("data-src") ||
+                $(".poster img").attr("src") || "";
+    
+    // Ensure absolute URL
+    if (image && !image.startsWith("http")) {
+      image = image.startsWith("//") ? `https:${image}` : `${baseUrl}${image.startsWith("/") ? "" : "/"}${image}`;
+    }
+    
     const description =
       $("#synopsis .modal-content").text().trim() ||
       $(".manga-detail .info .description").text().trim();
