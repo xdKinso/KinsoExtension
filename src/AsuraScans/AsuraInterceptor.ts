@@ -3,13 +3,13 @@ import {
     type Request,
     type Response,
 } from "@paperback/types";
+import { AS_DOMAIN } from "./AsuraConfig";
 
-export class FireInterceptor extends PaperbackInterceptor {
+export class AsuraInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
         request.headers = {
             ...request.headers,
-            referer: `https://mangafire.to/`,
-            "user-agent": await Application.getDefaultUserAgent(),
+            referer: `${AS_DOMAIN}/`,
         };
         return request;
     }
