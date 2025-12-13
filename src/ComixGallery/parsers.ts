@@ -23,7 +23,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, page);
     if (json.result?.items) {
       for (const item of json.result.items) {
-        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
+        const imageUrl =
+          item.poster.large ||
+          item.poster.medium ||
+          item.poster.small ||
+          "https://comix.to/images/no-poster.png";
         latest.push({
           type: "simpleCarouselItem",
           contentRating: ContentRating.EVERYONE,
@@ -45,7 +49,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, 1);
     if (json.result?.items) {
       for (const item of json.result.items) {
-        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
+        const imageUrl =
+          item.poster.large ||
+          item.poster.medium ||
+          item.poster.small ||
+          "https://comix.to/images/no-poster.png";
         latest.push({
           type: "prominentCarouselItem",
           contentRating: ContentRating.EVERYONE,
@@ -67,7 +75,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, 1);
     if (json.result?.items) {
       for (const item of json.result.items) {
-        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
+        const imageUrl =
+          item.poster.large ||
+          item.poster.medium ||
+          item.poster.small ||
+          "https://comix.to/images/no-poster.png";
         latest.push({
           type: "featuredCarouselItem",
           contentRating: ContentRating.EVERYONE,
@@ -90,7 +102,11 @@ export class JsonParser {
     const json = await api.getJsonMangaApi(section, page);
     if (json.result?.items) {
       json.result.items.forEach((item) => {
-        const imageUrl = item.poster.large || item.poster.medium || item.poster.small || "https://comix.to/images/no-poster.png";
+        const imageUrl =
+          item.poster.large ||
+          item.poster.medium ||
+          item.poster.small ||
+          "https://comix.to/images/no-poster.png";
         latest.push({
           contentRating: ContentRating.EVERYONE,
           imageUrl: imageUrl,
@@ -182,7 +198,11 @@ export class JsonParser {
       },
     ];
     const mangaInfo = {
-      thumbnailUrl: manga.poster.large || manga.poster.medium || manga.poster.small || "https://comix.to/images/no-poster.png",
+      thumbnailUrl:
+        manga.poster.large ||
+        manga.poster.medium ||
+        manga.poster.small ||
+        "https://comix.to/images/no-poster.png",
       synopsis: manga.synopsis,
       primaryTitle: manga.title,
       secondaryTitles: manga.alt_titles,
