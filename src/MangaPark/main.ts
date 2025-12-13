@@ -22,12 +22,12 @@ import {
   type SettingsFormProviding,
   type SourceManga,
   type Tag,
-} from '@paperback/types';
+} from "@paperback/types";
 
-import { SettingsForm } from './forms';
-import { MainInterceptor } from './network';
+import { SettingsForm } from "./forms";
+import { MainInterceptor } from "./network";
 
-const MANGAPARK_DOMAIN = 'https://mangapark.net';
+const MANGAPARK_DOMAIN = "https://mangapark.net";
 
 type MangaParkImplementation = SettingsFormProviding &
   Extension &
@@ -37,13 +37,13 @@ type MangaParkImplementation = SettingsFormProviding &
   ChapterProviding;
 
 export class MangaParkExtension implements MangaParkImplementation {
-  mainRateLimiter = new BasicRateLimiter('main', {
+  mainRateLimiter = new BasicRateLimiter("main", {
     numberOfRequests: 4,
     bufferInterval: 1,
     ignoreImages: true,
   });
 
-  mainInterceptor = new MainInterceptor('main');
+  mainInterceptor = new MainInterceptor("main");
 
   async initialise(): Promise<void> {
     this.mainRateLimiter.registerInterceptor();
@@ -57,13 +57,13 @@ export class MangaParkExtension implements MangaParkImplementation {
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
       {
-        id: 'latest-updates',
-        title: 'Latest Updates',
+        id: "latest-updates",
+        title: "Latest Updates",
         type: DiscoverSectionType.simpleCarousel,
       },
       {
-        id: 'popular',
-        title: 'Popular',
+        id: "popular",
+        title: "Popular",
         type: DiscoverSectionType.simpleCarousel,
       },
     ];
@@ -98,14 +98,14 @@ export class MangaParkExtension implements MangaParkImplementation {
     return {
       mangaId,
       mangaInfo: {
-        thumbnailUrl: '',
-        synopsis: 'Loading...',
-        primaryTitle: 'Test Manga',
+        thumbnailUrl: "",
+        synopsis: "Loading...",
+        primaryTitle: "Test Manga",
         secondaryTitles: [],
         contentRating: ContentRating.EVERYONE,
-        status: 'Unknown',
-        author: '',
-        artist: '',
+        status: "Unknown",
+        author: "",
+        artist: "",
       },
     };
   }
