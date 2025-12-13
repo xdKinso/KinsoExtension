@@ -4,7 +4,7 @@ export default {
     name: "AniList",
     description:
         "Extension that integrates with anilist.co for tracking and collection management.",
-    version: "0.0.01",
+    version: "0.0.02",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
@@ -18,7 +18,7 @@ export default {
     developers: [
         {
             name: "Kinso",
-            github: "https://github.com/Celarye",
+            github: "https://github.com/xdKinso",
         },
     ],
 } as SourceInfo;
