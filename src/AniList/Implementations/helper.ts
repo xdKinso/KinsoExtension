@@ -4,7 +4,7 @@ import type {
     DiscoverSectionsAndSearch,
     DiscoverSectionsAndSearchVariables,
 } from "../GraphQL/DiscoverSectionsAndSearch";
-import type { MediaFormat, MediaStatus } from "../GraphQL/General";
+import { MediaFormat, MediaStatus } from "../GraphQL/General";
 import makeRequest from "../Services/Requests";
 import { getSynonymsSetting } from "./SettingsForm/form";
 

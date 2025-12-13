@@ -7,7 +7,7 @@ import type {
     Tag,
     TagSection,
 } from "@paperback/types";
-import type { MediaFormat, MediaStatus } from "../../GraphQL/General";
+import { MediaFormat, MediaStatus } from "../../GraphQL/General";
 import { titleViewQuery } from "../../GraphQL/TitleView";
 import type {
     TitleView,
