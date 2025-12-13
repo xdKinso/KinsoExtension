@@ -18,7 +18,8 @@
       "language": "en",
       "contentRating": "SAFE",
       "badges": [],
-      "capabilities": 102
+      "capabilities": 102,
+      "url": "https://xdkinso.github.io/KinsoExtension/AniList.pbsource"
     },
     {
       "id": "AsuraScans",
@@ -29,7 +30,8 @@
       "language": "en",
       "contentRating": "SAFE",
       "badges": [],
-      "capabilities": 117
+      "capabilities": 117,
+      "url": "https://xdkinso.github.io/KinsoExtension/AsuraScans.pbsource"
     },
     {
       "id": "MangaKatana",
@@ -40,7 +42,8 @@
       "language": "en",
       "contentRating": "MATURE",
       "badges": [],
-      "capabilities": 117
+      "capabilities": 117,
+      "url": "https://xdkinso.github.io/KinsoExtension/MangaKatana.pbsource"
     },
     {
       "id": "ComixGallery",
@@ -51,7 +54,8 @@
       "language": "en",
       "contentRating": "SAFE",
       "badges": [],
-      "capabilities": 117
+      "capabilities": 117,
+      "url": "https://xdkinso.github.io/KinsoExtension/ComixGallery.pbsource"
     }
   ]
 }
