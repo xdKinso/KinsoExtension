@@ -304,7 +304,7 @@ export class JsonParser {
             formatsFilter,
             mode as string,
             sortBy ?? '',
-            orderBy,
+            orderBy ?? '',
         );
         const items: SearchResultItem[] = [];
         if (search.status === 200) {
