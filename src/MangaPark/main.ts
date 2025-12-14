@@ -44,14 +44,14 @@ import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./mode
 
 const baseUrl = "https://mangapark.io/";
 
-type MangaparkImplementation = Extension &
+type MangaParkImplementation = Extension &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding &
   SettingsFormProviding &
   DiscoverSectionProviding;
 
-export class MangaparkExtension implements MangaparkImplementation {
+export class MangaParkExtension implements MangaParkImplementation {
   requestManager = new Interceptor("main");
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 10,
@@ -891,4 +891,4 @@ export class MangaparkExtension implements MangaparkImplementation {
   }
 }
 
-export const Mangapark = new MangaparkExtension();
+export const MangaPark = new MangaParkExtension();
