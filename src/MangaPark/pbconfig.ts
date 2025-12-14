@@ -1,7 +1,7 @@
 import { ContentRating, type SourceInfo, SourceIntents } from "@paperback/types";
 
 export default {
-  name: "Mangapark",
+  name: "mangapark",
   description: "Extension that pulls content from mangapark.net.",
   version: "0.0.01",
   icon: "icon.png",
@@ -17,6 +17,7 @@ export default {
   developers: [
     {
       name: "Kinso",
+      github: "guithub.com/xdkinso",
     }
   ],
 } satisfies SourceInfo;
