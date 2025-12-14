@@ -10,19 +10,6 @@
   },
   "sources": [
     {
-      "id": "AniList",
-      "name": "AniList",
-      "description": "AniList tracking extension",
-      "version": "0.0.03",
-      "icon": "icon.png",
-      "language": "en",
-      "contentRating": "SAFE",
-      "badges": [],
-      "capabilities": 102,
-      "url": "https://xdkinso.github.io/KinsoExtension/AniList.pbsource",
-      "author": "Kinso"
-    },
-    {
       "id": "AsuraScans",
       "name": "Asura Scans",
       "description": "Extension that pulls content from asuracomic.net",
