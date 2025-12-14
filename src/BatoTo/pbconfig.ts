@@ -7,7 +7,7 @@ import {
 export default {
     name: "Bato.To",
     description: "Extension that pulls content from bato.to.",
-    version: "1.0.0-alpha.4",
+    version: "0.0.01",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.ADULT,
@@ -20,9 +20,9 @@ export default {
     badges: [],
     developers: [
         {
-            name: "Inkdex",
-            website: "https://inkdex.github.io",
-            github: "https://github.com/inkdex",
+            name: "Kinso",
+            website: "https://kinso.github.io",
+            github: "https://github.com/kinso",
         },
     ],
 } satisfies SourceInfo;

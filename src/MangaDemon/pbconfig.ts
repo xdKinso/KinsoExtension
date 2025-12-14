@@ -8,7 +8,7 @@ import {
 export default {
     name: "MangaDemon",
     description: "Extension that pulls content from demonicscans.org.",
-    version: "1.0.0-alpha.2",
+    version: "0.0.01",
     icon: "icon.png",
     language: "🇺🇸",
     contentRating: ContentRating.EVERYONE,
@@ -21,8 +21,8 @@ export default {
         SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
     developers: [
         {
-            name: "samipmainali",
-            github: "https://github.com/samipmainali",
+            name: "Kinso",
+            github: "https://github.com/xdKinso",
         },
     ],
 } satisfies SourceInfo;

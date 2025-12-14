@@ -7,7 +7,7 @@ import {
 export default {
     name: "Weeb Central",
     description: "Extension that pulls content from weebcentral.com.",
-    version: "1.0.0-alpha.8",
+    version: "0.0.01",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
@@ -20,8 +20,8 @@ export default {
     badges: [],
     developers: [
         {
-            name: "GabrielCWT",
-            github: "https://github.com/GabrielCWT",
+            name: "xdKinso",
+            github: "https://github.com/xdKinso",
         },
     ],
 } satisfies SourceInfo;
