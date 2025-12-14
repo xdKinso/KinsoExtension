@@ -64,6 +64,7 @@ export class MangaParkExtension implements MangaParkImplementation {
   });
 
   async initialise(): Promise<void> {
+    this.cookieStorageInterceptor.registerInterceptor();
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
   }
@@ -948,7 +949,7 @@ export class MangaParkExtension implements MangaParkImplementation {
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
     // Store all cookies from Cloudflare bypass
     for (const cookie of cookies) {
-      await this.cookieStorageInterceptor.setCookie(cookie, baseUrl);
+      this.cookieStorageInterceptor.setCookie(cookie);
     }
   }
 
