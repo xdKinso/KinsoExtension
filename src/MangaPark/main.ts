@@ -54,8 +54,8 @@ type MangaParkImplementation = Extension &
 export class MangaParkExtension implements MangaParkImplementation {
   requestManager = new Interceptor("main");
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 20,
-    bufferInterval: 0.5,
+    numberOfRequests: 5,
+    bufferInterval: 2,
     ignoreImages: true,
   });
 

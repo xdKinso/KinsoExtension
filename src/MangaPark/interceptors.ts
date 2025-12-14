@@ -33,6 +33,9 @@ export class Interceptor extends PaperbackInterceptor {
     const headers: Record<string, string> = {
       ...request.headers,
       "user-agent": await Application.getDefaultUserAgent(),
+      "accept-language": "en-US,en;q=0.9",
+      "cache-control": "no-cache",
+      "pragma": "no-cache",
     };
 
     // For CDN image requests, set proper referer
