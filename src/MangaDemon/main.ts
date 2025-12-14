@@ -733,6 +733,19 @@ class MangaDemonExtension
         // Nothing else to reset; Paperback should resume requests after cookies are saved
     }
 
+    async getImageRequest(url: string): Promise<Request> {
+        return {
+            url: url,
+            method: "GET",
+            headers: {
+                referer: `${this.domain}/`,
+                origin: this.domain,
+                "user-agent": await Application.getDefaultUserAgent(),
+                accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+            },
+        };
+    }
+
     async request(
         options: Parameters<typeof Application.scheduleRequest>[0],
     ): Promise<[Response, ArrayBuffer]> {

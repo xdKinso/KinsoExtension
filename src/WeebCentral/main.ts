@@ -351,6 +351,19 @@ export class WeebCentralExtension
         };
     }
 
+    async getImageRequest(url: string): Promise<Request> {
+        return {
+            url: url,
+            method: "GET",
+            headers: {
+                referer: "https://weebcentral.com/",
+                origin: "https://weebcentral.com",
+                "user-agent": await Application.getDefaultUserAgent(),
+                accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+            },
+        };
+    }
+
     async getSettingsForm(): Promise<Form> {
         return new SettingsForm();
     }

@@ -795,6 +795,19 @@ export class BatoToExtension implements BatoToImplementation {
         });
     }
 
+    async getImageRequest(url: string): Promise<Request> {
+        return {
+            url: url,
+            method: "GET",
+            headers: {
+                referer: `${DOMAIN_NAME}/`,
+                origin: DOMAIN_NAME,
+                "user-agent": await Application.getDefaultUserAgent(),
+                accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+            },
+        };
+    }
+
     checkCloudflareStatus(status: number): void {
         if (status === 503 || status === 403) {
             throw new CloudflareError({ url: DOMAIN_NAME, method: "GET" });
