@@ -43,6 +43,11 @@ type BatoToImplementation = SettingsFormProviding &
 // Intercepts all the requests and responses and allows you to make changes to them
 class MainInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
+        // Fix BatoTo image server issue: replace broken '//k' servers with working '//n' servers
+        if (request.url.includes('//k')) {
+            request.url = request.url.replace('//k', '//n');
+        }
+
         request.headers = {
             ...request.headers,
             referer: `${DOMAIN_NAME}/`,
