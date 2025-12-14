@@ -333,16 +333,16 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     // ThunderScans loads images via JavaScript - extract from ts_reader.run() script
     const html = $.html();
-    const scriptMatch = html.match(/ts_reader\.run\((\{[^}]+sources[^}]+\})\)/);
+    const scriptMatch = html.match(/ts_reader\.run\((\{[\s\S]+?\})\);/);
     
     if (scriptMatch && scriptMatch[1]) {
       try {
-        // Extract the JSON from the script
-        const jsonStr = scriptMatch[1].replace(/\\'/g, "'").replace(/\\\//g, '/');
+        // Extract the JSON from the script and fix escaped slashes
+        const jsonStr = scriptMatch[1].replace(/\\\//g, '/');
         const readerData = JSON.parse(jsonStr);
         
         // Get images from the first source
-        if (readerData.sources && readerData.sources[0] && readerData.sources[0].images) {
+        if (readerData.sources && readerData.sources.length > 0 && readerData.sources[0].images) {
           readerData.sources[0].images.forEach((imageUrl: string) => {
             if (imageUrl && !imageUrl.includes('loading') && !imageUrl.includes('spinner')) {
               pages.push(imageUrl);
@@ -351,6 +351,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
         }
       } catch (e) {
         // Fallback to DOM parsing if JSON parsing fails
+        console.error('Failed to parse ts_reader.run JSON:', e);
         $('#readerarea img.ts-main-image, #readerarea img').each((_, element) => {
           const $img = $(element);
           const src = $img.attr('src') || $img.attr('data-src') || '';
