@@ -414,72 +414,11 @@ export class BatoToExtension implements BatoToImplementation {
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
         }
-
-        //Add Language
-        urlBuilder.addQuery("lang", languages.join(","));
         
-        // Add orig parameter to allow adult content
-        urlBuilder.addQuery("orig", "all");
-
-        // Handle genres correctly
-        const genresFilter = query.filters?.find((f) => f.id === "genres");
-
-        if (genresFilter) {
-            // Check if we have the genres as an object with inclusion status
-            const genresInclusionMap = genresFilter.value as Record<
-                string,
-                "included" | "excluded"
-            >;
-
-            if (genresInclusionMap) {
-                // Get the filters to access the genre options if needed
-                const filters = await this.getSearchFilters();
-                const genreFilter = filters.find((f) => f.id === "genres") as {
-                    id: string;
-                    type: string;
-                    options: { id: string; value: string }[];
-                };
-
-                const includedGenres: string[] = [];
-                const excludedGenres: string[] = [];
-
-                if (genreFilter?.options) {
-                    Object.entries(genresInclusionMap).forEach(
-                        ([id, inclusion]) => {
-                            if (inclusion === "included") {
-                                // Find the genre option by id
-                                includedGenres.push(id);
-                            }
-                            if (inclusion === "excluded") {
-                                excludedGenres.push(id);
-                            }
-                        },
-                    );
-                }
-
-                // Add all included genres as a comma-separated list
-                if (includedGenres.length > 0) {
-                    urlBuilder.addQuery(
-                        "genres",
-                        includedGenres.join(",") +
-                            "|" +
-                            excludedGenres.join(","),
-                    );
-                }
-            }
-            // If genres is already an array of strings
-            else if (Array.isArray(genresFilter.value)) {
-                urlBuilder.addQuery("genres", genresFilter.value.join(","));
-            }
-        }
-
-        // Sorting options
-        const sort = sortingOption?.id;
-        if (sort && typeof sort === "string") {
-            urlBuilder.addQuery("sort", sort);
-        }
-
-        // Add page number
+        // Add filters matching website defaults
+        urlBuilder.addQuery("orig", "");
+        urlBuilder.addQuery("lang", languages.join(","));
+        urlBuilder.addQuery("sort", sortingOption?.id || "views_d360");
         urlBuilder.addQuery("page", page.toString());
 
         const searchUrl = urlBuilder.build();
