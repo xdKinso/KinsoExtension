@@ -36,25 +36,13 @@ type ThunderScansImplementation = Extension &
 
 class ThunderScansInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
-    // Check if this is an image request
-    const isImage = request.url.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i);
-    
-    if (isImage) {
-      // For images, only add minimal headers
-      request.headers = {
-        ...request.headers,
-        "referer": DOMAIN + "/",
-      };
-    } else {
-      // For HTML/API requests, add full headers
-      request.headers = {
-        ...request.headers,
-        "user-agent": await Application.getDefaultUserAgent(),
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.5",
-        "referer": DOMAIN,
-      };
-    }
+    request.headers = {
+      ...request.headers,
+      "referer": "https://en-thunderscans.com/",
+      "origin": "https://en-thunderscans.com",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+    };
     return request;
   }
 
