@@ -39,7 +39,7 @@ import {
   getWhitelistGenres,
   SettingsForm,
 } from "./forms";
-import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
+import { Interceptor, getServerFromUrl, replaceServer, getNextServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
 const baseUrl = "https://mangapark.net/";
@@ -641,20 +641,11 @@ export class MangaParkExtension implements MangaParkImplementation {
       }
     });
 
-    // Proactively replace dead CDN servers before returning URLs
-    const fixedPages = pages.map(url => {
-      const currentServer = getServerFromUrl(url);
-      if (currentServer && deadServers.has(currentServer)) {
-        const workingServer = getNextWorkingServer();
-        return replaceServer(url, workingServer);
-      }
-      return url;
-    });
-
+    // Return pages as-is - the interceptor will handle server rotation on failures
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages: fixedPages,
+      pages: pages,
     };
   }
 

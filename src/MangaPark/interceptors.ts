@@ -1,15 +1,17 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
-// CDN server priority list - ordered by reliability (s01 > s03 > s05 > s06 > s00 > s04)
-// Based on MangaPark image fix userscript
-const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's00', 's04', 's02', 's07', 's08', 's09', 's10'];
+// CDN server list - try all servers in order like the bookmarklet does
+const CDN_SERVERS = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10'];
 const CDN_HOST_REGEX = /^https:\/\/(s\d{1,2})\./;
 const CDN_DOMAINS = [
   'mpfip.org', 'mpizz.org', 'mpmok.org', 'mpqom.org', 'mpqsc.org',
   'mprmm.org', 'mpubn.org', 'mpujj.org', 'mpvim.org', 'mpypl.org',
   'mpcdn.org'
 ];
-export const deadServers = new Set<string>();
+
+// Track failed URL patterns to avoid retrying the same broken images
+const failedUrls = new Map<string, number>();
+let serverRotationIndex = 0;
 
 export function getServerFromUrl(url: string): string | null {
   const match = url.match(CDN_HOST_REGEX);
@@ -20,10 +22,22 @@ export function replaceServer(url: string, newServer: string): string {
   return url.replace(CDN_HOST_REGEX, `https://${newServer}.`);
 }
 
-export function getNextWorkingServer(): string {
-  // Return first working server from priority list
-  const working = CDN_SERVERS.find(s => !deadServers.has(s));
-  return working ?? 's01'; // Default to s01 if all are dead
+export function getNextServer(currentUrl: string): string | null {
+  // Get the base URL path (without server)
+  const basePath = currentUrl.replace(/^https:\/\/s\d{1,2}\./, '');
+  const failCount = failedUrls.get(basePath) || 0;
+  
+  // If we've tried too many times, give up
+  if (failCount >= CDN_SERVERS.length) {
+    return null;
+  }
+  
+  // Try next server in rotation
+  const nextIndex = (serverRotationIndex + failCount) % CDN_SERVERS.length;
+  failedUrls.set(basePath, failCount + 1);
+  
+  const server = CDN_SERVERS[nextIndex];
+  return server ? server : null;
 }
 
 function isCDNRequest(url: string): boolean {
@@ -46,13 +60,6 @@ export class Interceptor extends PaperbackInterceptor {
     if (isCDNRequest(request.url)) {
       request.headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
       request.headers["sec-fetch-dest"] = "image";
-      
-      // Apply CDN server fallback if needed
-      const currentServer = getServerFromUrl(request.url);
-      if (currentServer && deadServers.has(currentServer)) {
-        const workingServer = getNextWorkingServer();
-        request.url = replaceServer(request.url, workingServer);
-      }
     }
 
     return request;
@@ -63,22 +70,21 @@ export class Interceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    // Check for Cloudflare server connectivity errors on CDN image requests
-    // 521 = Web Server Is Down, 522 = Connection Timed Out, 523 = Origin Unreachable
+    // Check for errors on CDN image requests
     if (isCDNRequest(request.url)) {
+      // Handle Cloudflare connectivity errors
       if (response.status === 521 || response.status === 522 || response.status === 523) {
-        // Log the error but don't throw - let the app show placeholder
         console.log(`[MangaPark] CDN server error ${response.status} for image: ${request.url}`);
-        // Return empty buffer to avoid crash
         return new ArrayBuffer(0);
       }
       
-      // Detect failed image requests and mark server as dead for future requests
-      if (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503) {
-        const failedServer = getServerFromUrl(request.url);
-        if (failedServer) {
-          deadServers.add(failedServer);
-          console.log(`[MangaPark] CDN server ${failedServer} marked as dead. Working servers: ${Array.from(CDN_SERVERS).filter(s => !deadServers.has(s)).join(', ')}`);
+      // For other failures, try next server in rotation
+      if (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503 || data.byteLength === 0) {
+        const nextServer = getNextServer(request.url);
+        if (nextServer) {
+          console.log(`[MangaPark] Image failed, rotating to server ${nextServer}`);
+          // Note: Paperback doesn't support automatic retry, so this just logs
+          // The app will show placeholder and user can refresh
         }
       }
     }
