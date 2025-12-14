@@ -1,7 +1,7 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
-// CDN server list - try all servers in order like the bookmarklet does
-const CDN_SERVERS = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10'];
+// CDN server priority list based on userscript recommendations
+const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's00', 's04', 's02', 's07', 's08', 's09', 's10'];
 const CDN_HOST_REGEX = /^https:\/\/(s\d{1,2})\./;
 const CDN_DOMAINS = [
   'mpfip.org', 'mpizz.org', 'mpmok.org', 'mpqom.org', 'mpqsc.org',
@@ -9,35 +9,30 @@ const CDN_DOMAINS = [
   'mpcdn.org'
 ];
 
-// Track failed URL patterns to avoid retrying the same broken images
-const failedUrls = new Map<string, number>();
-let serverRotationIndex = 0;
+// Track which server we're currently using globally
+let currentServerIndex = 0;
+let consecutiveFailures = 0;
+const MAX_FAILURES_BEFORE_SWITCH = 3;
 
-export function getServerFromUrl(url: string): string | null {
-  const match = url.match(CDN_HOST_REGEX);
-  return match?.[1] ?? null;
+export function getCurrentServer(): string {
+  return CDN_SERVERS[currentServerIndex] ?? 's01';
 }
 
-export function replaceServer(url: string, newServer: string): string {
-  return url.replace(CDN_HOST_REGEX, `https://${newServer}.`);
+export function switchToNextServer(): void {
+  currentServerIndex = (currentServerIndex + 1) % CDN_SERVERS.length;
+  consecutiveFailures = 0;
+  console.log(`[MangaPark] Switched to CDN server: ${getCurrentServer()}`);
 }
 
-export function getNextServer(currentUrl: string): string | null {
-  // Get the base URL path (without server)
-  const basePath = currentUrl.replace(/^https:\/\/s\d{1,2}\./, '');
-  const failCount = failedUrls.get(basePath) || 0;
-  
-  // If we've tried too many times, give up
-  if (failCount >= CDN_SERVERS.length) {
-    return null;
+export function recordFailure(): void {
+  consecutiveFailures++;
+  if (consecutiveFailures >= MAX_FAILURES_BEFORE_SWITCH) {
+    switchToNextServer();
   }
-  
-  // Try next server in rotation
-  const nextIndex = (serverRotationIndex + failCount) % CDN_SERVERS.length;
-  failedUrls.set(basePath, failCount + 1);
-  
-  const server = CDN_SERVERS[nextIndex];
-  return server ? server : null;
+}
+
+export function recordSuccess(): void {
+  consecutiveFailures = 0;
 }
 
 function isCDNRequest(url: string): boolean {
@@ -46,6 +41,12 @@ function isCDNRequest(url: string): boolean {
 
 export class Interceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
+    // Fix MangaPark CDN server issue: use current working server
+    if (request.url.match(/https:\/\/s\d{1,2}\./)) {
+      const currentServer = getCurrentServer();
+      request.url = request.url.replace(/https:\/\/s\d{1,2}\./, `https://${currentServer}.`);
+    }
+
     // Merge headers instead of replacing to preserve cookies
     request.headers = {
       ...request.headers,
@@ -70,22 +71,16 @@ export class Interceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    // Check for errors on CDN image requests
     if (isCDNRequest(request.url)) {
-      // Handle Cloudflare connectivity errors
       if (response.status === 521 || response.status === 522 || response.status === 523) {
-        console.log(`[MangaPark] CDN server error ${response.status} for image: ${request.url}`);
+        recordFailure();
         return new ArrayBuffer(0);
       }
       
-      // For other failures, try next server in rotation
       if (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503 || data.byteLength === 0) {
-        const nextServer = getNextServer(request.url);
-        if (nextServer) {
-          console.log(`[MangaPark] Image failed, rotating to server ${nextServer}`);
-          // Note: Paperback doesn't support automatic retry, so this just logs
-          // The app will show placeholder and user can refresh
-        }
+        recordFailure();
+      } else if (response.status === 200 && data.byteLength > 0) {
+        recordSuccess();
       }
     }
     

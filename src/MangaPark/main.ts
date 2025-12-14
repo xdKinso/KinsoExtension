@@ -39,7 +39,7 @@ import {
   getWhitelistGenres,
   SettingsForm,
 } from "./forms";
-import { Interceptor, getServerFromUrl, replaceServer, getNextServer } from "./interceptors";
+import { Interceptor } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
 const baseUrl = "https://mangapark.net/";
@@ -372,6 +372,11 @@ export class MangaParkExtension implements MangaParkImplementation {
           ? `${baseUrl}${imageSrc.slice(1)}`
           : imageSrc ? `${baseUrl}${imageSrc}` : "";
       
+      // Fix CDN server - use s01 for faster loading (priority server)
+      if (image.match(/https:\/\/s\d{1,2}\./)) {
+        image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
+      }
+      
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
       const chapterLink = unit.find(".flex.flex-nowrap.justify-between a");
       const latestChapter = chapterLink.find("span").text().trim();
@@ -425,6 +430,10 @@ export class MangaParkExtension implements MangaParkImplementation {
       image = image.startsWith("/")
         ? `${baseUrl}${image.slice(1)}`
         : `${baseUrl}${image}`;
+    }
+    // Fix CDN server - use s01 for faster loading (priority server)
+    if (image.match(/https:\/\/s\d{1,2}\./)) {
+      image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
     }
     const description =
       $(".limit-html").first().text().trim() ||
@@ -728,6 +737,10 @@ export class MangaParkExtension implements MangaParkImplementation {
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`
           : imageSrc ? `${baseUrl}${imageSrc}` : "";
+      // Fix CDN server - use s01 for faster loading (priority server)
+      if (image.match(/https:\/\/s\d{1,2}\./)) {
+        image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
+      }
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
 
       const chapterLink = unit
