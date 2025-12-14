@@ -4,18 +4,18 @@ import { PaperbackInterceptor, type Request, type Response } from "@paperback/ty
 const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's07', 's10', 's00', 's04'];
 const CDN_HOST_REGEX = /^https:\/\/(s\d+)\./;
 const CDN_DOMAINS = ['mpmok.org', 'mpqom.org', 'mpcdn.org'];
-const deadServers = new Set<string>();
+export const deadServers = new Set<string>();
 
-function getServerFromUrl(url: string): string | null {
+export function getServerFromUrl(url: string): string | null {
   const match = url.match(CDN_HOST_REGEX);
   return match?.[1] ?? null;
 }
 
-function replaceServer(url: string, newServer: string): string {
+export function replaceServer(url: string, newServer: string): string {
   return url.replace(CDN_HOST_REGEX, `https://${newServer}.`);
 }
 
-function getNextWorkingServer(): string {
+export function getNextWorkingServer(): string {
   const working = CDN_SERVERS.find(s => !deadServers.has(s));
   return working ?? CDN_SERVERS[0] ?? 's01';
 }
@@ -56,18 +56,13 @@ export class Interceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    // Detect failed image requests and mark server as dead
+    // Detect failed image requests and mark server as dead for future requests
     if (isCDNRequest(request.url) && 
         (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503)) {
       const failedServer = getServerFromUrl(request.url);
       if (failedServer) {
         deadServers.add(failedServer);
-        
-        // Automatically retry with next working server
-        const workingServer = getNextWorkingServer();
-        const retryUrl = replaceServer(request.url, workingServer);
-        
-        throw new Error(`CDN server ${failedServer} failed, retry with: ${retryUrl}`);
+        console.log(`CDN server ${failedServer} marked as dead. Working servers: ${Array.from(CDN_SERVERS).filter(s => !deadServers.has(s)).join(', ')}`);
       }
     }
     

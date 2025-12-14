@@ -39,7 +39,7 @@ import {
   getWhitelistGenres,
   SettingsForm,
 } from "./forms";
-import { Interceptor } from "./interceptors";
+import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
 const baseUrl = "https://mangapark.io/";
@@ -54,8 +54,8 @@ type MangaParkImplementation = Extension &
 export class MangaParkExtension implements MangaParkImplementation {
   requestManager = new Interceptor("main");
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 10,
-    bufferInterval: 1,
+    numberOfRequests: 20,
+    bufferInterval: 0.5,
     ignoreImages: true,
   });
 
@@ -366,7 +366,7 @@ export class MangaParkExtension implements MangaParkImplementation {
         : undefined;
       const chapterId = chapterLink.attr("href")?.split("/").pop() || "";
 
-      if (!title || !mangaId || collectedIds.includes(mangaId)) {
+      if (!title || !mangaId || !image || collectedIds.includes(mangaId)) {
         return;
       }
 
@@ -625,10 +625,20 @@ export class MangaParkExtension implements MangaParkImplementation {
       }
     });
 
+    // Proactively replace dead CDN servers before returning URLs
+    const fixedPages = pages.map(url => {
+      const currentServer = getServerFromUrl(url);
+      if (currentServer && deadServers.has(currentServer)) {
+        const workingServer = getNextWorkingServer();
+        return replaceServer(url, workingServer);
+      }
+      return url;
+    });
+
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages,
+      pages: fixedPages,
     };
   }
 
@@ -715,7 +725,7 @@ export class MangaParkExtension implements MangaParkImplementation {
         ? `Ch. ${latestChapterMatch[1]}`
         : undefined;
 
-      if (title && mangaId && !collectedIds.includes(mangaId)) {
+      if (title && mangaId && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
         items.push({
           type: "featuredCarouselItem",
