@@ -30,19 +30,20 @@ function isCDNRequest(url: string): boolean {
 
 export class Interceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
-    const headers: Record<string, string> = {
+    // Merge headers instead of replacing to preserve cookies
+    request.headers = {
       ...request.headers,
       "user-agent": await Application.getDefaultUserAgent(),
       "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
       "accept-language": "en-US,en;q=0.9",
       "dnt": "1",
+      "referer": "https://mangapark.net/",
     };
 
-    // For CDN image requests, set proper referer
+    // For CDN image requests, set proper headers
     if (isCDNRequest(request.url)) {
-      headers.referer = 'https://mangapark.net/';
-      headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
-      headers["sec-fetch-dest"] = "image";
+      request.headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+      request.headers["sec-fetch-dest"] = "image";
       
       // Apply CDN server fallback if needed
       const currentServer = getServerFromUrl(request.url);
@@ -50,12 +51,8 @@ export class Interceptor extends PaperbackInterceptor {
         const workingServer = getNextWorkingServer();
         request.url = replaceServer(request.url, workingServer);
       }
-    } else {
-      headers.referer = 'https://mangapark.net/';
-      // Don't manually set cookies - let CookieStorageInterceptor handle them
     }
 
-    request.headers = headers;
     return request;
   }
 

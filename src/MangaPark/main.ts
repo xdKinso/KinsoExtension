@@ -947,9 +947,15 @@ export class MangaParkExtension implements MangaParkImplementation {
   }
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Store all cookies from Cloudflare bypass
+    // Only store Cloudflare-related cookies
     for (const cookie of cookies) {
-      this.cookieStorageInterceptor.setCookie(cookie);
+      if (
+        cookie.name.startsWith("cf") ||
+        cookie.name.startsWith("_cf") ||
+        cookie.name.startsWith("__cf")
+      ) {
+        this.cookieStorageInterceptor.setCookie(cookie);
+      }
     }
   }
 
