@@ -42,7 +42,7 @@ import {
 import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
-const baseUrl = "https://mangapark.net/";
+const baseUrl = "https://mangapark.com/";
 
 type MangaParkImplementation = Extension &
   SearchResultsProviding &

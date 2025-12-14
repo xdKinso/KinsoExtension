@@ -44,7 +44,7 @@ export class Interceptor extends PaperbackInterceptor {
 
     // For CDN image requests, set proper referer
     if (isCDNRequest(request.url)) {
-      headers.referer = 'https://mangapark.net/';
+      headers.referer = 'https://mangapark.com/';
       headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
       headers["sec-fetch-dest"] = "image";
       
@@ -55,7 +55,7 @@ export class Interceptor extends PaperbackInterceptor {
         request.url = replaceServer(request.url, workingServer);
       }
     } else {
-      headers.referer = 'https://mangapark.net/';
+      headers.referer = 'https://mangapark.com/';
       // Don't manually set cookies - let CookieStorageInterceptor handle them
     }
 
