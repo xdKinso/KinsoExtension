@@ -90,7 +90,7 @@ export class BatoToExtension implements BatoToImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
         numberOfRequests: 15,
         bufferInterval: 10,
-        ignoreImages: false,
+        ignoreImages: true,
     });
 
     // Implementation of the main interceptor
@@ -231,9 +231,14 @@ export class BatoToExtension implements BatoToImplementation {
 
             // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
-            const image = imgElement.attr("src") || 
+            let image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
+            
+            // Fix broken k server URLs immediately for faster loading
+            if (image.includes('//k')) {
+                image = image.replace('//k', '//n');
+            }
 
             // Get title text
             const title = titleLink.text().trim();
@@ -310,9 +315,14 @@ export class BatoToExtension implements BatoToImplementation {
 
             // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
-            const image = imgElement.attr("src") || 
+            let image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
+            
+            // Fix broken k server URLs immediately for faster loading
+            if (image.includes('//k')) {
+                image = image.replace('//k', '//n');
+            }
 
             // Get title text
             const title = titleLink.text().trim();
@@ -469,9 +479,15 @@ export class BatoToExtension implements BatoToImplementation {
             
             // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("img").first();
-            const image = imgElement.attr("src") || 
+            let image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
+            
+            // Fix broken k server URLs immediately
+            if (image.includes('//k')) {
+                image = image.replace('//k', '//n');
+            }
+            
             const title = titleLink.text().trim();
 
             if (mangaId && title && image) {
