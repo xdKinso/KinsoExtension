@@ -199,8 +199,6 @@ export class BatoToExtension implements BatoToImplementation {
 
         const $ = await this.fetchCheerio(request);
 
-        console.log(`[BatoTo Latest] Found ${$("div#series-list > div.col.item").length} items`);
-
         // Extract manga items from the new HTML structure
         $("div#series-list > div.col.item").each((_, element) => {
             const unit = $(element);
@@ -215,8 +213,6 @@ export class BatoToExtension implements BatoToImplementation {
             const image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
-            
-            console.log(`[BatoTo Latest] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -232,7 +228,7 @@ export class BatoToExtension implements BatoToImplementation {
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
                 items.push({
-                    type: "prominentCarouselItem",
+                    type: "simpleCarouselItem",
                     mangaId: mangaId,
                     imageUrl: image,
                     title: title,
@@ -282,8 +278,6 @@ export class BatoToExtension implements BatoToImplementation {
 
         const $ = await this.fetchCheerio(request);
 
-        console.log(`[BatoTo Browse] Found ${$("div#series-list > div.col.item").length} items`);
-
         // Extract manga items from the new HTML structure
         $("div#series-list > div.col.item").each((_, element) => {
             const unit = $(element);
@@ -298,8 +292,6 @@ export class BatoToExtension implements BatoToImplementation {
             const image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
-            
-            console.log(`[BatoTo Browse] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -315,7 +307,7 @@ export class BatoToExtension implements BatoToImplementation {
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
                 items.push({
-                    type: "prominentCarouselItem",
+                    type: "simpleCarouselItem",
                     mangaId: mangaId,
                     imageUrl: image,
                     title: title,
@@ -430,16 +422,12 @@ export class BatoToExtension implements BatoToImplementation {
         const $ = await this.fetchCheerio(request);
         const searchResults: SearchResultItem[] = [];
 
-        console.log(`[BatoTo Search] URL: ${searchUrl}`);
-        
         // Try multiple selectors for search results (the page structure might vary)
         let searchItems = $(".grid.grid-cols-1.gap-5.border-t.border-t-base-200.pt-5 > div");
         if (searchItems.length === 0) {
             // Try alternative selector - same as browse sections
             searchItems = $("div#series-list > div.col.item");
         }
-        
-        console.log(`[BatoTo Search] Found elements: ${searchItems.length}`);
 
         // Parse the search results
         searchItems.each((_, element) => {
@@ -464,8 +452,6 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
             const title = titleLink.text().trim();
-            
-            console.log(`[BatoTo Search] Item: ${title}, Image found: ${!!image}, URL: ${image}`);
 
             if (mangaId && title && image) {
                 searchResults.push({
