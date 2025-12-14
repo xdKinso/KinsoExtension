@@ -33,54 +33,54 @@ query Query {
 `;
 
 export type Viewer = {
-    Viewer: ViewerUser;
+  Viewer: ViewerUser;
 };
 
 type ViewerUser = {
-    avatar: ViewerAvatar;
-    createdAt: number;
-    id: number;
-    name: string;
-    mediaListOptions: ViewerMediaListOptions;
-    options: ViewerOptions;
+  avatar: ViewerAvatar;
+  createdAt: number;
+  id: number;
+  name: string;
+  mediaListOptions: ViewerMediaListOptions;
+  options: ViewerOptions;
 };
 
 type ViewerAvatar = {
-    large: string;
+  large: string;
 };
 
 type ViewerMediaListOptions = {
-    scoreFormat: string;
-    mangaList: ViewerMangaList;
+  scoreFormat: string;
+  mangaList: ViewerMangaList;
 };
 
 type ViewerOptions = {
-    activityMergeTime: number;
-    disabledListActivity: ViewerListActivityOption[];
-    displayAdultContent: boolean;
-    staffNameLnaguage: string;
-    titleLanguage: string;
+  activityMergeTime: number;
+  disabledListActivity: ViewerListActivityOption[];
+  displayAdultContent: boolean;
+  staffNameLnaguage: string;
+  titleLanguage: string;
 };
 
 type ViewerMangaList = {
-    advancedScoringEnabled: boolean;
-    advancedScoring: string[];
-    customLists: string[];
-    sectionOrder: string[];
-    splitCompletedSectionByFormat: boolean;
+  advancedScoringEnabled: boolean;
+  advancedScoring: string[];
+  customLists: string[];
+  sectionOrder: string[];
+  splitCompletedSectionByFormat: boolean;
 };
 
 type ViewerListActivityOption = {
-    disabled: boolean;
-    type: string;
+  disabled: boolean;
+  type: string;
 };
 
 export type JwtPayload = {
-    aud: number;
-    jti: string;
-    iat: number;
-    nbf: number;
-    exp: number;
-    sub: number;
-    scopes: string[];
+  aud: number;
+  jti: string;
+  iat: number;
+  nbf: number;
+  exp: number;
+  sub: number;
+  scopes: string[];
 };

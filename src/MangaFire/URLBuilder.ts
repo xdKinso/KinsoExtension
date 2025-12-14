@@ -4,7 +4,7 @@ export class URLBuilder {
   private queryParams: Map<string, string[]>;
 
   constructor(baseUrl: string) {
-    this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
     this.queryParams = new Map();
   }
 
@@ -21,16 +21,16 @@ export class URLBuilder {
   }
 
   build(): string {
-    const pathString = this.path.length > 0 ? '/' + this.path.join('/') : '';
+    const pathString = this.path.length > 0 ? "/" + this.path.join("/") : "";
     const queryParts: string[] = [];
-    
+
     this.queryParams.forEach((values, key) => {
-      values.forEach(value => {
+      values.forEach((value) => {
         queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
       });
     });
-    
-    const queryString = queryParts.length > 0 ? '?' + queryParts.join('&') : '';
+
+    const queryString = queryParts.length > 0 ? "?" + queryParts.join("&") : "";
     return `${this.baseUrl}${pathString}${queryString}`;
   }
 }

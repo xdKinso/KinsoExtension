@@ -14,14 +14,14 @@ query Query {
 `;
 
 export type Genres = {
-    GenreCollection: string[];
+  GenreCollection: string[];
 };
 
 export type Tags = {
-    MediaTagCollection: TagsMediaTag[];
+  MediaTagCollection: TagsMediaTag[];
 };
 
 type TagsMediaTag = {
-    isAdult: boolean;
-    name: string;
+  isAdult: boolean;
+  name: string;
 };

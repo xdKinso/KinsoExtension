@@ -75,64 +75,64 @@ query Query(
 `;
 
 export type DiscoverSectionsAndSearchVariables = {
-    page: number;
-    isAdult?: boolean;
-    onList?: boolean;
-    countryOfOrigin?: string;
-    isLicensed?: boolean;
-    search?: string;
-    startDateGreater?: number;
-    startDateLesser?: number;
-    formatIn?: string[];
-    formatNotIn?: string[];
-    statusIn?: string[];
-    statusNotIn?: string[];
-    chaptersGreater?: number;
-    chaptersLesser?: number;
-    volumesGreater?: number;
-    volumesLesser?: number;
-    genreIn?: string[];
-    genreNotIn?: string[];
-    tagIn?: string[];
-    tagNotIn?: string[];
-    sourceIn?: string[];
-    sort: string;
+  page: number;
+  isAdult?: boolean;
+  onList?: boolean;
+  countryOfOrigin?: string;
+  isLicensed?: boolean;
+  search?: string;
+  startDateGreater?: number;
+  startDateLesser?: number;
+  formatIn?: string[];
+  formatNotIn?: string[];
+  statusIn?: string[];
+  statusNotIn?: string[];
+  chaptersGreater?: number;
+  chaptersLesser?: number;
+  volumesGreater?: number;
+  volumesLesser?: number;
+  genreIn?: string[];
+  genreNotIn?: string[];
+  tagIn?: string[];
+  tagNotIn?: string[];
+  sourceIn?: string[];
+  sort: string;
 };
 
 export type DiscoverSectionsAndSearch = {
-    Page: DiscoverSectionsAndSearchPage;
+  Page: DiscoverSectionsAndSearchPage;
 };
 
 type DiscoverSectionsAndSearchPage = {
-    pageInfo: DiscoverSectionsAndSearchPageInfo;
-    media: DiscoverSectionsAndSearchMedia[];
+  pageInfo: DiscoverSectionsAndSearchPageInfo;
+  media: DiscoverSectionsAndSearchMedia[];
 };
 
 type DiscoverSectionsAndSearchPageInfo = {
-    hasNextPage: boolean;
+  hasNextPage: boolean;
 };
 
 type DiscoverSectionsAndSearchMedia = {
-    chapters: number | null;
-    coverImage: DiscoverSectionsAndSearchCoverImage;
-    format: string;
-    genres: string[];
-    id: number;
-    isAdult: boolean;
-    status: string;
-    title: DiscoverSectionsAndSearchTitle;
-    volumes: number | null;
-    synonyms: string[];
+  chapters: number | null;
+  coverImage: DiscoverSectionsAndSearchCoverImage;
+  format: string;
+  genres: string[];
+  id: number;
+  isAdult: boolean;
+  status: string;
+  title: DiscoverSectionsAndSearchTitle;
+  volumes: number | null;
+  synonyms: string[];
 };
 
 type DiscoverSectionsAndSearchCoverImage = {
-    extraLarge: string;
-    large: string;
-    medium: string;
+  extraLarge: string;
+  large: string;
+  medium: string;
 };
 
 type DiscoverSectionsAndSearchTitle = {
-    english: string | null;
-    native: string | null;
-    romaji: string | null;
+  english: string | null;
+  native: string | null;
+  romaji: string | null;
 };

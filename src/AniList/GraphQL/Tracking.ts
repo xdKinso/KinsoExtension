@@ -29,39 +29,39 @@ query Query($userId: Int, $mediaId: Int) {
 `;
 
 export type TitleProgressQueryVeriables = {
-    userId: number;
-    mediaId: number;
+  userId: number;
+  mediaId: number;
 };
 
 export type TitleProgress = {
-    MediaList: TitleProgressMediaList;
+  MediaList: TitleProgressMediaList;
 };
 
 export type TitleProgressMediaList = {
-    advancedScores: Record<string, number>;
-    completedAt: TitleProgressFuzzyDate;
-    createdAt: number;
-    customLists: Record<string, boolean>;
-    hiddenFromStatusLists: boolean;
-    id?: number;
-    notes: string | null;
-    private: boolean;
-    progress: number;
-    progressVolumes: number;
-    repeat: number;
-    score: number;
-    startedAt: TitleProgressFuzzyDate;
-    status: string;
-    updatedAt: number;
+  advancedScores: Record<string, number>;
+  completedAt: TitleProgressFuzzyDate;
+  createdAt: number;
+  customLists: Record<string, boolean>;
+  hiddenFromStatusLists: boolean;
+  id?: number;
+  notes: string | null;
+  private: boolean;
+  progress: number;
+  progressVolumes: number;
+  repeat: number;
+  score: number;
+  startedAt: TitleProgressFuzzyDate;
+  status: string;
+  updatedAt: number;
 };
 
 export const MediaListStatus = {
-    CURRENT: { id: "CURRENT", label: "Reading" },
-    PLANNING: { id: "PLANNING", label: "Planning" },
-    COMPLETED: { id: "COMPLETED", label: "Completed" },
-    DROPPED: { id: "DROPPED", label: "Dropped" },
-    PAUSED: { id: "PAUSED", label: "Paused" },
-    REPEATING: { id: "REPEATING", label: "Rereading" },
+  CURRENT: { id: "CURRENT", label: "Reading" },
+  PLANNING: { id: "PLANNING", label: "Planning" },
+  COMPLETED: { id: "COMPLETED", label: "Completed" },
+  DROPPED: { id: "DROPPED", label: "Dropped" },
+  PAUSED: { id: "PAUSED", label: "Paused" },
+  REPEATING: { id: "REPEATING", label: "Rereading" },
 };
 
 export const titleProgressMutationMutation = `
@@ -121,18 +121,18 @@ mutation Mutation(
 `;
 
 export type TitleProgressMutationVariables = {
-    userId: number;
-    mediaId: number;
-    status?: string;
-    score?: number;
-    progress?: number;
-    progressVolumes?: number;
-    repeat?: number;
-    private?: boolean;
-    notes?: string | null;
-    hiddenFromStatusLists?: boolean;
-    customLists?: string[];
-    advancedScores?: number[];
+  userId: number;
+  mediaId: number;
+  status?: string;
+  score?: number;
+  progress?: number;
+  progressVolumes?: number;
+  repeat?: number;
+  private?: boolean;
+  notes?: string | null;
+  hiddenFromStatusLists?: boolean;
+  customLists?: string[];
+  advancedScores?: number[];
 };
 
 export const titleProgressDeletionMutation = `
@@ -144,20 +144,20 @@ mutation Mutation($deleteMediaListEntryId: Int) {
 `;
 
 export type TitleProgressDeletionVariables = {
-    deleteMediaListEntryId: number;
+  deleteMediaListEntryId: number;
 };
 
 export type TitleProgressDeletion = {
-    DeleteMediaListEntry: TitleProgressDeletionDeleteMediaListEntry;
+  DeleteMediaListEntry: TitleProgressDeletionDeleteMediaListEntry;
 };
 
 type TitleProgressDeletionDeleteMediaListEntry = {
-    deleted: boolean;
+  deleted: boolean;
 };
 
 // Shared
 type TitleProgressFuzzyDate = {
-    day: number | null;
-    month: number | null;
-    year: number | null;
+  day: number | null;
+  month: number | null;
+  year: number | null;
 };

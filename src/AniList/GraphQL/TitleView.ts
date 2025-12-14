@@ -38,58 +38,58 @@ query Query($id: Int) {
 `;
 
 export interface TitleViewQueryVariables {
-    id: number;
+  id: number;
 }
 
 export type TitleView = {
-    Media: TitleViewMedia;
+  Media: TitleViewMedia;
 };
 
 type TitleViewMedia = {
-    averageScore: number | null;
-    bannerImage: string | null;
-    coverImage: TitleViewCoverImage;
-    description: string | null;
-    format: string;
-    genres: string[];
-    isAdult: boolean;
-    staff: TitleViewStaff;
-    status: string;
-    tags: TitleViewTag[];
-    title: TitleViewTitle;
-    synonyms: string[];
+  averageScore: number | null;
+  bannerImage: string | null;
+  coverImage: TitleViewCoverImage;
+  description: string | null;
+  format: string;
+  genres: string[];
+  isAdult: boolean;
+  staff: TitleViewStaff;
+  status: string;
+  tags: TitleViewTag[];
+  title: TitleViewTitle;
+  synonyms: string[];
 };
 
 type TitleViewCoverImage = {
-    extraLarge: string;
-    large: string;
-    medium: string;
+  extraLarge: string;
+  large: string;
+  medium: string;
 };
 
 type TitleViewStaff = {
-    edges: TitleViewStaffEdge[];
+  edges: TitleViewStaffEdge[];
 };
 
 type TitleViewStaffEdge = {
-    node: TitleViewStaffNode;
-    role: string;
+  node: TitleViewStaffNode;
+  role: string;
 };
 
 type TitleViewStaffNode = {
-    name: TitleViewStaffName;
+  name: TitleViewStaffName;
 };
 
 type TitleViewStaffName = {
-    full: string;
+  full: string;
 };
 
 type TitleViewTag = {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 };
 
 type TitleViewTitle = {
-    english: string | null;
-    romaji: string | null;
-    native: string | null;
+  english: string | null;
+  romaji: string | null;
+  native: string | null;
 };
