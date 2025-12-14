@@ -7,7 +7,7 @@ const deadServers = new Set<string>();
 
 function getServerFromUrl(url: string): string | null {
   const match = url.match(CDN_HOST_REGEX);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 function replaceServer(url: string, newServer: string): string {
