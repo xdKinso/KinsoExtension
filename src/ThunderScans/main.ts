@@ -61,7 +61,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
     bufferInterval: 5,
-    ignoreImages: true,
+    ignoreImages: false,
   });
 
   async initialise(): Promise<void> {
