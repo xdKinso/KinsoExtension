@@ -56,7 +56,7 @@ export class Interceptor extends PaperbackInterceptor {
       }
     } else {
       headers.referer = 'https://mangapark.net/';
-      headers.cookie = 'nsfw=2';
+      // Don't manually set cookies - let CookieStorageInterceptor handle them
     }
 
     request.headers = headers;
