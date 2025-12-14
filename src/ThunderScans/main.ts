@@ -1,0 +1,413 @@
+import {
+  BasicRateLimiter,
+  ContentRating,
+  DiscoverSectionType,
+  PaperbackInterceptor,
+  type Chapter,
+  type ChapterDetails,
+  type ChapterProviding,
+  type DiscoverSection,
+  type DiscoverSectionItem,
+  type DiscoverSectionProviding,
+  type Extension,
+  type MangaProviding,
+  type PagedResults,
+  type Request,
+  type Response,
+  type SearchFilter,
+  type SearchQuery,
+  type SearchResultItem,
+  type SearchResultsProviding,
+  type SourceManga,
+  type Tag,
+  type TagSection,
+} from "@paperback/types";
+import * as cheerio from "cheerio";
+import { type CheerioAPI } from "cheerio";
+import { Genres, type Metadata } from "./models";
+
+const DOMAIN = "https://en-thunderscans.com";
+
+type ThunderScansImplementation = Extension &
+  DiscoverSectionProviding &
+  SearchResultsProviding &
+  MangaProviding &
+  ChapterProviding;
+
+class ThunderScansInterceptor extends PaperbackInterceptor {
+  override async interceptRequest(request: Request): Promise<Request> {
+    request.headers = {
+      ...request.headers,
+      "user-agent": await Application.getDefaultUserAgent(),
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.5",
+      "referer": DOMAIN,
+    };
+    return request;
+  }
+
+  override async interceptResponse(
+    request: Request,
+    response: Response,
+    data: ArrayBuffer,
+  ): Promise<ArrayBuffer> {
+    return data;
+  }
+}
+
+export class ThunderScansExtension implements ThunderScansImplementation {
+  interceptor = new ThunderScansInterceptor("interceptor");
+
+  rateLimiter = new BasicRateLimiter("rateLimiter", {
+    numberOfRequests: 3,
+    bufferInterval: 5,
+    ignoreImages: true,
+  });
+
+  async initialise(): Promise<void> {
+    this.interceptor.registerInterceptor();
+    this.rateLimiter.registerInterceptor();
+  }
+
+  async fetchCheerio(request: Request): Promise<CheerioAPI> {
+    const [response, data] = await Application.scheduleRequest(request);
+    return cheerio.load(Application.arrayBufferToUTF8String(data));
+  }
+
+  getMangaShareUrl(mangaId: string): string {
+    return `${DOMAIN}/comics/${mangaId}/`;
+  }
+
+  async getSearchFilters(): Promise<SearchFilter[]> {
+    return [];
+  }
+
+  async getSearchTags(): Promise<TagSection[]> {
+    return [
+      {
+        id: "genres",
+        title: "Genres",
+        tags: Genres.map(g => ({ id: g.id, title: g.label })),
+      },
+    ];
+  }
+
+  async getDiscoverSections(): Promise<DiscoverSection[]> {
+    return [
+      {
+        id: "popular",
+        title: "Popular Today",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "latest",
+        title: "Latest Updates",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+    ];
+  }
+
+  async getDiscoverSectionItems(
+    section: DiscoverSection,
+    metadata: Metadata | undefined,
+  ): Promise<PagedResults<DiscoverSectionItem>> {
+    const page = metadata?.page ?? 1;
+    let url = DOMAIN;
+
+    if (section.id === "popular") {
+      url = `${DOMAIN}/`;
+    } else if (section.id === "latest") {
+      url = `${DOMAIN}/page/${page}/`;
+    }
+
+    const request = {
+      url: url,
+      method: "GET",
+    };
+
+    const $ = await this.fetchCheerio(request);
+
+    const items: DiscoverSectionItem[] = [];
+    
+    if (section.id === "popular") {
+      // Parse Popular Today section
+      $('div.grid-item').each((_, element) => {
+        const $elem = $(element);
+        const $link = $elem.find('a').first();
+        const href = $link.attr('href');
+        const title = $link.attr('title') || $elem.find('.grid-title').text().trim();
+        const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+        
+        if (href && title) {
+          const mangaId = this.extractMangaId(href);
+          if (mangaId) {
+            items.push({
+              type: 'simpleCarouselItem',
+              mangaId: mangaId,
+              title: title,
+              imageUrl: image,
+            });
+          }
+        }
+      });
+    } else if (section.id === "latest") {
+      // Parse Latest Updates section
+      $('div.grid-item, article.post').each((_, element) => {
+        const $elem = $(element);
+        const $link = $elem.find('a').first();
+        const href = $link.attr('href');
+        const title = $link.attr('title') || $elem.find('.grid-title, .entry-title').text().trim();
+        const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+        
+        if (href && title) {
+          const mangaId = this.extractMangaId(href);
+          if (mangaId) {
+            items.push({
+              type: 'simpleCarouselItem',
+              mangaId: mangaId,
+              title: title,
+              imageUrl: image,
+            });
+          }
+        }
+      });
+    }
+
+    return {
+      items: items,
+      metadata: { page: page + 1 },
+    };
+  }
+
+  async getSearchResults(
+    query: SearchQuery,
+    metadata: Metadata | undefined,
+  ): Promise<PagedResults<SearchResultItem>> {
+    const page = metadata?.page ?? 1;
+    const searchTerm = query.title?.trim() || '';
+
+    let url = `${DOMAIN}/page/${page}/?s=${encodeURIComponent(searchTerm)}`;
+
+    const request = {
+      url: url,
+      method: "GET",
+    };
+
+    const $ = await this.fetchCheerio(request);
+
+    const results: SearchResultItem[] = [];
+
+    $('div.grid-item, article.post, .search-item').each((_, element) => {
+      const $elem = $(element);
+      const $link = $elem.find('a').first();
+      const href = $link.attr('href');
+      const title = $link.attr('title') || $elem.find('.grid-title, .entry-title, h2, h3').text().trim();
+      const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+      
+      if (href && title) {
+        const mangaId = this.extractMangaId(href);
+        if (mangaId) {
+          results.push({
+            mangaId: mangaId,
+            title: title,
+            imageUrl: image,
+          });
+        }
+      }
+    });
+
+    return {
+      items: results,
+      metadata: results.length > 0 ? { page: page + 1 } : undefined,
+    };
+  }
+
+  async getMangaDetails(mangaId: string): Promise<SourceManga> {
+    const url = `${DOMAIN}/comics/${mangaId}/`;
+
+    const request = {
+      url: url,
+      method: "GET",
+    };
+
+    const $ = await this.fetchCheerio(request);
+
+    const title = $('h1, .entry-title').first().text().trim();
+    const image = $('img.wp-post-image, .summary_image img').attr('src') || 
+                  $('img.wp-post-image, .summary_image img').attr('data-src') || '';
+    
+    const description = $('.summary__content, .description, .synopsis').text().trim();
+    const author = $('div.author-content, .author').text().trim() || 'Unknown';
+    const artist = $('div.artist-content, .artist').text().trim() || author;
+
+    // Parse status
+    let status = 'ONGOING';
+    const statusText = $('.post-status, .status').text().toLowerCase();
+    if (statusText.includes('completed') || statusText.includes('complete')) {
+      status = 'COMPLETED';
+    }
+
+    // Parse genres
+    const tags: Tag[] = [];
+    $('a[rel="tag"], .genres a, .tags a').each((_, element) => {
+      const tag = $(element).text().trim();
+      if (tag) {
+        tags.push({ id: tag.toLowerCase().replace(/\s+/g, '-'), title: tag });
+      }
+    });
+
+    return {
+      mangaId: mangaId,
+      mangaInfo: {
+        primaryTitle: title,
+        secondaryTitles: [],
+        thumbnailUrl: image,
+        status: status as "ONGOING" | "COMPLETED",
+        artist: artist,
+        author: author,
+        contentRating: ContentRating.EVERYONE,
+        synopsis: description,
+        tagGroups: tags.length > 0 ? [{ id: 'genres', title: 'Genres', tags }] : [],
+      },
+    };
+  }
+
+  async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
+    const url = `${DOMAIN}/comics/${sourceManga.mangaId}/`;
+
+    const request = {
+      url: url,
+      method: "GET",
+    };
+
+    const $ = await this.fetchCheerio(request);
+
+    const chapters: Chapter[] = [];
+
+    $('.wp-manga-chapter, .chapter-item, .listing-chapters_wrap a').each((_, element) => {
+      const $elem = $(element);
+      const $link = $elem.is('a') ? $elem : $elem.find('a').first();
+      const href = $link.attr('href');
+      const chapterTitle = $link.text().trim();
+      
+      if (href && chapterTitle) {
+        const chapterId = this.extractChapterId(href);
+        if (chapterId) {
+          // Extract chapter number from title
+          const chapterNumMatch = chapterTitle.match(/chapter[:\s]+(\d+(?:\.\d+)?)/i);
+          const chapterNum = chapterNumMatch && chapterNumMatch[1] ? parseFloat(chapterNumMatch[1]) : 0;
+
+          // Try to parse date
+          const dateText = $elem.find('.chapter-release-date, .post-on').text().trim();
+          let date = new Date();
+          if (dateText) {
+            date = this.parseRelativeDate(dateText);
+          }
+
+          chapters.push({
+            chapterId: chapterId,
+            sourceManga: sourceManga,
+            langCode: "en",
+            chapNum: chapterNum,
+            title: chapterTitle,
+            publishDate: date,
+          });
+        }
+      }
+    });
+
+    return chapters;
+  }
+
+  async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+    const url = `${DOMAIN}/${chapter.chapterId}/`;
+
+    const request = {
+      url: url,
+      method: "GET",
+    };
+
+    const $ = await this.fetchCheerio(request);
+
+    const pages: string[] = [];
+
+    // Find all images in the chapter
+    $('.reading-content img, .page-break img, #readerarea img').each((_, element) => {
+      const $img = $(element);
+      const src = $img.attr('src') || $img.attr('data-src') || '';
+      
+      if (src && !src.includes('loading') && !src.includes('spinner')) {
+        pages.push(src.trim());
+      }
+    });
+
+    return {
+      id: chapter.chapterId,
+      mangaId: chapter.sourceManga.mangaId,
+      pages: pages,
+    };
+  }
+
+  private extractMangaId(url: string): string | null {
+    // Extract manga ID from URL like /comics/manga-slug/ or /comics/manga-slug
+    const match = url.match(/\/comics\/([^\/]+)/);
+    return match && match[1] ? match[1] : null;
+  }
+
+  private extractChapterId(url: string): string | null {
+    // Extract chapter ID from URL like /manga-slug-chapter-123/
+    const match = url.match(/\/([^\/]+chapter[^\/]+)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+    // Alternative: extract from full path
+    const parts = url.split('/').filter(p => p);
+    const lastPart = parts[parts.length - 1];
+    return lastPart ? lastPart : null;
+  }
+
+  private parseRelativeDate(dateString: string): Date {
+    const now = new Date();
+    const lower = dateString.toLowerCase();
+
+    // Handle relative dates
+    if (lower.includes('ago')) {
+      const match = dateString.match(/(\d+)\s+(second|minute|hour|day|week|month|year)/i);
+      if (match && match[1] && match[2]) {
+        const value = parseInt(match[1]);
+        const unit = match[2].toLowerCase();
+
+        switch (unit) {
+          case 'second':
+            now.setSeconds(now.getSeconds() - value);
+            break;
+          case 'minute':
+            now.setMinutes(now.getMinutes() - value);
+            break;
+          case 'hour':
+            now.setHours(now.getHours() - value);
+            break;
+          case 'day':
+            now.setDate(now.getDate() - value);
+            break;
+          case 'week':
+            now.setDate(now.getDate() - value * 7);
+            break;
+          case 'month':
+            now.setMonth(now.getMonth() - value);
+            break;
+          case 'year':
+            now.setFullYear(now.getFullYear() - value);
+            break;
+        }
+      }
+      return now;
+    }
+
+    // Try to parse as regular date
+    const parsed = new Date(dateString);
+    return isNaN(parsed.getTime()) ? now : parsed;
+  }
+}
+
+export const ThunderScans = new ThunderScansExtension();
