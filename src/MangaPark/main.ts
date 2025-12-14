@@ -1,30 +1,34 @@
 import {
   BasicRateLimiter,
-  Chapter,
-  ChapterDetails,
-  ChapterProviding,
   CloudflareError,
   ContentRating,
-  DiscoverSection,
-  DiscoverSectionItem,
-  DiscoverSectionProviding,
+  CookieStorageInterceptor,
   DiscoverSectionType,
-  Extension,
   Form,
-  MangaProviding,
-  PagedResults,
-  Request,
-  SearchFilter,
-  SearchQuery,
-  SearchResultItem,
-  SearchResultsProviding,
-  SettingsFormProviding,
-  SortingOption,
-  SourceManga,
-  TagSection,
+  type Chapter,
+  type ChapterDetails,
+  type ChapterProviding,
+  type CloudflareBypassRequestProviding,
+  type Cookie,
+  type DiscoverSection,
+  type DiscoverSectionItem,
+  type DiscoverSectionProviding,
+  type Extension,
+  type MangaProviding,
+  type PagedResults,
+  type Request,
+  type SearchFilter,
+  type SearchQuery,
+  type SearchResultItem,
+  type SearchResultsProviding,
+  type SettingsFormProviding,
+  type SortingOption,
+  type SourceManga,
+  type TagSection,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
-import { CheerioAPI } from "cheerio";
+import type { CheerioAPI } from "cheerio";
+import type { Element } from "domhandler";
 import * as htmlparser2 from "htmlparser2";
 import { URLBuilder } from "../utils/url-builder/base";
 import {
@@ -36,7 +40,7 @@ import {
   SettingsForm,
 } from "./forms";
 import { Interceptor } from "./interceptors";
-import { metadata, SearchDetails, STATIC_SEARCH_DETAILS } from "./model";
+import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
 const baseUrl = "https://mangapark.io/";
 
@@ -340,7 +344,7 @@ export class MangaparkExtension implements MangaparkImplementation {
     const $ = await this.fetchCheerio(request);
     const searchResults: SearchResultItem[] = [];
 
-    $(".flex.border-b.border-b-base-200.pb-5").each((_, element) => {
+    $(".flex.border-b.border-b-base-200.pb-5").each((_index: number, element: Element) => {
       const unit = $(element);
       const titleLink = unit.find("h3 a");
       const title = titleLink.find("span").text().trim();
@@ -404,15 +408,15 @@ export class MangaparkExtension implements MangaparkImplementation {
       $(".limit-html").first().text().trim() ||
       $(".manga-detail .info .description").text().trim();
     const authors: string[] = [];
-    $("div[q\\:key='tz_4'] a").each((_, authorElement) => {
+    $("div[q\\:key='tz_4'] a").each((_index: number, authorElement: Element) => {
       authors.push($(authorElement).text().trim());
     });
     const status = $("[q\\:key='Yn_5']").text();
 
     const tags: TagSection[] = [];
     const genres = $("[q\\:key='kd_0']")
-      .map((_, element) => $(element).text())
-      .get();
+      .map((_index: number, element: Element) => $(element).text())
+      .get() as string[];
 
     const ratingText = $("[q\\:key='lt_0']").text();
     const rating = (parseFloat(ratingText) || 0) / 10;
@@ -421,7 +425,7 @@ export class MangaparkExtension implements MangaparkImplementation {
       tags.push({
         id: "genres",
         title: "Genres",
-        tags: genres.map((genre) => ({
+        tags: genres.map((genre: string) => ({
           id: genre
             .toLowerCase()
             .replace(/\s+/g, "-")
@@ -467,13 +471,14 @@ export class MangaparkExtension implements MangaparkImplementation {
     const candidates: ChapterCandidate[] = [];
     const groupViewsAggregate: Map<string, number> = new Map();
 
-    $(".px-2.py-2.flex.flex-wrap.justify-between").each((_, element) => {
+    $(".px-2.py-2.flex.flex-wrap.justify-between").each((_index: number, element: Element) => {
       const row = $(element);
       const chapterElement = row.find("a").first();
       const href = chapterElement.attr("href") || "";
 
       const lastSegment = href.split("/").filter(Boolean).pop() || "";
-      const chapterId = lastSegment.split(/[?#]/)[0];
+      const chapterId = (lastSegment.split(/[?#]/)[0] ?? "").trim();
+      if (!chapterId) return;
 
       const title = chapterElement.text().trim();
       // Remove any Volume prefix like "Vol.02" before extracting chapter
@@ -482,17 +487,19 @@ export class MangaparkExtension implements MangaparkImplementation {
       const match = cleanedTitle.match(
         /(?:Ch(?:apter)?[.\s-]*(\d+(?:\.\d+)?))/i,
       );
-      if (match) {
-        chapNum = parseFloat(match[1]);
-      } else {
+      {
+        const captured = match?.[1];
+        if (captured) chapNum = parseFloat(captured);
+      }
+
+      if (!chapNum) {
         // Fallback: try extracting from href like /.../ch-020 or /.../chapter-020
         const hrefLower = href.toLowerCase();
         const hrefMatch = hrefLower.match(
           /\/(?:ch|chapter)[-_]?(\d+(?:\.\d+)?)(?:\b|\/|$)/i,
         );
-        if (hrefMatch) {
-          chapNum = parseFloat(hrefMatch[1]);
-        }
+        const captured = hrefMatch?.[1];
+        if (captured) chapNum = parseFloat(captured);
       }
 
       const timeElement = row.find("time").first();
@@ -515,8 +522,8 @@ export class MangaparkExtension implements MangaparkImplementation {
       let viewsForThisChapter = 0;
       meta
         .find(".inline-flex.items-center")
-        .filter((_, el) => $(el).find("i[name='eye']").length > 0)
-        .each((_, el) => {
+        .filter((_index: number, el: Element) => $(el).find("i[name='eye']").length > 0)
+        .each((_index: number, el: Element) => {
           const txt = $(el).find("span.ml-1").first().text().trim();
           if (txt.includes("+")) {
             for (const part of txt.split("+")) {
@@ -574,8 +581,11 @@ export class MangaparkExtension implements MangaparkImplementation {
         chosen = list.find((c) => c.groupName === g);
         if (chosen) break;
       }
-      if (!chosen) chosen = list[0];
-      finalChapters.push(chosen);
+      if (!chosen) {
+        const fallback = list[0];
+        if (fallback) chosen = fallback;
+      }
+      if (chosen) finalChapters.push(chosen);
     }
 
     // finalChapters.sort((a, b) => (b.chapNum ?? 0) - (a.chapNum ?? 0));
@@ -595,7 +605,7 @@ export class MangaparkExtension implements MangaparkImplementation {
     const $ = await this.fetchCheerio(request);
     const pages: string[] = [];
 
-    $('script[type="qwik/json"]').each((_, script) => {
+    $('script[type="qwik/json"]').each((_index: number, script: Element) => {
       const scriptContent = $(script).text();
       if (scriptContent) {
         const urlRegex = /https?:\/\/[^"'()\s]*\.org\/media\/[^\s"'()]+/g;

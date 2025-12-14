@@ -1,11 +1,11 @@
 import {
   Form,
-  FormSectionElement,
   LabelRow,
   NavigationRow,
   Section,
   SelectRow,
 } from "@paperback/types";
+import type { FormSectionElement } from "@paperback/types";
 import { STATIC_SEARCH_DETAILS } from "./model";
 
 export function getBlacklistGenres(): string[] {
