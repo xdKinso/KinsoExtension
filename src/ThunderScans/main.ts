@@ -232,13 +232,12 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    const title = $('h1, .entry-title').first().text().trim();
-    const image = $('img.wp-post-image, .summary_image img').attr('src') || 
-                  $('img.wp-post-image, .summary_image img').attr('data-src') || '';
+    const title = $('h1.entry-title, h1, .entry-title').first().text().trim();
+    const image = $('.infoanime img, .summary_image img, img.ts-post-image, img.wp-post-image').first().attr('src') || '';
     
-    const description = $('.summary__content, .description, .synopsis').text().trim();
-    const author = $('div.author-content, .author').text().trim() || 'Unknown';
-    const artist = $('div.artist-content, .artist').text().trim() || author;
+    const description = $('.entry-content-single, .entry-content, .summary__content, .description, .synopsis').text().trim();
+    const author = $('.infox .spe span:contains("Author")').next().text().trim() || 'Unknown';
+    const artist = $('.infox .spe span:contains("Artist")').next().text().trim() || author;
 
     // Parse status
     let status = 'ONGOING';
@@ -284,7 +283,8 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const chapters: Chapter[] = [];
 
-    $('.wp-manga-chapter, .chapter-item, .listing-chapters_wrap a').each((_, element) => {
+    // Try multiple selectors for different chapter list structures
+    $('ul.eplister li, .eplister li, .wp-manga-chapter, .chapter-item, .listing-chapters_wrap a').each((_, element) => {
       const $elem = $(element);
       const $link = $elem.is('a') ? $elem : $elem.find('a').first();
       const href = $link.attr('href');
