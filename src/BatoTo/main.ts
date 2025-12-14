@@ -43,27 +43,12 @@ type BatoToImplementation = SettingsFormProviding &
 // Intercepts all the requests and responses and allows you to make changes to them
 class MainInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
-        // Check if this is an image request from BatoTo CDN
-        const isImageRequest = request.url.includes(".mbwnp.org") || 
-                              request.url.includes(".mbgqu.org") ||
-                              request.url.includes(".mbzcp.org") ||
-                              request.url.includes(".mbtba.org") ||
-                              request.url.includes(".mbopg.org") ||
-                              request.url.includes(".mbuul.org") ||
-                              request.url.includes("wordpress.com");
-        
         request.headers = {
-            ...(request.headers ?? {}),
-            ...{
-                "user-agent": await Application.getDefaultUserAgent(),
-                referer: isImageRequest ? request.url : `${DOMAIN_NAME}/`,
-                ...(isImageRequest && {
-                    Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-                }),
-                ...(!isImageRequest && {
-                    origin: `${DOMAIN_NAME}/`,
-                }),
-            },
+            ...request.headers,
+            referer: `${DOMAIN_NAME}/`,
+            origin: DOMAIN_NAME,
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            accept: "image/webp,image/apng,image/*,*/*;q=0.8",
         };
 
         return request;
