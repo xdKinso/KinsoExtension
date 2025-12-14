@@ -348,7 +348,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       const unit = $(element);
       const titleLink = unit.find("h3 a");
       const title = titleLink.find("span").text().trim();
-      const imageSrc = unit.find("img").attr("src") || "";
+      const imageSrc = unit.find("img").attr("data-src") || unit.find("img").attr("src") || "";
       const image = imageSrc.startsWith("http")
         ? imageSrc
         : `${baseUrl}${imageSrc}`;
@@ -608,10 +608,13 @@ export class MangaParkExtension implements MangaParkImplementation {
     $('script[type="qwik/json"]').each((_index: number, script: Element) => {
       const scriptContent = $(script).text();
       if (scriptContent) {
-        const urlRegex = /https?:\/\/[^"'()\s]*\.org\/media\/[^\s"'()]+/g;
+        // More comprehensive regex to capture various CDN patterns
+        const urlRegex = /https?:\/\/[a-zA-Z0-9.-]+\.(org|com|net|io)\/media\/[^"'\s()<>]+\.(jpg|jpeg|png|webp|gif)/gi;
         const matches = scriptContent.match(urlRegex);
         if (matches) {
-          pages.push(...matches);
+          // Remove duplicates and clean URLs
+          const uniquePages = [...new Set(matches)].map(url => url.replace(/\\"/g, ''));
+          pages.push(...uniquePages);
         }
       }
     });
