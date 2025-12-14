@@ -33,9 +33,6 @@ jobs:
       - name: Build extensions
         run: npm run bundle
 
-      - name: Copy versioning.json
-        run: cp versioning.json bundles/versioning.json
-
       - name: Add cache control headers
         run: |
           echo "Cache-Control: no-cache, no-store, must-revalidate" > bundles/.nojekyll
