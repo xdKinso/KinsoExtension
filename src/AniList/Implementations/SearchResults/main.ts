@@ -8,7 +8,7 @@ import type {
 } from "@paperback/types";
 import { discoverSectionsAndSearchQuery } from "../../GraphQL/DiscoverSectionsAndSearch";
 import type { DiscoverSectionsAndSearchVariables } from "../../GraphQL/DiscoverSectionsAndSearch";
-import type {
+import {
     CountryCode,
     MediaFormat,
     MediaSort,
