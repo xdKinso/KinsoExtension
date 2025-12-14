@@ -784,8 +784,7 @@ export class BatoToExtension implements BatoToImplementation {
             url: url,
             method: "GET",
             headers: {
-                referer: `${DOMAIN_NAME}/`,
-                origin: DOMAIN_NAME,
+                referer: url,
                 "user-agent": await Application.getDefaultUserAgent(),
                 accept: "image/webp,image/apng,image/*,*/*;q=0.8",
             },
