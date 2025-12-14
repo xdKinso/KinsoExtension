@@ -1,8 +1,9 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
-// CDN server fallback configuration
-const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's00', 's04'];
+// CDN server fallback configuration - includes all known servers
+const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's07', 's10', 's00', 's04'];
 const CDN_HOST_REGEX = /^https:\/\/(s\d+)\./;
+const CDN_DOMAINS = ['mpmok.org', 'mpqom.org', 'mpcdn.org'];
 const deadServers = new Set<string>();
 
 function getServerFromUrl(url: string): string | null {
@@ -19,6 +20,10 @@ function getNextWorkingServer(): string {
   return working ?? CDN_SERVERS[0] ?? 's01';
 }
 
+function isCDNRequest(url: string): boolean {
+  return url.includes('/media/') || CDN_DOMAINS.some(domain => url.includes(domain));
+}
+
 export class Interceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     const headers: Record<string, string> = {
@@ -27,7 +32,7 @@ export class Interceptor extends PaperbackInterceptor {
     };
 
     // For CDN image requests, set proper referer
-    if (request.url.includes('/media/') || request.url.includes('mpmok.org')) {
+    if (isCDNRequest(request.url)) {
       headers.referer = 'https://mangapark.io/';
       headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
       
@@ -52,8 +57,8 @@ export class Interceptor extends PaperbackInterceptor {
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
     // Detect failed image requests and mark server as dead
-    if ((request.url.includes('/media/') || request.url.includes('mpmok.org')) && 
-        (response.status === 404 || response.status === 403 || response.status === 500)) {
+    if (isCDNRequest(request.url) && 
+        (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503)) {
       const failedServer = getServerFromUrl(request.url);
       if (failedServer) {
         deadServers.add(failedServer);

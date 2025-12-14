@@ -348,10 +348,15 @@ export class MangaParkExtension implements MangaParkImplementation {
       const unit = $(element);
       const titleLink = unit.find("h3 a");
       const title = titleLink.find("span").text().trim();
-      const imageSrc = unit.find("img").attr("data-src") || unit.find("img").attr("src") || "";
+      const imgElem = unit.find("img").first();
+      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || imgElem.attr("data-lazy-src") || "";
+      // Clean and normalize image URL
+      imageSrc = imageSrc.trim();
       const image = imageSrc.startsWith("http")
         ? imageSrc
-        : `${baseUrl}${imageSrc}`;
+        : imageSrc.startsWith("/")
+          ? `${baseUrl}${imageSrc.slice(1)}`
+          : imageSrc ? `${baseUrl}${imageSrc}` : "";
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
       const chapterLink = unit.find(".flex.flex-nowrap.justify-between a");
       const latestChapter = chapterLink.find("span").text().trim();
@@ -397,7 +402,8 @@ export class MangaParkExtension implements MangaParkImplementation {
     const title = $("h3 a").first().text().trim();
     const altTitles = [$("div[q\\:key='tz_2'] span").first().text().trim()];
     const imageElem = $("img[alt]").first();
-    let image = imageElem.attr("src") || imageElem.attr("data-src") || "";
+    let image = imageElem.attr("data-src") || imageElem.attr("src") || imageElem.attr("data-lazy-src") || "";
+    image = image.trim();
     if (image && !image.startsWith("http")) {
       // normalize to absolute URL
       image = image.startsWith("/")
@@ -684,18 +690,20 @@ export class MangaParkExtension implements MangaParkImplementation {
     const items: DiscoverSectionItem[] = [];
 
     // Updated selectors based on current Mangapark HTML structure
-    $(".relative.w-full.group").each((_, element) => {
+    $(".relative.w-full.group").each((_index: number, element: Element) => {
       const unit = $(element);
       const titleLink = unit
         .find("div.absolute a.link.link-hover.text-sm")
         .first();
       const title = titleLink.text().trim();
-      const imageSrc = unit.find("a.block.w-full img").attr("src") || "";
+      const imgElem = unit.find("a.block.w-full img").first();
+      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || imgElem.attr("data-lazy-src") || "";
+      imageSrc = imageSrc.trim();
       const image = imageSrc.startsWith("http")
         ? imageSrc
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`
-          : `${baseUrl}${imageSrc}`;
+          : imageSrc ? `${baseUrl}${imageSrc}` : "";
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
 
       const chapterLink = unit
