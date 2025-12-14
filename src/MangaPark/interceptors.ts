@@ -32,14 +32,15 @@ export class Interceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     const headers: Record<string, string> = {
       ...request.headers,
-      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "user-agent": await Application.getDefaultUserAgent(),
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
       "accept-language": "en-US,en;q=0.9",
+      "dnt": "1",
     };
 
     // For CDN image requests, set proper referer
     if (isCDNRequest(request.url)) {
-      headers.referer = 'https://mangapark.com/';
+      headers.referer = 'https://mangapark.net/';
       headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
       headers["sec-fetch-dest"] = "image";
       
@@ -50,7 +51,7 @@ export class Interceptor extends PaperbackInterceptor {
         request.url = replaceServer(request.url, workingServer);
       }
     } else {
-      headers.referer = 'https://mangapark.com/';
+      headers.referer = 'https://mangapark.net/';
       // Don't manually set cookies - let CookieStorageInterceptor handle them
     }
 

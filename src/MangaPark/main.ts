@@ -42,7 +42,7 @@ import {
 import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
-const baseUrl = "https://mangapark.com/";
+const baseUrl = "https://mangapark.net/";
 
 type MangaParkImplementation = Extension &
   SearchResultsProviding &
@@ -58,8 +58,8 @@ export class MangaParkExtension implements MangaParkImplementation {
     storage: "stateManager",
   });
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 3,
-    bufferInterval: 3,
+    numberOfRequests: 2,
+    bufferInterval: 5,
     ignoreImages: true,
   });
 
@@ -935,9 +935,10 @@ export class MangaParkExtension implements MangaParkImplementation {
       url: baseUrl,
       method: "GET",
       headers: {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "user-agent": await Application.getDefaultUserAgent(),
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "accept-language": "en-US,en;q=0.9",
+        "dnt": "1",
       },
     };
   }

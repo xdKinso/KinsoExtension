@@ -2,8 +2,8 @@ import { ContentRating, type SourceInfo, SourceIntents } from "@paperback/types"
 
 export default {
   name: "MangaPark",
-  description: "Extension that pulls content from mangapark.com.",
-  version: "0.0.13",
+  description: "Extension that pulls content from mangapark.net.",
+  version: "0.0.14",
   icon: "icon.png",
   language: "multi",
   contentRating: ContentRating.EVERYONE,
