@@ -918,7 +918,9 @@ export class MangaParkExtension implements MangaParkImplementation {
   }
 
   checkCloudflareStatus(status: number): void {
-    if (status == 503 || status == 403 || status == 522 || status == 523) {
+    // Only trigger Cloudflare bypass for actual challenges (503/403)
+    // 522/523 are server connectivity errors, not Cloudflare challenges
+    if (status == 503 || status == 403) {
       throw new CloudflareError({
         url: baseUrl,
         method: "GET",
