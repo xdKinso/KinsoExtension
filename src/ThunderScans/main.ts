@@ -331,15 +331,35 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const pages: string[] = [];
 
-    // Find all chapter images - ThunderScans uses #readerarea with .ts-main-image class
-    $('#readerarea img.ts-main-image, #readerarea img, .reading-content img, .page-break img').each((_, element) => {
-      const $img = $(element);
-      const src = $img.attr('src') || $img.attr('data-src') || '';
-      
-      if (src && !src.includes('loading') && !src.includes('spinner') && !src.includes('logo')) {
-        pages.push(src.trim());
+    // ThunderScans loads images via JavaScript - extract from ts_reader.run() script
+    const html = $.html();
+    const scriptMatch = html.match(/ts_reader\.run\((\{[^}]+sources[^}]+\})\)/);
+    
+    if (scriptMatch && scriptMatch[1]) {
+      try {
+        // Extract the JSON from the script
+        const jsonStr = scriptMatch[1].replace(/\\'/g, "'").replace(/\\\//g, '/');
+        const readerData = JSON.parse(jsonStr);
+        
+        // Get images from the first source
+        if (readerData.sources && readerData.sources[0] && readerData.sources[0].images) {
+          readerData.sources[0].images.forEach((imageUrl: string) => {
+            if (imageUrl && !imageUrl.includes('loading') && !imageUrl.includes('spinner')) {
+              pages.push(imageUrl);
+            }
+          });
+        }
+      } catch (e) {
+        // Fallback to DOM parsing if JSON parsing fails
+        $('#readerarea img.ts-main-image, #readerarea img').each((_, element) => {
+          const $img = $(element);
+          const src = $img.attr('src') || $img.attr('data-src') || '';
+          if (src && !src.includes('loading') && !src.includes('spinner')) {
+            pages.push(src.trim());
+          }
+        });
       }
-    });
+    }
 
     return {
       id: chapter.chapterId,
