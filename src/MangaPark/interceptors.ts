@@ -12,7 +12,7 @@ const CDN_DOMAINS = [
 // Track which server we're currently using globally
 let currentServerIndex = 0;
 let consecutiveFailures = 0;
-const MAX_FAILURES_BEFORE_SWITCH = 3;
+const MAX_FAILURES_BEFORE_SWITCH = 1;
 
 export function getCurrentServer(): string {
   return CDN_SERVERS[currentServerIndex] ?? 's01';
