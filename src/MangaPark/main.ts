@@ -918,7 +918,14 @@ export class MangaParkExtension implements MangaParkImplementation {
 
   checkCloudflareStatus(status: number): void {
     if (status == 503 || status == 403 || status == 522 || status == 523) {
-      throw new CloudflareError({ url: baseUrl, method: "GET" });
+      throw new CloudflareError({
+        url: baseUrl,
+        method: "GET",
+        headers: {
+          "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
     }
   }
 
@@ -926,6 +933,10 @@ export class MangaParkExtension implements MangaParkImplementation {
     return {
       url: baseUrl,
       method: "GET",
+      headers: {
+        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
     };
   }
 
