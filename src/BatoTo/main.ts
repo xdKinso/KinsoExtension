@@ -84,7 +84,7 @@ export class BatoToExtension implements BatoToImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
         numberOfRequests: 15,
         bufferInterval: 10,
-        ignoreImages: true,
+        ignoreImages: false,
     });
 
     // Implementation of the main interceptor
