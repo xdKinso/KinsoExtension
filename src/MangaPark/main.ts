@@ -359,18 +359,19 @@ export class MangaParkExtension implements MangaParkImplementation {
       if (!imgElem.length) imgElem = unit.find("picture img").first();
       if (!imgElem.length) imgElem = unit.find("a img").first();
       
-      // Try all possible image attributes
-      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || 
+      // Try all possible image attributes - prioritize src first (actual value in HTML)
+      let imageSrc = imgElem.attr("src") || imgElem.attr("data-src") || 
                      imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
                      imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
       
       // Clean and normalize image URL
       imageSrc = imageSrc.trim();
-      const image = imageSrc.startsWith("http")
+      let image = imageSrc.startsWith("http")
         ? imageSrc
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`
           : imageSrc ? `${baseUrl}${imageSrc}` : "";
+      
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
       const chapterLink = unit.find(".flex.flex-nowrap.justify-between a");
       const latestChapter = chapterLink.find("span").text().trim();
@@ -416,7 +417,8 @@ export class MangaParkExtension implements MangaParkImplementation {
     const title = $("h3 a").first().text().trim();
     const altTitles = [$("div[q\\:key='tz_2'] span").first().text().trim()];
     const imageElem = $("img[alt]").first();
-    let image = imageElem.attr("data-src") || imageElem.attr("src") || imageElem.attr("data-lazy-src") || "";
+    // Prioritize src first (actual value in HTML)
+    let image = imageElem.attr("src") || imageElem.attr("data-src") || imageElem.attr("data-lazy-src") || "";
     image = image.trim();
     if (image && !image.startsWith("http")) {
       // normalize to absolute URL
@@ -725,12 +727,12 @@ export class MangaParkExtension implements MangaParkImplementation {
       if (!imgElem.length) imgElem = unit.find("img").first();
       if (!imgElem.length) imgElem = unit.find("picture img").first();
       
-      // Try all possible image attributes
-      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || 
+      // Prioritize src first (actual loaded value in HTML) for faster loading
+      let imageSrc = imgElem.attr("src") || imgElem.attr("data-src") || 
                      imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
                      imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
       imageSrc = imageSrc.trim();
-      const image = imageSrc.startsWith("http")
+      let image = imageSrc.startsWith("http")
         ? imageSrc
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`

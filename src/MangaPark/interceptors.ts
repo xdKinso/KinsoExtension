@@ -61,13 +61,23 @@ export class Interceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    // Detect failed image requests and mark server as dead for future requests
-    if (isCDNRequest(request.url) && 
-        (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503)) {
-      const failedServer = getServerFromUrl(request.url);
-      if (failedServer) {
-        deadServers.add(failedServer);
-        console.log(`CDN server ${failedServer} marked as dead. Working servers: ${Array.from(CDN_SERVERS).filter(s => !deadServers.has(s)).join(', ')}`);
+    // Check for Cloudflare server connectivity errors on CDN image requests
+    // 521 = Web Server Is Down, 522 = Connection Timed Out, 523 = Origin Unreachable
+    if (isCDNRequest(request.url)) {
+      if (response.status === 521 || response.status === 522 || response.status === 523) {
+        // Log the error but don't throw - let the app show placeholder
+        console.log(`[MangaPark] CDN server error ${response.status} for image: ${request.url}`);
+        // Return empty buffer to avoid crash
+        return new ArrayBuffer(0);
+      }
+      
+      // Detect failed image requests and mark server as dead for future requests
+      if (response.status === 404 || response.status === 403 || response.status === 500 || response.status === 503) {
+        const failedServer = getServerFromUrl(request.url);
+        if (failedServer) {
+          deadServers.add(failedServer);
+          console.log(`[MangaPark] CDN server ${failedServer} marked as dead. Working servers: ${Array.from(CDN_SERVERS).filter(s => !deadServers.has(s)).join(', ')}`);
+        }
       }
     }
     
