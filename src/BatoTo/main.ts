@@ -220,7 +220,7 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
             
-            console.log(`[BatoTo Latest] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
+            console.log(`[BatoTo Latest] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -303,7 +303,7 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
             
-            console.log(`[BatoTo Browse] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
+            console.log(`[BatoTo Browse] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -469,7 +469,7 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-lazy-src") || "";
             const title = titleLink.text().trim();
             
-            console.log(`[BatoTo Search] Item: ${title}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
+            console.log(`[BatoTo Search] Item: ${title}, Image found: ${!!image}, URL: ${image}`);
 
             if (mangaId && title) {
                 searchResults.push({
