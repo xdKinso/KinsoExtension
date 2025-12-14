@@ -191,11 +191,12 @@ export class BatoToExtension implements BatoToImplementation {
         const collectedIds = metadata?.collectedIds ?? [];
         const languages = getLanguages();
 
-        //https://bato.to/latest?langs=en
+        //https://bato.to/latest?langs=en&orig=all
         const request = {
             url: new URLBuilder(DOMAIN_NAME)
                 .addPath("latest")
                 .addQuery("langs", languages.join(","))
+                .addQuery("orig", "all")
                 .build(),
             method: "GET",
         };
@@ -211,8 +212,11 @@ export class BatoToExtension implements BatoToImplementation {
             const href = titleLink.attr("href") || "";
             let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
 
-            // Get image
-            const image = unit.find("a.item-cover img").attr("src") || "";
+            // Get image - check multiple attributes for lazy loading
+            const imgElement = unit.find("a.item-cover img");
+            const image = imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || 
+                         imgElement.attr("src") || "";
 
             // Get title text
             const title = titleLink.text().trim();
@@ -264,12 +268,13 @@ export class BatoToExtension implements BatoToImplementation {
         const collectedIds = metadata?.collectedIds ?? [];
         const languages = getLanguages();
 
-        //https://bato.to/browse?langs=nl&sort=views_m.za
+        //https://bato.to/browse?langs=nl&sort=views_m.za&orig=all
         const request = {
             url: new URLBuilder(DOMAIN_NAME)
                 .addPath("browse")
                 .addQuery("langs", languages.join(","))
                 .addQuery("sort", "views_m.za")
+                .addQuery("orig", "all")
                 .addQuery("page", page.toString())
                 .build(),
             method: "GET",
@@ -286,8 +291,11 @@ export class BatoToExtension implements BatoToImplementation {
             const href = titleLink.attr("href") || "";
             let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
 
-            // Get image
-            const image = unit.find("a.item-cover img").attr("src") || "";
+            // Get image - check multiple attributes for lazy loading
+            const imgElement = unit.find("a.item-cover img");
+            const image = imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || 
+                         imgElement.attr("src") || "";
 
             // Get title text
             const title = titleLink.text().trim();
@@ -409,6 +417,9 @@ export class BatoToExtension implements BatoToImplementation {
 
         //Add Language
         urlBuilder.addQuery("lang", languages.join(","));
+        
+        // Add orig parameter to allow adult content
+        urlBuilder.addQuery("orig", "all");
 
         // Handle genres correctly
         const genresFilter = query.filters?.find((f) => f.id === "genres");
@@ -483,7 +494,11 @@ export class BatoToExtension implements BatoToImplementation {
                 const titleLink = unit.find("h3.font-bold.space-x-1.text-lg a");
                 const href = titleLink.attr("href") || "";
                 const mangaId = href.split("/title/")[1]?.split("/")[0] || ""; // Extract manga ID from URL
-                const image = unit.find("img").attr("src") || "";
+                // Get image - check multiple attributes for lazy loading
+                const imgElement = unit.find("img");
+                const image = imgElement.attr("data-src") || 
+                             imgElement.attr("data-lazy-src") || 
+                             imgElement.attr("src") || "";
                 const title = titleLink.text().trim();
 
                 if (mangaId && title) {
