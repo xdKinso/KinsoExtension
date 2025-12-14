@@ -33,6 +33,19 @@ jobs:
       - name: Build extensions
         run: npm run bundle
 
+      - name: Verify build output
+        run: |
+          echo "Checking bundles directory..."
+          ls -la bundles/
+          if [ ! -f bundles/versioning.json ]; then
+            echo "ERROR: versioning.json not found!"
+            echo "Contents of bundles:"
+            find bundles -type f
+            exit 1
+          fi
+          echo "✓ versioning.json found"
+          cat bundles/versioning.json
+
       - name: Add cache control headers
         run: |
           echo "Cache-Control: no-cache, no-store, must-revalidate" > bundles/.nojekyll
