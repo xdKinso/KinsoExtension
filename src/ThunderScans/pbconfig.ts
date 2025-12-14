@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types"
 export default {
   name: "ThunderScans",
   description: "Extension that pulls content from en-thunderscans.com.",
-  version: "0.0.1",
+  version: "0.0.02",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,

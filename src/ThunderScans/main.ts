@@ -130,13 +130,13 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     const items: DiscoverSectionItem[] = [];
     
     if (section.id === "popular") {
-      // Parse Popular Today section
-      $('div.grid-item').each((_, element) => {
+      // Parse Popular Today section - use .bsx selector
+      $('.bsx').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('a').first();
         const href = $link.attr('href');
-        const title = $link.attr('title') || $elem.find('.grid-title').text().trim();
-        const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+        const title = $elem.find('.tt').text().trim();
+        const image = $elem.find('img').first().attr('src') || '';
         
         if (href && title) {
           const mangaId = this.extractMangaId(href);
@@ -151,13 +151,13 @@ export class ThunderScansExtension implements ThunderScansImplementation {
         }
       });
     } else if (section.id === "latest") {
-      // Parse Latest Updates section
-      $('div.grid-item, article.post').each((_, element) => {
+      // Parse Latest Updates section - use .bsx selector
+      $('.bsx').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('a').first();
         const href = $link.attr('href');
-        const title = $link.attr('title') || $elem.find('.grid-title, .entry-title').text().trim();
-        const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+        const title = $elem.find('.tt').text().trim();
+        const image = $elem.find('img').first().attr('src') || '';
         
         if (href && title) {
           const mangaId = this.extractMangaId(href);
@@ -197,12 +197,12 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const results: SearchResultItem[] = [];
 
-    $('div.grid-item, article.post, .search-item').each((_, element) => {
+    $('.bsx').each((_, element) => {
       const $elem = $(element);
       const $link = $elem.find('a').first();
       const href = $link.attr('href');
-      const title = $link.attr('title') || $elem.find('.grid-title, .entry-title, h2, h3').text().trim();
-      const image = $elem.find('img').attr('src') || $elem.find('img').attr('data-src') || '';
+      const title = $elem.find('.tt').text().trim();
+      const image = $elem.find('img').first().attr('src') || '';
       
       if (href && title) {
         const mangaId = this.extractMangaId(href);
