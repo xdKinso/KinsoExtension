@@ -203,6 +203,8 @@ export class BatoToExtension implements BatoToImplementation {
 
         const $ = await this.fetchCheerio(request);
 
+        console.log(`[BatoTo Latest] Found ${$("div#series-list > div.col.item").length} items`);
+
         // Extract manga items from the new HTML structure
         $("div#series-list > div.col.item").each((_, element) => {
             const unit = $(element);
@@ -212,11 +214,13 @@ export class BatoToExtension implements BatoToImplementation {
             const href = titleLink.attr("href") || "";
             let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
 
-            // Get image - check multiple attributes for lazy loading
+            // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
-            const image = imgElement.attr("data-src") || 
-                         imgElement.attr("data-lazy-src") || 
-                         imgElement.attr("src") || "";
+            const image = imgElement.attr("src") || 
+                         imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || "";
+            
+            console.log(`[BatoTo Latest] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -282,6 +286,8 @@ export class BatoToExtension implements BatoToImplementation {
 
         const $ = await this.fetchCheerio(request);
 
+        console.log(`[BatoTo Browse] Found ${$("div#series-list > div.col.item").length} items`);
+
         // Extract manga items from the new HTML structure
         $("div#series-list > div.col.item").each((_, element) => {
             const unit = $(element);
@@ -291,11 +297,13 @@ export class BatoToExtension implements BatoToImplementation {
             const href = titleLink.attr("href") || "";
             let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
 
-            // Get image - check multiple attributes for lazy loading
+            // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
-            const image = imgElement.attr("data-src") || 
-                         imgElement.attr("data-lazy-src") || 
-                         imgElement.attr("src") || "";
+            const image = imgElement.attr("src") || 
+                         imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || "";
+            
+            console.log(`[BatoTo Browse] Title: ${titleLink.text().trim()}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -454,12 +462,14 @@ export class BatoToExtension implements BatoToImplementation {
                 mangaId = decodeURIComponent(mangaId).replace(/[^\w@.]/g, "_").trim();
             }
             
-            // Get image - check multiple attributes for lazy loading
+            // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("img").first();
-            const image = imgElement.attr("data-src") || 
-                         imgElement.attr("data-lazy-src") || 
-                         imgElement.attr("src") || "";
+            const image = imgElement.attr("src") || 
+                         imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || "";
             const title = titleLink.text().trim();
+            
+            console.log(`[BatoTo Search] Item: ${title}, Image found: ${!!image}, URL: ${image.substring(0, 50)}`);
 
             if (mangaId && title) {
                 searchResults.push({
