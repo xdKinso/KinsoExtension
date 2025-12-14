@@ -1,8 +1,9 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
-// CDN server fallback configuration - includes all known servers
-const CDN_SERVERS = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's00'];
-const CDN_HOST_REGEX = /^https:\/\/(s\d+)\./;
+// CDN server priority list - ordered by reliability (s01 > s03 > s05 > s06 > s00 > s04)
+// Based on MangaPark image fix userscript
+const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's00', 's04', 's02', 's07', 's08', 's09', 's10'];
+const CDN_HOST_REGEX = /^https:\/\/(s\d{1,2})\./;
 const CDN_DOMAINS = [
   'mpfip.org', 'mpizz.org', 'mpmok.org', 'mpqom.org', 'mpqsc.org',
   'mprmm.org', 'mpubn.org', 'mpujj.org', 'mpvim.org', 'mpypl.org',
@@ -20,8 +21,9 @@ export function replaceServer(url: string, newServer: string): string {
 }
 
 export function getNextWorkingServer(): string {
+  // Return first working server from priority list
   const working = CDN_SERVERS.find(s => !deadServers.has(s));
-  return working ?? CDN_SERVERS[0] ?? 's01';
+  return working ?? 's01'; // Default to s01 if all are dead
 }
 
 function isCDNRequest(url: string): boolean {
