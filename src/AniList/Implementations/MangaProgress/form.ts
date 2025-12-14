@@ -21,12 +21,12 @@ import type {
     ToggleRowProps,
 } from "@paperback/types";
 import {
+    MediaListStatus,
     titleProgressDeletionMutation,
     titleProgressMutationMutation,
     titleProgressQuery,
 } from "../../GraphQL/Tracking";
 import type {
-    MediaListStatus,
     TitleProgress,
     TitleProgressDeletion,
     TitleProgressDeletionVariables,

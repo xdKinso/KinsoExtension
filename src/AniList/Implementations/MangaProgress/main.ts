@@ -10,11 +10,11 @@ import type {
     TrackedMangaChapterReadAction,
 } from "@paperback/types";
 import {
+    MediaListStatus,
     titleProgressMutationMutation,
     titleProgressQuery,
 } from "../../GraphQL/Tracking";
 import type {
-    MediaListStatus,
     TitleProgress,
     TitleProgressMutationVariables,
     TitleProgressQueryVeriables,
