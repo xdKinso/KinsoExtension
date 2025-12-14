@@ -15,7 +15,7 @@ Extension for reading manga from mangapark.net
 ## Installation
 
 Add this repository to Paperback:
-https://xdkinso.github.io/template-extensions/
+https://xdkinso.github.io/KinsoExtension/
 
 ## Developer
 
