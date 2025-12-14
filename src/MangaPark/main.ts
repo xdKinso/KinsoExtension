@@ -54,6 +54,7 @@ type MangaParkImplementation = Extension &
 
 export class MangaParkExtension implements MangaParkImplementation {
   requestManager = new Interceptor("main");
+  cookieManager = new CookieStorageInterceptor("mangapark_cookies");
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
     bufferInterval: 3,
@@ -62,6 +63,7 @@ export class MangaParkExtension implements MangaParkImplementation {
 
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
+    this.cookieManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
   }
 
@@ -924,12 +926,6 @@ export class MangaParkExtension implements MangaParkImplementation {
     return {
       url: baseUrl,
       method: "GET",
-      headers: {
-        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-        "referer": baseUrl,
-      },
     };
   }
 
