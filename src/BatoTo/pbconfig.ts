@@ -10,7 +10,7 @@ export default {
     version: "0.0.11",
     icon: "icon.png",
     language: "en",
-    contentRating: ContentRating.ADULT,
+    contentRating: ContentRating.EVERYONE,
     capabilities: [
         SourceIntents.SETTINGS_UI,
         SourceIntents.DISCOVER_SECIONS,
