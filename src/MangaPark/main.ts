@@ -942,6 +942,13 @@ export class MangaParkExtension implements MangaParkImplementation {
     };
   }
 
+  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
+    // Store all cookies from Cloudflare bypass
+    for (const cookie of cookies) {
+      await this.cookieStorageInterceptor.setCookie(cookie, baseUrl);
+    }
+  }
+
   async fetchCheerio(request: Request): Promise<CheerioAPI> {
     const [response, data] = await Application.scheduleRequest(request);
     this.checkCloudflareStatus(response.status);
