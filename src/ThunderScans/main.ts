@@ -331,12 +331,12 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const pages: string[] = [];
 
-    // Find all images in the chapter
-    $('.reading-content img, .page-break img, #readerarea img').each((_, element) => {
+    // Find all chapter images - ThunderScans uses #readerarea with .ts-main-image class
+    $('#readerarea img.ts-main-image, #readerarea img, .reading-content img, .page-break img').each((_, element) => {
       const $img = $(element);
       const src = $img.attr('src') || $img.attr('data-src') || '';
       
-      if (src && !src.includes('loading') && !src.includes('spinner')) {
+      if (src && !src.includes('loading') && !src.includes('spinner') && !src.includes('logo')) {
         pages.push(src.trim());
       }
     });
