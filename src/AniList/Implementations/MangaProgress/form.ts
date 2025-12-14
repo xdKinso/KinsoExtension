@@ -284,7 +284,7 @@ export class TrackingForm extends Form {
 
     async statusUpdate(newStatus: string[]): Promise<void> {
         if (this.titleProgress && newStatus[0]) {
-            this.titleProgress.MediaList.status = newStatus[0] as MediaListStatus;
+            this.titleProgress.MediaList.status = newStatus[0];
         }
     }
 
