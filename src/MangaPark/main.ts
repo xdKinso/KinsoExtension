@@ -918,49 +918,35 @@ export class MangaParkExtension implements MangaParkImplementation {
     };
   }
 
-  checkCloudflareStatus(status: number): void {
+  async checkCloudflareStatus(status: number): Promise<void> {
     // Only trigger Cloudflare bypass for actual challenges (503/403)
     // 522/523 are server connectivity errors, not Cloudflare challenges
     if (status == 503 || status == 403) {
-      throw new CloudflareError({
-        url: baseUrl,
-        method: "GET",
-        headers: {
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      throw new CloudflareError(
+        {
+          url: baseUrl,
+          method: "GET",
+          headers: {
+            "user-agent": await Application.getDefaultUserAgent(),
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "accept-language": "en-US,en;q=0.9",
+            "referer": baseUrl,
+          },
         },
-      });
+        "Cloudflare detected! Please complete the verification.",
+      );
     }
   }
 
-  async getCloudflareBypassRequestAsync(): Promise<Request> {
-    return {
-      url: baseUrl,
-      method: "GET",
-      headers: {
-        "user-agent": await Application.getDefaultUserAgent(),
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-        "dnt": "1",
-      },
-    };
-  }
-
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Clear all cookies first to avoid conflicts with old/stale cookies
+    // Clear all cookies first to avoid conflicts
     for (const cookie of cookies) {
       this.cookieStorageInterceptor.deleteCookie(cookie);
     }
 
-    // Then set only Cloudflare-related cookies
+    // Then set all cookies from bypass
     for (const cookie of cookies) {
-      if (
-        cookie.name.startsWith("cf") ||
-        cookie.name.startsWith("_cf") ||
-        cookie.name.startsWith("__cf")
-      ) {
-        this.cookieStorageInterceptor.setCookie(cookie);
-      }
+      this.cookieStorageInterceptor.setCookie(cookie);
     }
   }
 
