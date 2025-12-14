@@ -59,6 +59,22 @@ class MainInterceptor extends PaperbackInterceptor {
         response: Response,
         data: ArrayBuffer,
     ): Promise<ArrayBuffer> {
+        // Check for Cloudflare server connectivity errors on image requests
+        // 521 = Web Server Is Down, 522 = Connection Timed Out, 523 = Origin Unreachable
+        const isImageRequest = request.url.includes(".mbwnp.org") || 
+                              request.url.includes(".mbgqu.org") ||
+                              request.url.includes(".mbzcp.org") ||
+                              request.url.includes(".mbtba.org") ||
+                              request.url.includes(".mbopg.org") ||
+                              request.url.includes(".mbuul.org");
+        
+        if (isImageRequest && (response.status === 521 || response.status === 522 || response.status === 523)) {
+            // Log the error but don't throw - let the app show placeholder
+            console.log(`[BatoTo] CDN server error ${response.status} for image: ${request.url}`);
+            // Return empty buffer to avoid crash
+            return new ArrayBuffer(0);
+        }
+        
         return data;
     }
 }
