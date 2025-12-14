@@ -236,7 +236,7 @@ export class BatoToExtension implements BatoToImplementation {
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
                 items.push({
-                    type: "simpleCarouselItem",
+                    type: "prominentCarouselItem",
                     mangaId: mangaId,
                     imageUrl: image,
                     title: title,
@@ -319,7 +319,7 @@ export class BatoToExtension implements BatoToImplementation {
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
                 items.push({
-                    type: "simpleCarouselItem",
+                    type: "prominentCarouselItem",
                     mangaId: mangaId,
                     imageUrl: image,
                     title: title,
@@ -471,7 +471,7 @@ export class BatoToExtension implements BatoToImplementation {
             
             console.log(`[BatoTo Search] Item: ${title}, Image found: ${!!image}, URL: ${image}`);
 
-            if (mangaId && title) {
+            if (mangaId && title && image) {
                 searchResults.push({
                     mangaId: mangaId,
                     imageUrl: image,
