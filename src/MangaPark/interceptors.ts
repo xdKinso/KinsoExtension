@@ -32,16 +32,21 @@ export class Interceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     const headers: Record<string, string> = {
       ...request.headers,
-      "user-agent": await Application.getDefaultUserAgent(),
+      "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
       "accept-language": "en-US,en;q=0.9",
-      "cache-control": "no-cache",
-      "pragma": "no-cache",
+      "accept-encoding": "gzip, deflate, br",
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "none",
+      "upgrade-insecure-requests": "1",
     };
 
     // For CDN image requests, set proper referer
     if (isCDNRequest(request.url)) {
-      headers.referer = 'https://mangapark.org/';
+      headers.referer = 'https://mangapark.net/';
       headers.accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+      headers["sec-fetch-dest"] = "image";
       
       // Apply CDN server fallback if needed
       const currentServer = getServerFromUrl(request.url);
@@ -50,7 +55,7 @@ export class Interceptor extends PaperbackInterceptor {
         request.url = replaceServer(request.url, workingServer);
       }
     } else {
-      headers.referer = 'https://mangapark.org/';
+      headers.referer = 'https://mangapark.net/';
       headers.cookie = 'nsfw=2';
     }
 

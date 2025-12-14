@@ -42,20 +42,21 @@ import {
 import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
-const baseUrl = "https://mangapark.org/";
+const baseUrl = "https://mangapark.net/";
 
 type MangaParkImplementation = Extension &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding &
   SettingsFormProviding &
-  DiscoverSectionProviding;
+  DiscoverSectionProviding &
+  CloudflareBypassRequestProviding;
 
 export class MangaParkExtension implements MangaParkImplementation {
   requestManager = new Interceptor("main");
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 5,
-    bufferInterval: 2,
+    numberOfRequests: 3,
+    bufferInterval: 3,
     ignoreImages: true,
   });
 
@@ -914,9 +915,22 @@ export class MangaParkExtension implements MangaParkImplementation {
   }
 
   checkCloudflareStatus(status: number): void {
-    if (status == 503 || status == 403) {
+    if (status == 503 || status == 403 || status == 522 || status == 523) {
       throw new CloudflareError({ url: baseUrl, method: "GET" });
     }
+  }
+
+  async getCloudflareBypassRequest(): Promise<Request> {
+    return {
+      url: baseUrl,
+      method: "GET",
+      headers: {
+        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        "referer": baseUrl,
+      },
+    };
   }
 
   async fetchCheerio(request: Request): Promise<CheerioAPI> {
