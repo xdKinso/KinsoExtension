@@ -348,8 +348,17 @@ export class MangaParkExtension implements MangaParkImplementation {
       const unit = $(element);
       const titleLink = unit.find("h3 a");
       const title = titleLink.find("span").text().trim();
-      const imgElem = unit.find("img").first();
-      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || imgElem.attr("data-lazy-src") || "";
+      
+      // Try multiple selectors to find the image
+      let imgElem = unit.find("img").first();
+      if (!imgElem.length) imgElem = unit.find("picture img").first();
+      if (!imgElem.length) imgElem = unit.find("a img").first();
+      
+      // Try all possible image attributes
+      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || 
+                     imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
+                     imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
+      
       // Clean and normalize image URL
       imageSrc = imageSrc.trim();
       const image = imageSrc.startsWith("http")
@@ -706,8 +715,15 @@ export class MangaParkExtension implements MangaParkImplementation {
         .find("div.absolute a.link.link-hover.text-sm")
         .first();
       const title = titleLink.text().trim();
-      const imgElem = unit.find("a.block.w-full img").first();
-      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || imgElem.attr("data-lazy-src") || "";
+      // Try multiple selectors to find the image
+      let imgElem = unit.find("a.block.w-full img").first();
+      if (!imgElem.length) imgElem = unit.find("img").first();
+      if (!imgElem.length) imgElem = unit.find("picture img").first();
+      
+      // Try all possible image attributes
+      let imageSrc = imgElem.attr("data-src") || imgElem.attr("src") || 
+                     imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
+                     imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
       imageSrc = imageSrc.trim();
       const image = imageSrc.startsWith("http")
         ? imageSrc

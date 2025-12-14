@@ -1,9 +1,13 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 
 // CDN server fallback configuration - includes all known servers
-const CDN_SERVERS = ['s01', 's03', 's05', 's06', 's07', 's10', 's00', 's04'];
+const CDN_SERVERS = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's00'];
 const CDN_HOST_REGEX = /^https:\/\/(s\d+)\./;
-const CDN_DOMAINS = ['mpmok.org', 'mpqom.org', 'mpcdn.org'];
+const CDN_DOMAINS = [
+  'mpfip.org', 'mpizz.org', 'mpmok.org', 'mpqom.org', 'mpqsc.org',
+  'mprmm.org', 'mpubn.org', 'mpujj.org', 'mpvim.org', 'mpypl.org',
+  'mpcdn.org'
+];
 export const deadServers = new Set<string>();
 
 export function getServerFromUrl(url: string): string | null {
