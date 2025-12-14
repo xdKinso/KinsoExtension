@@ -487,30 +487,50 @@ export class BatoToExtension implements BatoToImplementation {
         const $ = await this.fetchCheerio(request);
         const searchResults: SearchResultItem[] = [];
 
-        // Parse the search results
-        $(".grid.grid-cols-1.gap-5.border-t.border-t-base-200.pt-5 > div").each(
-            (_, element) => {
-                const unit = $(element);
-                const titleLink = unit.find("h3.font-bold.space-x-1.text-lg a");
-                const href = titleLink.attr("href") || "";
-                const mangaId = href.split("/title/")[1]?.split("/")[0] || ""; // Extract manga ID from URL
-                // Get image - check multiple attributes for lazy loading
-                const imgElement = unit.find("img");
-                const image = imgElement.attr("data-src") || 
-                             imgElement.attr("data-lazy-src") || 
-                             imgElement.attr("src") || "";
-                const title = titleLink.text().trim();
+        console.log(`[BatoTo Search] URL: ${searchUrl}`);
+        
+        // Try multiple selectors for search results (the page structure might vary)
+        let searchItems = $(".grid.grid-cols-1.gap-5.border-t.border-t-base-200.pt-5 > div");
+        if (searchItems.length === 0) {
+            // Try alternative selector - same as browse sections
+            searchItems = $("div#series-list > div.col.item");
+        }
+        
+        console.log(`[BatoTo Search] Found elements: ${searchItems.length}`);
 
-                if (mangaId && title) {
-                    searchResults.push({
-                        mangaId: mangaId,
-                        imageUrl: image,
-                        title: title,
-                        subtitle: "", // Add subtitle if needed
-                    });
-                }
-            },
-        );
+        // Parse the search results
+        searchItems.each((_, element) => {
+            const unit = $(element);
+            
+            // Try the detailed search result format first
+            let titleLink = unit.find("h3.font-bold.space-x-1.text-lg a");
+            let href = titleLink.attr("href") || "";
+            let mangaId = href.split("/title/")[1]?.split("/")[0] || "";
+            
+            // If not found, try the browse/series-list format
+            if (!mangaId) {
+                titleLink = unit.find("a.item-title").first();
+                href = titleLink.attr("href") || "";
+                mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
+                mangaId = decodeURIComponent(mangaId).replace(/[^\w@.]/g, "_").trim();
+            }
+            
+            // Get image - check multiple attributes for lazy loading
+            const imgElement = unit.find("img").first();
+            const image = imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || 
+                         imgElement.attr("src") || "";
+            const title = titleLink.text().trim();
+
+            if (mangaId && title) {
+                searchResults.push({
+                    mangaId: mangaId,
+                    imageUrl: image,
+                    title: title,
+                    subtitle: "", // Add subtitle if needed
+                });
+            }
+        });
 
         // Handle pagination
         let maxPage = 1;
