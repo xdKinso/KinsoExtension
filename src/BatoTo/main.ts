@@ -330,7 +330,7 @@ export class BatoToExtension implements BatoToImplementation {
             if (nextPageItem.length > 0) {
                 const nextHref = nextPageItem.attr("href");
                 const pageMatch = nextHref?.match(/page=(\d+)/);
-                if (pageMatch) {
+                if (pageMatch && pageMatch[1]) {
                     nextPage = parseInt(pageMatch[1], 10);
                 }
             }
@@ -667,7 +667,7 @@ export class BatoToExtension implements BatoToImplementation {
             const volumeMatch = rawChapterText.match(
                 /(?:Volume|Vol\.?)\s*([\d.]+)(?:\s*[:\--]\s*(.*))?/i,
             );
-            const volume = volumeMatch ? parseFloat(volumeMatch[1]) : 0;
+            const volume = volumeMatch && volumeMatch[1] ? parseFloat(volumeMatch[1]) : 0;
             const titleMatch = rawChapterText.split(chapNum.toString()).pop();
             const title = titleMatch
                 ? titleMatch.replace(/^[\s:;.,\-–—]+/, "").trim()
@@ -759,19 +759,6 @@ export class BatoToExtension implements BatoToImplementation {
                 // decodeEntities: false,
             },
         });
-    }
-
-    async getImageRequest(url: string): Promise<Request> {
-        return {
-            url: url,
-            method: "GET",
-            headers: {
-                referer: `${DOMAIN_NAME}/`,
-                origin: DOMAIN_NAME,
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                accept: "image/webp,image/apng,image/*,*/*;q=0.8",
-            },
-        };
     }
 
     checkCloudflareStatus(status: number): void {
