@@ -42,7 +42,7 @@ import {
 import { Interceptor, deadServers, getServerFromUrl, replaceServer, getNextWorkingServer } from "./interceptors";
 import { STATIC_SEARCH_DETAILS, type metadata, type SearchDetails } from "./model";
 
-const baseUrl = "https://mangapark.io/";
+const baseUrl = "https://mangapark.org/";
 
 type MangaParkImplementation = Extension &
   SearchResultsProviding &
@@ -247,7 +247,7 @@ export class MangaParkExtension implements MangaParkImplementation {
     const collectedIds = metadata?.searchCollectedIds ?? [];
 
     // Mangapark search URL format:
-    // https://mangapark.io/search?genres=manga,shounen,ecchi,action|loli,reverse_harem,sm_bdsm&status=ongoing&chapters=1&sortby=field_score&page=1
+    // https://mangapark.org/search?genres=manga,shounen,ecchi,action|loli,reverse_harem,sm_bdsm&status=ongoing&chapters=1&sortby=field_score&page=1
     const searchUrl = new URLBuilder(baseUrl)
       .addPath("search")
       .addQuery("page", page.toString());
