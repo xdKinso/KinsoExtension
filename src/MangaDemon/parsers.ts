@@ -3,6 +3,7 @@ import {
     type Chapter,
     type SearchResultItem,
     type SourceManga,
+    type DiscoverSectionItem,
 } from '@paperback/types';
 import type { CheerioAPI } from 'cheerio';
 
@@ -107,4 +108,71 @@ export function parseChapterPages($: CheerioAPI): string[] {
         if (src) pages.push(src);
     });
     return pages;
+}
+
+export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
+    const results: DiscoverSectionItem[] = [];
+    
+    $('div#mostviewed > a').each((_, element) => {
+        const $elem = $(element);
+        const url = $elem.attr('href');
+        const title = $elem.find('div.info > div').first().text().trim();
+        const imageUrl = $elem.find('img').attr('src') || '';
+
+        if (url && title) {
+            results.push({
+                mangaId: encodeURIComponent(url),
+                imageUrl,
+                title,
+                subtitle: undefined,
+            } as DiscoverSectionItem);
+        }
+    });
+
+    return results;
+}
+
+export function parseLatestTranslations($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
+    const results: DiscoverSectionItem[] = [];
+    
+    $('div#latesttranslations > a').each((_, element) => {
+        const $elem = $(element);
+        const url = $elem.attr('href');
+        const title = $elem.find('div.info > div').first().text().trim();
+        const imageUrl = $elem.find('img').attr('src') || '';
+
+        if (url && title) {
+            results.push({
+                mangaId: encodeURIComponent(url),
+                imageUrl,
+                title,
+                subtitle: undefined,
+            } as DiscoverSectionItem);
+        }
+    });
+
+    return results;
+}
+
+export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
+    const results: DiscoverSectionItem[] = [];
+    
+    $('div#updates-container > div.updates-element').each((_, element) => {
+        const $elem = $(element);
+        const $link = $elem.find('div.updates-element-info a').first();
+        const url = $link.attr('href');
+        const title = $link.text().trim();
+        const imageUrl = $elem.find('div.thumb img').attr('src') || '';
+
+        if (url && title) {
+            results.push({
+                mangaId: encodeURIComponent(url),
+                imageUrl,
+                title,
+                subtitle: undefined,
+            } as DiscoverSectionItem);
+        }
+    });
+
+    return results;
 }

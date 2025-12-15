@@ -1,7 +1,7 @@
 import { ContentRating, type SourceInfo, SourceIntents } from '@paperback/types';
 
 export default {
-    version: '0.0.2',
+    version: '0.0.3',
     name: 'MangaDemon',
     icon: 'icon.png',
     description: 'Extension for MangaDemon (demonicscans.org)',
@@ -11,6 +11,7 @@ export default {
         SourceIntents.MANGA_CHAPTERS,
         SourceIntents.SEARCH_RESULTS_PROVIDING,
         SourceIntents.CLOUDFLARE_BYPASS_PROVIDING,
+        SourceIntents.DISCOVER_SECIONS,
     ],
     badges: [],
     developers: [

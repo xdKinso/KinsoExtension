@@ -1,9 +1,13 @@
 import {
     BasicRateLimiter,
+    DiscoverSectionType,
     type Chapter,
     type ChapterDetails,
     type ChapterProviding,
     type CloudflareBypassRequestProviding,
+    type DiscoverSection,
+    type DiscoverSectionItem,
+    type DiscoverSectionProviding,
     type Extension,
     type PagedResults,
     type Request,
@@ -29,7 +33,8 @@ const baseUrl = 'https://demonicscans.org';
 type MangaDemonImplementation = Extension &
     SearchResultsProviding &
     ChapterProviding &
-    CloudflareBypassRequestProviding;
+    CloudflareBypassRequestProviding &
+    DiscoverSectionProviding;
 
 export class MangaDemonExtension implements MangaDemonImplementation {
     requestManager = new Interceptor('main');
@@ -150,6 +155,60 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
     async saveCloudflareBypassCookies(_cookies: any[]): Promise<void> {
         // Cloudflare cookies are handled automatically by the interceptor
+    }
+
+    async getDiscoverSections(): Promise<DiscoverSection[]> {
+        return [
+            {
+                id: 'most_viewed_today',
+                title: 'Most Viewed Today',
+                type: DiscoverSectionType.featured,
+            },
+            {
+                id: 'latest_translations',
+                title: 'Latest Translations',
+                type: DiscoverSectionType.simpleCarousel,
+            },
+            {
+                id: 'latest_updates',
+                title: 'Latest Updates',
+                type: DiscoverSectionType.chapterUpdates,
+            },
+        ];
+    }
+
+    async getDiscoverSectionItems(
+        section: DiscoverSection,
+        _metadata?: any,
+    ): Promise<PagedResults<DiscoverSectionItem>> {
+        try {
+            const request = {
+                url: baseUrl,
+                method: 'GET',
+            };
+
+            const [_response, data] = await Application.scheduleRequest(request);
+            const htmlStr = Application.arrayBufferToUTF8String(data);
+            const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
+
+            let items: DiscoverSectionItem[] = [];
+
+            if (section.id === 'most_viewed_today') {
+                const { parseMostViewedToday } = await import('./parsers');
+                items = parseMostViewedToday($, baseUrl);
+            } else if (section.id === 'latest_translations') {
+                const { parseLatestTranslations } = await import('./parsers');
+                items = parseLatestTranslations($, baseUrl);
+            } else if (section.id === 'latest_updates') {
+                const { parseLatestUpdates } = await import('./parsers');
+                items = parseLatestUpdates($, baseUrl);
+            }
+
+            return { items };
+        } catch (error) {
+            console.error(`[MangaDemon] Error loading section ${section.id}:`, error);
+            return { items: [] };
+        }
     }
 }
 
