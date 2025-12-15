@@ -1,208 +1,145 @@
 import {
     BasicRateLimiter,
     type Chapter,
+    type ChapterDetails,
     type ChapterProviding,
-    type HomePageSectionsProviding,
-    type PagedResults,
-    type PartialSourceManga,
-    type Request,
-    type SearchRequest,
-    type SearchResultsProviding,
-    type SourceInfo,
-    type SourceManga,
-    type HomeSection,
     type Extension,
+    type PagedResults,
+    type SearchQuery,
+    type SearchResultItem,
+    type SearchResultsProviding,
+    type SourceManga,
+    type SortingOption,
 } from '@paperback/types';
+import * as cheerio from 'cheerio';
+import * as htmlparser2 from 'htmlparser2';
 
-import info from './pbconfig';
+import { Interceptor } from './interceptors';
 import {
     parseSearchResults,
     parseMangaDetails,
     parseChapters,
     parseChapterPages,
-    parseHotManga,
-    parseLatestUpdates,
 } from './parsers';
-import type { SearchDetails } from './models';
-import { requestInterceptor, responseInterceptor } from './interceptors';
 
-import * as cheerio from 'cheerio';
+const baseUrl = 'https://www.mangabats.com';
 
 type MangaBatImplementation = Extension &
     SearchResultsProviding &
-    ChapterProviding &
-    HomePageSectionsProviding;
+    ChapterProviding;
 
-export class MangaBat implements MangaBatImplementation {
-    constructor(private cheerio: typeof cheerio) {}
-
-    // Rate limiter: Conservative 1 request per second
+export class MangaBatExtension implements MangaBatImplementation {
+    requestManager = new Interceptor('main');
+    
     globalRateLimiter = new BasicRateLimiter('rateLimiter', {
         numberOfRequests: 1,
         bufferInterval: 1,
         ignoreImages: true,
     });
 
-    stateManager = App.createSourceStateManager();
-
-    getSourceInfo(): SourceInfo {
-        return info;
-    }
-
-    async getHomePageSections(): Promise<HomeSection[]> {
-        const sections: HomeSection[] = [];
-        const baseUrl = info.websiteBaseURL;
-
-        try {
-            // Hot Manga section
-            const hotRequest = App.createRequest({
-                url: `${baseUrl}`,
-                method: 'GET',
-            });
-
-            const hotResponse = await hotRequest.send();
-            const hotData = await hotResponse.text();
-            const $hot = this.cheerio.load(hotData);
-            const hotMangas = parseHotManga($hot, baseUrl);
-
-            if (hotMangas.length > 0) {
-                sections.push({
-                    id: 'hot_manga',
-                    title: 'Hot Manga',
-                    items: hotMangas,
-                    type: 'singleRowNormal',
-                });
-            }
-
-            // Latest Updates section
-            const latestMangas = parseLatestUpdates($hot, baseUrl);
-
-            if (latestMangas.length > 0) {
-                sections.push({
-                    id: 'latest_updates',
-                    title: 'Latest Updates',
-                    items: latestMangas,
-                    type: 'singleRowNormal',
-                });
-            }
-        } catch (error) {
-            console.error('[MangaBat] Error loading home sections:', error);
-        }
-
-        return sections;
+    async initialise(): Promise<void> {
+        this.requestManager.registerInterceptor();
+        this.globalRateLimiter.registerInterceptor();
     }
 
     async getSearchResults(
-        searchQuery: SearchRequest,
-        metadata: SearchDetails | undefined,
-    ): Promise<PagedResults<PartialSourceManga>> {
-        const baseUrl = info.websiteBaseURL;
+        query: SearchQuery,
+        metadata?: any,
+        _sortingOption?: SortingOption,
+    ): Promise<PagedResults<SearchResultItem>> {
         const page = metadata?.page || 1;
 
         try {
             let searchUrl: string;
 
-            if (searchQuery.title && searchQuery.title.trim() !== '') {
-                // Search by title
-                const query = searchQuery.title.trim().replace(/\s+/g, '_');
-                searchUrl = `${baseUrl}/search/story/${encodeURIComponent(query)}?page=${page}`;
+            if (query.title && query.title.trim() !== '') {
+                const searchQuery = query.title.trim().replace(/\s+/g, '_');
+                searchUrl = `${baseUrl}/search/story/${encodeURIComponent(searchQuery)}?page=${page}`;
             } else {
-                // Browse all manga
                 searchUrl = `${baseUrl}/manga_list?type=latest&category=all&state=all&page=${page}`;
             }
 
-            const request = App.createRequest({
+            const request = {
                 url: searchUrl,
                 method: 'GET',
-            });
+            };
 
-            const response = await request.send();
-            const data = await response.text();
-            const $ = this.cheerio.load(data);
-
-            const results = parseSearchResults($, baseUrl);
+            const [_response, data] = await Application.scheduleRequest(request);
+            const htmlStr = Application.arrayBufferToUTF8String(data);
+            const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
+            const items = parseSearchResults($, baseUrl);
             
-            // Check for next page
             const hasNextPage = $('div.group-page a.page-select + a').length > 0;
 
             return {
-                results,
+                items,
                 metadata: hasNextPage ? { page: page + 1 } : undefined,
             };
         } catch (error) {
             console.error('[MangaBat] Search error:', error);
-            return {
-                results: [],
-                metadata: undefined,
-            };
+            return { items: [] };
         }
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
-        const baseUrl = info.websiteBaseURL;
         const url = mangaId.startsWith('http') ? mangaId : `${baseUrl}${mangaId}`;
-
-        const request = App.createRequest({
+        const request = {
             url,
             method: 'GET',
-        });
+        };
 
-        const response = await request.send();
-        const data = await response.text();
-        const $ = this.cheerio.load(data);
+        const [_response, data] = await Application.scheduleRequest(request);
+        const htmlStr = Application.arrayBufferToUTF8String(data);
+        const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
         return parseMangaDetails($, mangaId);
     }
 
-    async getChapters(mangaId: string): Promise<Chapter[]> {
-        const baseUrl = info.websiteBaseURL;
+    async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
+        const mangaId = sourceManga.mangaId;
         const url = mangaId.startsWith('http') ? mangaId : `${baseUrl}${mangaId}`;
 
-        const request = App.createRequest({
+        const request = {
             url,
             method: 'GET',
-        });
+        };
 
-        const response = await request.send();
-        const data = await response.text();
-        const $ = this.cheerio.load(data);
+        const [_response, data] = await Application.scheduleRequest(request);
+        const htmlStr = Application.arrayBufferToUTF8String(data);
+        const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
-        return parseChapters($, mangaId);
+        return parseChapters($, sourceManga);
     }
 
-    async getChapterDetails(mangaId: string, chapterId: string): Promise<Chapter> {
-        const chapters = await this.getChapters(mangaId);
-        return (
-            chapters.find((chapter: Chapter) => chapter.chapterId === chapterId) ??
-            chapters[0] ??
-            ({
-                chapterId,
-                mangaId,
-                name: 'Unknown',
-                langCode: '🇬🇧',
-                chapNum: 0,
-                time: new Date(0),
-            } as Chapter)
-        );
-    }
-
-    async getChapterPages(chapterId: string): Promise<string[]> {
-        const baseUrl = info.websiteBaseURL;
+    async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+        const chapterId = chapter.chapterId;
         const url = chapterId.startsWith('http') ? chapterId : `${baseUrl}${chapterId}`;
 
-        const request = App.createRequest({
+        const request = {
             url,
             method: 'GET',
-        });
+        };
 
-        const response = await request.send();
-        const data = await response.text();
-        const $ = this.cheerio.load(data);
+        const [_response, data] = await Application.scheduleRequest(request);
+        const htmlStr = Application.arrayBufferToUTF8String(data);
+        const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
-        return parseChapterPages($);
+        const pages = parseChapterPages($);
+        
+        return {
+            id: chapter.chapterId,
+            mangaId: chapter.sourceManga.mangaId,
+            pages,
+        };
     }
 
-    async getSearchTags(): Promise<import('@paperback/types').TagSection[]> {
+    async getSearchFilters(): Promise<any[]> {
+        return [];
+    }
+
+    async getSortingOptions(): Promise<any[]> {
         return [];
     }
 }
+
+export const MangaBat = new MangaBatExtension();

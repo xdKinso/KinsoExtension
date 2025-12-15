@@ -1,26 +1,27 @@
-import type {
-    Chapter,
-    PartialSourceManga,
-    SourceManga,
-    Tag,
+import {
+    ContentRating,
+    type Chapter,
+    type SearchResultItem,
+    type SourceManga,
 } from '@paperback/types';
-import * as cheerio from 'cheerio';
+import type { CheerioAPI } from 'cheerio';
 
-export function parseSearchResults($: cheerio.CheerioAPI, baseUrl: string): PartialSourceManga[] {
-    const results: PartialSourceManga[] = [];
+export function parseSearchResults($: CheerioAPI, _baseUrl: string): SearchResultItem[] {
+    const results: SearchResultItem[] = [];
     
     $('div.list-story-item').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('h3 a').first();
         const url = $link.attr('href');
         const title = $link.attr('title') || $link.text().trim();
-        const image = $elem.find('img').attr('src');
+        const imageUrl = $elem.find('img').attr('src') || '';
 
         if (url && title) {
             results.push({
                 mangaId: url,
-                title: title,
-                image: image || '',
+                imageUrl,
+                title,
+                subtitle: undefined,
             });
         }
     });
@@ -28,83 +29,63 @@ export function parseSearchResults($: cheerio.CheerioAPI, baseUrl: string): Part
     return results;
 }
 
-export function parseMangaDetails($: cheerio.CheerioAPI, mangaId: string): SourceManga {
+export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
     const $infoPanel = $('div.panel-story-info');
     
-    const title = $infoPanel.find('h1').first().text().trim();
-    const image = $infoPanel.find('span.info-image img').attr('src') || '';
-    
-    const altTitles: string[] = [];
-    $infoPanel.find('td.table-label:contains("Alternative")').next().find('h2').each((_, elem) => {
-        const altTitle = $(elem).text().trim();
-        if (altTitle) altTitles.push(altTitle);
-    });
-
+    const title = $infoPanel.find('h1').first().text().trim() || 'Unknown';
+    const thumbnailUrl = $infoPanel.find('span.info-image img').attr('src') || '';
+    const synopsis = $('div#panel-story-info-description').text().replace('Description :', '').trim();
     const author = $infoPanel.find('td.table-label:contains("Author")').next().text().trim();
-    const statusText = $infoPanel.find('td.table-label:contains("Status")').next().text().trim();
-    
-    const tags: Tag[] = [];
+
+    const tags: { id: string; title: string }[] = [];
     $infoPanel.find('td.table-label:contains("Genres")').next().find('a').each((_, elem) => {
         const genreText = $(elem).text().trim();
         if (genreText) {
-            tags.push({
-                id: genreText.toLowerCase(),
-                label: genreText,
-            });
+            tags.push({ id: genreText.toLowerCase(), title: genreText });
         }
     });
 
-    const description = $('div#panel-story-info-description').text()
-        .replace('Description :', '')
-        .trim();
-
-    let status = 'ONGOING';
-    if (statusText) {
-        if (statusText.toLowerCase().includes('completed')) {
-            status = 'COMPLETED';
-        } else if (statusText.toLowerCase().includes('ongoing')) {
-            status = 'ONGOING';
-        }
-    }
-
     return {
         mangaId,
-        titles: [title, ...altTitles],
-        image,
-        status,
-        author: author || 'Unknown',
-        tags: [{ id: 'genre', label: 'Genres', tags }],
-        desc: description,
+        mangaInfo: {
+            primaryTitle: title,
+            secondaryTitles: [],
+            thumbnailUrl,
+            synopsis,
+            contentRating: ContentRating.EVERYONE,
+            status: 'ONGOING',
+            tagGroups: tags.length > 0 ? [{ id: 'genre', title: 'Genres', tags }] : [],
+        },
     };
 }
 
-export function parseChapters($: cheerio.CheerioAPI, mangaId: string): Chapter[] {
+export function parseChapters($: CheerioAPI, sourceManga: SourceManga): Chapter[] {
     const chapters: Chapter[] = [];
 
     $('div.row-content-chapter li.a-h').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('a').first();
         const url = $link.attr('href');
-        const name = $link.text().trim();
+        const title = $link.text().trim();
         const dateText = $elem.find('span.chapter-time').attr('title') || '';
 
-        if (url && name) {
-            let time = new Date(0);
+        if (url && title) {
+            let publishDate = new Date(0);
             if (dateText) {
                 try {
-                    time = new Date(dateText);
+                    publishDate = new Date(dateText);
                 } catch {
-                    // Keep default date
+                    // Keep default
                 }
             }
 
             chapters.push({
                 chapterId: url,
-                mangaId,
-                name,
+                sourceManga,
+                title,
                 langCode: '🇬🇧',
-                chapNum: parseFloat(name.match(/\d+(\.\d+)?/)?.[0] || '0'),
-                time,
+                chapNum: parseFloat(title.match(/\d+(\.\d+)?/)?.[0] || '0'),
+                publishDate,
             });
         }
     });
@@ -112,59 +93,11 @@ export function parseChapters($: cheerio.CheerioAPI, mangaId: string): Chapter[]
     return chapters;
 }
 
-export function parseChapterPages($: cheerio.CheerioAPI): string[] {
+export function parseChapterPages($: CheerioAPI): string[] {
     const pages: string[] = [];
-
     $('div.container-chapter-reader img').each((_, element) => {
         const src = $(element).attr('src');
-        if (src) {
-            pages.push(src);
-        }
+        if (src) pages.push(src);
     });
-
     return pages;
-}
-
-export function parseHotManga($: cheerio.CheerioAPI, baseUrl: string): PartialSourceManga[] {
-    const results: PartialSourceManga[] = [];
-    
-    $('div.item').each((_, element) => {
-        const $elem = $(element);
-        const $link = $elem.find('a').first();
-        const url = $link.attr('href');
-        const title = $elem.find('h3').text().trim();
-        const image = $elem.find('img').attr('src');
-
-        if (url && title) {
-            results.push({
-                mangaId: url,
-                title: title,
-                image: image || '',
-            });
-        }
-    });
-
-    return results;
-}
-
-export function parseLatestUpdates($: cheerio.CheerioAPI, baseUrl: string): PartialSourceManga[] {
-    const results: PartialSourceManga[] = [];
-    
-    $('div.item').each((_, element) => {
-        const $elem = $(element);
-        const $link = $elem.find('a').first();
-        const url = $link.attr('href');
-        const title = $elem.find('h3').text().trim();
-        const image = $elem.find('img').attr('src');
-
-        if (url && title) {
-            results.push({
-                mangaId: url,
-                title: title,
-                image: image || '',
-            });
-        }
-    });
-
-    return results;
 }
