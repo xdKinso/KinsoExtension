@@ -3,8 +3,10 @@ import {
     type Chapter,
     type ChapterDetails,
     type ChapterProviding,
+    type CloudflareBypassRequestProviding,
     type Extension,
     type PagedResults,
+    type Request,
     type SearchQuery,
     type SearchResultItem,
     type SearchResultsProviding,
@@ -26,7 +28,8 @@ const baseUrl = 'https://demonicscans.org';
 
 type MangaDemonImplementation = Extension &
     SearchResultsProviding &
-    ChapterProviding;
+    ChapterProviding &
+    CloudflareBypassRequestProviding;
 
 export class MangaDemonExtension implements MangaDemonImplementation {
     requestManager = new Interceptor('main');
@@ -132,6 +135,17 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
     async getSortingOptions(): Promise<any[]> {
         return [];
+    }
+
+    async getCloudflareBypassRequest(): Promise<Request> {
+        const { generateBrowserHeaders } = await import('../MangaPark/browserHeaders');
+        const headers = generateBrowserHeaders(baseUrl);
+        
+        return {
+            url: baseUrl,
+            method: 'GET',
+            headers,
+        };
     }
 }
 
