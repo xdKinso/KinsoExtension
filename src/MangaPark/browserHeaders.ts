@@ -38,7 +38,7 @@ export function generateBrowserHeaders(url: string): Record<string, string> {
       !agent.includes('crawler') &&
       ua.browserName !== 'IE'
     );
-  })?.userAgent || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  }) || 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
   const isMobile = userAgent.toLowerCase().includes('mobile');
   const isImageRequest = url.includes('/media/') || /\.(jpg|jpeg|png|webp|gif)/.test(url);
