@@ -93,6 +93,19 @@ export class MangaParkExtension implements MangaParkImplementation {
     return new SettingsForm();
   }
 
+  async getCloudflareBypassRequest(): Promise<Request> {
+    return {
+      url: baseUrl,
+      method: "GET",
+      headers: {
+        "user-agent": await Application.getDefaultUserAgent(),
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        "dnt": "1",
+      },
+    };
+  }
+
   async getDiscoverSectionItems(
     section: DiscoverSection,
     metadata: metadata | undefined,
