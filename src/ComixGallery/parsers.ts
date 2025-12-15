@@ -144,10 +144,7 @@ export class JsonParser {
     allPages.sort((a, b) => a.page - b.page);
     const chaptersArray = allPages.flatMap((p) => p.data);
     return chaptersArray.map((chapter) => {
-      let version = chapter.scanlation_group?.name ?? "";
-      if (chapter.volume > 0) {
-        version = version.length > 0 ? `${version} Volumes` : "Volumes";
-      }
+      const version = chapter.scanlation_group?.name ?? "";
       return {
         chapterId: chapter.chapter_id.toString(),
         sourceManga: manga,
@@ -155,7 +152,6 @@ export class JsonParser {
         chapNum: chapter.number,
         title: chapter.name,
         version: version,
-        volume: chapter.volume,
         publishDate: new Date(chapter.updated_at * 1000),
         creationDate: new Date(chapter.created_at * 1000),
       };
