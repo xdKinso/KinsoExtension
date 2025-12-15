@@ -90,3 +90,13 @@ export function getRequestDelay(requestType: 'page' | 'image' | 'api'): number {
       return getRandomDelay();
   }
 }
+
+// Calculate exponential backoff delay for retries
+export function getRetryDelay(attemptNumber: number): number {
+  // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+  const baseDelay = 2000;
+  const delay = baseDelay * Math.pow(2, attemptNumber - 1);
+  // Add jitter to prevent thundering herd
+  const jitter = Math.random() * 1000;
+  return Math.min(delay + jitter, 32000); // Cap at 32 seconds
+}

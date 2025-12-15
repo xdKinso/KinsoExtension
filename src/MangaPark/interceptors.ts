@@ -68,6 +68,19 @@ export class Interceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
+    // Log Cloudflare errors for debugging
+    if (response.status === 523) {
+      console.error(`[MangaPark] 523 Origin Unreachable for: ${request.url}`);
+      console.error(`[MangaPark] This usually means rate limiting is too aggressive or origin is down`);
+      console.error(`[MangaPark] Current rate limit: 1 request every 3 seconds`);
+    } else if (response.status === 522) {
+      console.error(`[MangaPark] 522 Connection Timed Out for: ${request.url}`);
+    } else if (response.status === 521) {
+      console.error(`[MangaPark] 521 Web Server Down for: ${request.url}`);
+    } else if (response.status === 520) {
+      console.error(`[MangaPark] 520 Unknown Error for: ${request.url}`);
+    }
+
     // Track failed CDN servers
     if (isCDNImageUrl(request.url)) {
       const currentServer = getServerFromUrl(request.url);

@@ -57,9 +57,12 @@ export class MangaParkExtension implements MangaParkImplementation {
   cookieStorageInterceptor = new CookieStorageInterceptor({
     storage: "stateManager",
   });
+  // VERY conservative rate limiting to prevent 523 "Origin Unreachable" errors
+  // 1 request every 3 seconds - MangaPark's Cloudflare is extremely aggressive
+  // This is slower but prevents getting blocked completely
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 1,
-    bufferInterval: 1,
+    bufferInterval: 3,
     ignoreImages: true,
   });
 
