@@ -158,27 +158,50 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
 export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
     const results: DiscoverSectionItem[] = [];
     
-    // Find the "Latest Updates" section heading
-    const $latestUpdatesSection = $('h1').filter((_, el) => $(el).text().trim() === 'Latest Updates');
+    // Find the "Latest Updates" heading and get everything after it until the next major section
+    let foundLatestUpdates = false;
+    let foundNextSection = false;
     
-    if ($latestUpdatesSection.length > 0) {
-        // Get the parent container and find all h2 manga links after the heading
-        const $container = $latestUpdatesSection.parent();
+    $('h1, h2').each((_, element) => {
+        const $elem = $(element);
+        const text = $elem.text().trim();
         
-        $container.find('h2').each((_, element) => {
-            const $h2 = $(element);
-            const $link = $h2.find('a[href*="/manga/"]').first();
+        // Mark when we find Latest Updates section
+        if ($elem.is('h1') && text === 'Latest Updates') {
+            foundLatestUpdates = true;
+            return; // continue to next iteration
+        }
+        
+        // Stop when we hit another h1 section after Latest Updates
+        if (foundLatestUpdates && $elem.is('h1') && text !== 'Latest Updates') {
+            foundNextSection = true;
+            return false; // break the loop
+        }
+        
+        // Process h2 elements within Latest Updates section
+        if (foundLatestUpdates && !foundNextSection && $elem.is('h2')) {
+            const $link = $elem.find('a[href*="/manga/"]').first();
             const url = $link.attr('href');
             const title = $link.text().trim();
             
             if (url && title) {
-                // Look for an image within the same parent structure (before the h2)
-                const $parent = $h2.parent();
-                const imageUrl = $parent.find('img[src]').first().attr('src');
+                // Try to find the manga's thumbnail by fetching from the manga details page structure
+                // For now, use a placeholder or try to find nearby images
+                const $section = $elem.closest('section, article, div[class]');
+                let imageUrl = $section.find('img[src]').first().attr('src');
+                
+                // If no image found in section, look in siblings before this h2
+                if (!imageUrl) {
+                    imageUrl = $elem.prevAll().find('img[src]').first().attr('src');
+                }
+                
+                // Still no image? Check parent's images
+                if (!imageUrl) {
+                    imageUrl = $elem.parent().find('img[src]').first().attr('src');
+                }
                 
                 if (imageUrl) {
                     const encodedUrl = encodeURIComponent(url);
-                    // Check for duplicates
                     if (!results.some(r => 'mangaId' in r && r.mangaId === encodedUrl)) {
                         results.push({
                             mangaId: encodedUrl,
@@ -188,8 +211,8 @@ export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSect
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
     return results;
 }
