@@ -147,6 +147,10 @@ export class MangaDemonExtension implements MangaDemonImplementation {
             headers,
         };
     }
+
+    async saveCloudflareBypassCookies(_cookies: any[]): Promise<void> {
+        // Cloudflare cookies are handled automatically by the interceptor
+    }
 }
 
 export const MangaDemon = new MangaDemonExtension();
