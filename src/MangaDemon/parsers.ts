@@ -35,7 +35,15 @@ export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
     const title = $container.find('h1.big-fat-titles').first().text().trim() || 'Unknown';
     const thumbnailUrl = $container.find('div#manga-page img').attr('src') || '';
     const synopsis = $container.find('div#manga-info-rightColumn > div > div.white-font').text().trim();
-    const author = $container.find('div#manga-info-stats > div:has(> li:eq(0):contains(Author)) > li:eq(1)').text().trim();
+    
+    let author = 'Unknown';
+    $container.find('div#manga-info-stats > div').each((_, elem) => {
+        const $div = $(elem);
+        const firstLi = $div.find('li').first().text().trim();
+        if (firstLi.includes('Author')) {
+            author = $div.find('li').eq(1).text().trim();
+        }
+    });
 
     const tags: { id: string; title: string }[] = [];
     $container.find('div.genres-list > li').each((_, elem) => {
