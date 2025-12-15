@@ -188,14 +188,21 @@ export class ThunderScansExtension implements ThunderScansImplementation {
         const title = $elem.find('.tt').text().trim();
         const image = $elem.find('img').first().attr('src') || '';
         
-        if (href && title) {
+        // Get the first chapter link
+        const $firstChapter = $elem.find('.chapter-list a').first();
+        const chapterHref = $firstChapter.attr('href');
+        const chapterText = $firstChapter.find('.epxs').text().trim();
+        
+        if (href && title && chapterHref) {
           const mangaId = this.extractMangaId(href);
-          if (mangaId) {
+          const chapterId = this.extractChapterId(chapterHref);
+          if (mangaId && chapterId) {
             items.push({
-              type: 'chapterUpdatesItem',
+              type: 'chapterUpdatesCarouselItem',
               mangaId: mangaId,
               title: title,
               imageUrl: image,
+              chapterId: chapterId,
             });
           }
         }
