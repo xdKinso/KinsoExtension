@@ -172,7 +172,7 @@ export class MangaDemonExtension implements MangaDemonImplementation {
             {
                 id: 'latest_updates',
                 title: 'Latest Updates',
-                type: DiscoverSectionType.chapterUpdates,
+                type: DiscoverSectionType.simpleCarousel,
             },
         ];
     }
