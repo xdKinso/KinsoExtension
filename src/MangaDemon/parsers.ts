@@ -112,11 +112,13 @@ export function parseChapterPages($: CheerioAPI): string[] {
 export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
     const results: DiscoverSectionItem[] = [];
     
-    $('div#mostviewed > a').each((_, element) => {
+    // The "Most Viewed Today" section contains direct anchor tags with images
+    $('h1:contains("Most Viewed Today")').parent().find('a[href*="/manga/"]').each((_, element) => {
         const $elem = $(element);
         const url = $elem.attr('href');
-        const title = $elem.find('div.info > div').first().text().trim();
-        const imageUrl = $elem.find('img').attr('src') || '';
+        const $img = $elem.find('img');
+        const imageUrl = $img.attr('src') || '';
+        const title = $img.attr('alt') || $elem.text().trim();
 
         if (url && title) {
             results.push({
@@ -133,11 +135,13 @@ export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSe
 export function parseLatestTranslations($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
     const results: DiscoverSectionItem[] = [];
     
-    $('div#latesttranslations > a').each((_, element) => {
+    // The "Our Latest Translations" section contains direct anchor tags
+    $('h1:contains("Our Latest Translations")').parent().find('a[href*="/manga/"]').each((_, element) => {
         const $elem = $(element);
         const url = $elem.attr('href');
-        const title = $elem.find('div.info > div').first().text().trim();
-        const imageUrl = $elem.find('img').attr('src') || '';
+        const $img = $elem.find('img');
+        const imageUrl = $img.attr('src') || '';
+        const title = $img.attr('alt') || $elem.text().trim();
 
         if (url && title) {
             results.push({
@@ -154,20 +158,26 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
 export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
     const results: DiscoverSectionItem[] = [];
     
-    $('div#updates-container > div.updates-element').each((_, element) => {
+    // The "Latest Updates" section has h2 tags with manga links inside sections
+    $('h1:contains("Latest Updates")').parent().find('h2 a[href*="/manga/"]').each((_, element) => {
         const $elem = $(element);
-        const $link = $elem.find('div.updates-element-info a').first();
-        const url = $link.attr('href');
-        const title = $link.text().trim();
-        const imageUrl = $elem.find('div.thumb img').attr('src') || '';
+        const url = $elem.attr('href');
+        const title = $elem.text().trim();
+        
+        // Find the nearest image in the parent section
+        const $section = $elem.closest('section, div');
+        const imageUrl = $section.find('img').first().attr('src') || '';
 
         if (url && title) {
-            results.push({
-                mangaId: encodeURIComponent(url),
-                imageUrl,
-                title,
-                subtitle: undefined,
-            } as DiscoverSectionItem);
+            const encodedUrl = encodeURIComponent(url);
+            // Check for duplicates by comparing encoded URLs
+            if (!results.some(r => 'mangaId' in r && r.mangaId === encodedUrl)) {
+                results.push({
+                    mangaId: encodedUrl,
+                    imageUrl,
+                    title,
+                } as DiscoverSectionItem);
+            }
         }
     });
 
