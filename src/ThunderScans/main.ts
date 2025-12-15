@@ -97,12 +97,17 @@ export class ThunderScansExtension implements ThunderScansImplementation {
       {
         id: "popular",
         title: "Popular Today",
+        type: DiscoverSectionType.prominentCarousel,
+      },
+      {
+        id: "editors",
+        title: "Editor's Pick",
         type: DiscoverSectionType.simpleCarousel,
       },
       {
         id: "latest",
-        title: "Latest Updates",
-        type: DiscoverSectionType.simpleCarousel,
+        title: "Latest Update",
+        type: DiscoverSectionType.chapterUpdates,
       },
     ];
   }
@@ -112,13 +117,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
     const page = metadata?.page ?? 1;
-    let url = DOMAIN;
-
-    if (section.id === "popular") {
-      url = `${DOMAIN}/`;
-    } else if (section.id === "latest") {
-      url = `${DOMAIN}/page/${page}/`;
-    }
+    const url = `${DOMAIN}${section.id === "latest" ? `/page/${page}/` : "/"}`;
 
     const request = {
       url: url,
@@ -126,23 +125,23 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     };
 
     const $ = await this.fetchCheerio(request);
-
     const items: DiscoverSectionItem[] = [];
     
     if (section.id === "popular") {
-      // Parse Popular Today section - use .bsx selector
-      $('.bsx').each((_, element) => {
+      // Parse Popular Today - first .pop-list section
+      const $popularSection = $('.pop-list').first();
+      $popularSection.find('.swiper-slide .bsx').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('a').first();
         const href = $link.attr('href');
         const title = $elem.find('.tt').text().trim();
-        const image = $elem.find('img').first().attr('src') || '';
+        const image = $elem.find('img.ts-post-image, img.wp-post-image, img').first().attr('src') || '';
         
         if (href && title) {
           const mangaId = this.extractMangaId(href);
           if (mangaId) {
             items.push({
-              type: 'simpleCarouselItem',
+              type: 'prominentCarouselItem',
               mangaId: mangaId,
               title: title,
               imageUrl: image,
@@ -150,9 +149,39 @@ export class ThunderScansExtension implements ThunderScansImplementation {
           }
         }
       });
+    } else if (section.id === "editors") {
+      // Parse Editor's Pick - second .pop-list section (after "Editor's Pick" h2)
+      let foundEditorsSection = false;
+      $('h2').each((_, h2Element) => {
+        const h2Text = $(h2Element).text().trim();
+        if (h2Text.includes("Editor") && !foundEditorsSection) {
+          foundEditorsSection = true;
+          // Find the .pop-list that comes after this h2
+          const $editorsSection = $(h2Element).closest('.releases').next('.pop-list');
+          $editorsSection.find('.swiper-slide .bsx').each((_, element) => {
+            const $elem = $(element);
+            const $link = $elem.find('a').first();
+            const href = $link.attr('href');
+            const title = $elem.find('.tt').text().trim();
+            const image = $elem.find('img.ts-post-image, img.wp-post-image, img').first().attr('src') || '';
+            
+            if (href && title) {
+              const mangaId = this.extractMangaId(href);
+              if (mangaId) {
+                items.push({
+                  type: 'simpleCarouselItem',
+                  mangaId: mangaId,
+                  title: title,
+                  imageUrl: image,
+                });
+              }
+            }
+          });
+        }
+      });
     } else if (section.id === "latest") {
-      // Parse Latest Updates section - use .bsx selector
-      $('.bsx').each((_, element) => {
+      // Parse Latest Update section - main content area with .bsx
+      $('.bs .bsx').each((_, element) => {
         const $elem = $(element);
         const $link = $elem.find('a').first();
         const href = $link.attr('href');
@@ -163,7 +192,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
           const mangaId = this.extractMangaId(href);
           if (mangaId) {
             items.push({
-              type: 'simpleCarouselItem',
+              type: 'chapterUpdatesItem',
               mangaId: mangaId,
               title: title,
               imageUrl: image,
@@ -175,7 +204,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     return {
       items: items,
-      metadata: { page: page + 1 },
+      metadata: section.id === "latest" && items.length > 0 ? { page: page + 1 } : undefined,
     };
   }
 
