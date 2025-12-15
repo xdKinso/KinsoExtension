@@ -58,8 +58,8 @@ export class MangaParkExtension implements MangaParkImplementation {
     storage: "stateManager",
   });
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 2,
-    bufferInterval: 5,
+    numberOfRequests: 1,
+    bufferInterval: 1,
     ignoreImages: true,
   });
 
@@ -650,11 +650,24 @@ export class MangaParkExtension implements MangaParkImplementation {
       }
     });
 
-    // Return pages as-is - the interceptor will handle server rotation on failures
+    // Apply proactive image fallback like Mihon extension
+    // Import necessary functions from interceptors
+    const { getServerFromUrl, replaceServer, getNextWorkingServer, failedServers } = await import("./interceptors");
+    
+    const fixedPages = pages.map(url => {
+      const currentServer = getServerFromUrl(url);
+      // If this URL uses a server we know has failed, replace it proactively
+      if (currentServer && failedServers.has(currentServer)) {
+        const newServer = getNextWorkingServer(currentServer);
+        return replaceServer(url, newServer);
+      }
+      return url;
+    });
+
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages: pages,
+      pages: fixedPages,
     };
   }
 
