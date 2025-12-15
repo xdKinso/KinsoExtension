@@ -94,15 +94,14 @@ export class MangaParkExtension implements MangaParkImplementation {
   }
 
   async getCloudflareBypassRequest(): Promise<Request> {
+    // Use realistic browser headers from our utility
+    const { generateBrowserHeaders } = await import("./browserHeaders");
+    const headers = generateBrowserHeaders(baseUrl);
+    
     return {
       url: baseUrl,
       method: "GET",
-      headers: {
-        "user-agent": await Application.getDefaultUserAgent(),
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "accept-language": "en-US,en;q=0.9",
-        "dnt": "1",
-      },
+      headers,
     };
   }
 

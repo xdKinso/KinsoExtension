@@ -1,4 +1,5 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
+import { generateBrowserHeaders } from "./browserHeaders";
 
 // Priority ordered server list from Mihon extension (most reliable first)
 const CDN_SERVERS = ['s01', 's03', 's04', 's00', 's05', 's06', 's07', 's08', 's09', 's10', 's02'];
@@ -50,15 +51,13 @@ export class Interceptor extends PaperbackInterceptor {
       }
     }
 
-    // Set proper headers (based on Mihon extension)
+    // Generate realistic browser-like headers with random user agent rotation
+    const browserHeaders = generateBrowserHeaders(request.url);
+    
+    // Merge with any existing headers (cookies, etc.)
     request.headers = {
       ...request.headers,
-      "user-agent": await Application.getDefaultUserAgent(),
-      "accept": isCDNImageUrl(request.url) 
-        ? "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
-        : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "referer": "https://mangapark.net/",
-      "accept-language": "en-US,en;q=0.9",
+      ...browserHeaders,
     };
 
     return request;
