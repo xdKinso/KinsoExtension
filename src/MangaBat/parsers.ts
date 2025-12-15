@@ -21,7 +21,6 @@ export function parseSearchResults($: CheerioAPI, _baseUrl: string): SearchResul
                 mangaId: url,
                 imageUrl,
                 title,
-                subtitle: undefined,
             });
         }
     });

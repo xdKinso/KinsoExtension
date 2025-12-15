@@ -22,7 +22,6 @@ export function parseSearchResults($: CheerioAPI, baseUrl: string): SearchResult
                 mangaId: encodeURIComponent(url),
                 imageUrl: imageUrl,
                 title: title,
-                subtitle: undefined,
             });
         }
     });
@@ -124,7 +123,6 @@ export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSe
                 mangaId: encodeURIComponent(url),
                 imageUrl,
                 title,
-                subtitle: undefined,
             } as DiscoverSectionItem);
         }
     });
@@ -146,7 +144,6 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
                 mangaId: encodeURIComponent(url),
                 imageUrl,
                 title,
-                subtitle: undefined,
             } as DiscoverSectionItem);
         }
     });
