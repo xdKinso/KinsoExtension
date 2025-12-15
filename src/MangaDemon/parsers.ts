@@ -158,28 +158,38 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
 export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSectionItem[] {
     const results: DiscoverSectionItem[] = [];
     
-    // The "Latest Updates" section has h2 tags with manga links inside sections
-    $('h1:contains("Latest Updates")').parent().find('h2 a[href*="/manga/"]').each((_, element) => {
-        const $elem = $(element);
-        const url = $elem.attr('href');
-        const title = $elem.text().trim();
+    // Find the "Latest Updates" section heading
+    const $latestUpdatesSection = $('h1').filter((_, el) => $(el).text().trim() === 'Latest Updates');
+    
+    if ($latestUpdatesSection.length > 0) {
+        // Get the parent container and find all h2 manga links after the heading
+        const $container = $latestUpdatesSection.parent();
         
-        // Find the nearest image in the parent section
-        const $section = $elem.closest('section, div');
-        const imageUrl = $section.find('img').first().attr('src');
-
-        if (url && title && imageUrl) {
-            const encodedUrl = encodeURIComponent(url);
-            // Check for duplicates by comparing encoded URLs
-            if (!results.some(r => 'mangaId' in r && r.mangaId === encodedUrl)) {
-                results.push({
-                    mangaId: encodedUrl,
-                    imageUrl,
-                    title,
-                } as DiscoverSectionItem);
+        $container.find('h2').each((_, element) => {
+            const $h2 = $(element);
+            const $link = $h2.find('a[href*="/manga/"]').first();
+            const url = $link.attr('href');
+            const title = $link.text().trim();
+            
+            if (url && title) {
+                // Look for an image within the same parent structure (before the h2)
+                const $parent = $h2.parent();
+                const imageUrl = $parent.find('img[src]').first().attr('src');
+                
+                if (imageUrl) {
+                    const encodedUrl = encodeURIComponent(url);
+                    // Check for duplicates
+                    if (!results.some(r => 'mangaId' in r && r.mangaId === encodedUrl)) {
+                        results.push({
+                            mangaId: encodedUrl,
+                            imageUrl,
+                            title,
+                        } as DiscoverSectionItem);
+                    }
+                }
             }
-        }
-    });
+        });
+    }
 
     return results;
 }
