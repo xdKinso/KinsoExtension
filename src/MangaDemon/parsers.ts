@@ -117,10 +117,10 @@ export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSe
         const $elem = $(element);
         const url = $elem.attr('href');
         const $img = $elem.find('img');
-        const imageUrl = $img.attr('src') || '';
+        const imageUrl = $img.attr('src');
         const title = $img.attr('alt') || $elem.text().trim();
 
-        if (url && title) {
+        if (url && title && imageUrl) {
             results.push({
                 mangaId: encodeURIComponent(url),
                 imageUrl,
@@ -140,10 +140,10 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
         const $elem = $(element);
         const url = $elem.attr('href');
         const $img = $elem.find('img');
-        const imageUrl = $img.attr('src') || '';
+        const imageUrl = $img.attr('src');
         const title = $img.attr('alt') || $elem.text().trim();
 
-        if (url && title) {
+        if (url && title && imageUrl) {
             results.push({
                 mangaId: encodeURIComponent(url),
                 imageUrl,
@@ -166,9 +166,9 @@ export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSect
         
         // Find the nearest image in the parent section
         const $section = $elem.closest('section, div');
-        const imageUrl = $section.find('img').first().attr('src') || '';
+        const imageUrl = $section.find('img').first().attr('src');
 
-        if (url && title) {
+        if (url && title && imageUrl) {
             const encodedUrl = encodeURIComponent(url);
             // Check for duplicates by comparing encoded URLs
             if (!results.some(r => 'mangaId' in r && r.mangaId === encodedUrl)) {
