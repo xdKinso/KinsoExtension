@@ -4,8 +4,6 @@ export default {
     version: '0.0.2',
     name: 'MangaBat',
     icon: 'icon.png',
-    author: 'KinsoExtension',
-    authorWebsite: 'https://github.com/kinso',
     description: 'Extension for MangaBat (mangabats.com)',
     language: 'multi',
     contentRating: ContentRating.EVERYONE,
