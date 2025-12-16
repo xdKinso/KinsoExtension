@@ -151,17 +151,19 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     const items: DiscoverSectionItem[] = [];
 
-    // Extract Hot Updates from the #hot_update section
-    $("#hot_update .item").each((_, element) => {
+    // Hot updates use a different container
+    $("div#hot_update > div.item").each((_, element) => {
       const unit = $(element);
+      
+      // Get title and link
       const titleLink = unit.find("h3.title a").first();
       const title = titleLink.text().trim();
       const href = titleLink.attr("href") || "";
+      
+      if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
-      mangaId = decodeURIComponent(mangaId)
-        .replace(/[^\w@.]/g, "_")
-        .trim();
+      if (!mangaId) return;
 
       const image = unit.find(".wrap_img img").attr("src") ?? "";
       const chapter = unit.find(".chapter a").first().text().trim();
@@ -171,14 +173,13 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
           imageUrl: image,
           title: title,
           mangaId: mangaId,
-          subtitle: chapter,
+          subtitle: chapter || undefined,
           type: "simpleCarouselItem",
           contentRating: pbconfig.contentRating,
         });
       }
     });
 
-    // No pagination available, so no next page
     return {
       items: items,
       metadata: undefined,
@@ -200,24 +201,21 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     const items: DiscoverSectionItem[] = [];
 
-    $("#book_list .item").each((_, element) => {
+    $("div#book_list > div.item").each((_, element) => {
       const unit = $(element);
-      const titleLink = unit.find("h3.title a").first();
-      const title = titleLink.text().trim();
+      
+      // Get title and link using correct selector
+      const titleLink = unit.find("div.text > h3 > a").first();
       const href = titleLink.attr("href") || "";
+      const title = titleLink.text().trim();
+      
+      if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
-      mangaId = decodeURIComponent(mangaId)
-        .replace(/[^\w@.]/g, "_")
-        .trim();
+      if (!mangaId) return;
 
-      const image = unit.find(".wrap_img img").attr("src") ?? "";
-
-      // Extract latest chapter info
-      const chapters = unit.find(".chapters .chapter a");
-      const latestChapter = chapters.first().text().trim();
-      const subtitleSpan = unit.find("h3.title span").text().trim().replace(/^-\s*/, "");
-      const subtitle = latestChapter || subtitleSpan;
+      // Get image with absolute URL
+      const image = unit.find("img").attr("src") ?? "";
 
       if (mangaId && title && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
@@ -225,7 +223,6 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
           imageUrl: image,
           title: title,
           mangaId: mangaId,
-          subtitle: subtitle,
           type: "simpleCarouselItem",
           contentRating: pbconfig.contentRating,
         });
@@ -632,31 +629,30 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
       let pages: string[] = [];
 
-      // Extract JavaScript variables
-      const scripts = $("script")
-        .toArray()
-        .filter(
-          (script) =>
-            $(script).text().includes("var ytaw") || $(script).text().includes("var thzq"),
-        )
-        .map((script) => $(script).text())
-        .join("");
+      const imageArrayNameRegex = /data-src['"],\s*(\w+)/;
+      const imageUrlRegex = /\'([^\']*)\'/;
 
-      const ytawMatch = scripts.match(/var ytaw\s*=\s*\[([^\]]+)\]/);
-      const thzqMatch = scripts.match(/var thzq\s*=\s*\[([^\]]+)\]/);
+      const imageScript = $("script:containsData(data-src)").first().html() || "";
 
-      const parseUrls = (matchStr: RegExpMatchArray | null) => {
-        if (!matchStr || !matchStr[1]) return [];
-        return matchStr[1]
-          .split(",")
-          .map((url) => url.trim().replace(/['"]/g, ""))
-          .filter((url) => url && !url.includes("about:blank"))
-          .map((url) => (url.startsWith("http") ? url : `${DOMAIN_NAME}${url}`)); // Ensure absolute URLs
-      };
+      if (imageScript) {
+        const imageArrayNameMatch = imageScript.match(imageArrayNameRegex);
+        if (imageArrayNameMatch && imageArrayNameMatch[1]) {
+          const imageArrayName = imageArrayNameMatch[1];
+          const imageArrayRegex = new RegExp(`var\\s+${imageArrayName}\\s*=\\s*\\[([^\\[]*)]`);
+          const imageArrayMatch = imageScript.match(imageArrayRegex);
 
-      pages = [...parseUrls(ytawMatch), ...parseUrls(thzqMatch)];
+          if (imageArrayMatch && imageArrayMatch[1]) {
+            const imageUrlMatches = imageArrayMatch[1].matchAll(/\'([^\']*)\'/g);
+            for (const match of imageUrlMatches) {
+              if (match[1]) {
+                pages.push(match[1]);
+              }
+            }
+          }
+        }
+      }
 
-      // Fallback: Extract from DOM elements
+      // Fallback: Extract from DOM elements if script parsing didn't work
       if (pages.length === 0) {
         $("#imgs .wrap_img img").each((_, img) => {
           let imageUrl = $(img).attr("data-src") || $(img).attr("src");
@@ -667,15 +663,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         });
       }
 
-      // Debugging Log
-      console.log(`Extracted pages: ${JSON.stringify(pages)}`);
-
       if (pages.length === 0) {
         throw new Error("No valid image URLs found");
       }
 
       return {
-        id: chapter.chapterId, // Return only the chapter ID, not the full URL
+        id: chapter.chapterId,
         mangaId: chapter.sourceManga.mangaId,
         pages: pages,
       };
@@ -701,65 +694,44 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    // Extract basic manga details
+    // Extract title
     const title = $("h1.heading").text().trim();
-    const image = $(".cover img").attr("src") ?? "";
-    const description = $(".summary p").text().trim();
+
+    // Extract cover image - use correct selector
+    const image = $("div.media div.cover img").attr("src") ?? "";
+
+    // Extract description/summary
+    const description = $(".summary > p").text().trim();
 
     // Extract alternative titles
-    const altTitles = $(".alt_name")
-      .text()
-      .trim()
-      .split(";")
-      .map((t) => t.trim())
-      .filter((t) => t);
+    const altNames: string[] = [];
+    const altNameText = $(".alt_name").text().trim();
+    if (altNameText) {
+      altNames.push(...altNameText.split(";").map((t) => t.trim()).filter((t) => t));
+    }
 
     // Extract authors
     const authors: string[] = [];
-    $('td:contains("Author")')
-      .next()
-      .find("a")
-      .each((_, el) => {
-        authors.push($(el).text().trim());
-      });
+    $(".author").each((_, el) => {
+      const author = $(el).text().trim();
+      if (author) authors.push(author);
+    });
 
     // Extract status
     let status = "UNKNOWN";
-    const statusLabel = $('div.d-cell-small.label:contains("Status")');
-    if (statusLabel.length) {
-      const statusElement = statusLabel.siblings("div.value");
-      if (statusElement.length) {
-        const statusText = statusElement.text().trim().toLowerCase();
-        if (statusText.includes("ongoing")) {
-          status = "ONGOING";
-        } else if (statusText.includes("completed")) {
-          status = "COMPLETED";
-        } else if (statusText.includes("hiatus")) {
-          status = "HIATUS";
-        } else if (statusText.includes("discontinued")) {
-          status = "DISCONTINUED";
-        }
-      }
+    const statusText = $(".value.status").text().trim().toLowerCase();
+    if (statusText.includes("ongoing")) {
+      status = "ONGOING";
+    } else if (statusText.includes("completed")) {
+      status = "COMPLETED";
     }
 
     // Extract genres
-    // Extract genres
     const genres: string[] = [];
-    $('div.label:contains("Genres")').each((_, el) => {
-      $(el)
-        .next("div.value")
-        .find("a")
-        .each((_, genreEl) => {
-          genres.push($(genreEl).text().trim());
-        });
+    $(".genres > a").each((_, el) => {
+      const genre = $(el).text().trim();
+      if (genre) genres.push(genre);
     });
-
-    // Extract rating
-    // let rating = 1;
-    // const ratingText = $('.score').text().trim();
-    // if (ratingText) {
-    //     rating = parseFloat(ratingText) / 2; // Convert to 5-point scale
-    // }
 
     // Build tag sections
     const tags: TagSection[] = [];
@@ -768,20 +740,20 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         id: "genres",
         title: "Genres",
         tags: genres.map((genre) => ({
-          id: genre.toLowerCase().replace(/\s+/g, "_"),
+          id: genre.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, ""),
           title: genre,
         })),
       });
     }
 
-    // Determine content rating based on genres
+    // Determine content rating
     let contentRating = ContentRating.EVERYONE;
-    const matureGenres = ["Adult", "Ecchi", "Erotica", "Sexual violence", "Gore"];
-    const adultGenres = ["Erotica", "Sexual violence"];
+    const adultGenres = ["Adult", "Erotica"];
+    const matureGenres = ["Ecchi", "Gore", "Psychological", "Sexual violence"];
 
-    if (genres.some((genre) => adultGenres.includes(genre))) {
+    if (genres.some((g) => adultGenres.includes(g))) {
       contentRating = ContentRating.ADULT;
-    } else if (genres.some((genre) => matureGenres.includes(genre))) {
+    } else if (genres.some((g) => matureGenres.includes(g))) {
       contentRating = ContentRating.MATURE;
     }
 
@@ -789,14 +761,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
       mangaId: mangaId,
       mangaInfo: {
         primaryTitle: title,
-        secondaryTitles: altTitles,
+        secondaryTitles: altNames,
         thumbnailUrl: image,
         synopsis: description,
-        //rating: rating,
         contentRating: contentRating,
         status: status as "ONGOING" | "COMPLETED" | "UNKNOWN",
         tagGroups: tags,
-        //authors: authors,
       },
     };
   }
