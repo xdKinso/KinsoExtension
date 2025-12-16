@@ -10,68 +10,157 @@ export function parseSearchResults($: CheerioAPI, baseUrl: string): SearchResult
     const results: SearchResultItem[] = [];
     const seen = new Set<string>();
     
-    // MangaBats uses h3 > a for manga titles
-    $('h3 a, h1.manga-name').each((_, element) => {
-        const $link = $(element);
-        const url = $link.attr('href')?.trim();
-        const title = $link.attr('title')?.trim() || $link.text().trim();
+    // MangaBats has a consistent structure: img followed by h3 with link
+    // Look for all img tags first, then get the associated link
+    $('img[src*="thumb"]').each((_, imgElement) => {
+        const $img = $(imgElement);
+        const imageUrl = $img.attr('src')?.trim() || $img.attr('data-src')?.trim() || '';
         
-        // Find image - look in parent structure
-        let imageUrl = '';
-        const $parent = $link.closest('[class*="item"], [class*="manga"], div');
+        // Find the link - usually following the img or in parent container
+        let $link = $img.closest('a');
+        if ($link.length === 0) {
+            $link = $img.closest('div, li, article').find('a[href*="/manga/"]').first();
+        }
+        if ($link.length === 0) {
+            $link = $img.next('a, div').find('a[href*="/manga/"]').first();
+        }
         
-        // Try multiple image selectors
-        imageUrl = $parent.find('img[src*="storage"], img[src*="img"], img').first().attr('src') || '';
-        
-        // Only add if we have both URL and title, and haven't seen this before
-        if (url && title && !seen.has(url)) {
-            seen.add(url);
-            results.push({
-                mangaId: url,
-                imageUrl: imageUrl || '',
-                title,
-            });
+        if ($link.length > 0) {
+            const url = $link.attr('href')?.trim();
+            let title = $link.attr('title')?.trim() || $link.text().trim();
+            
+            // Try to get title from h3 or other heading if link doesn't have good text
+            if (!title || title.length === 0) {
+                const $heading = $link.closest('div, li, article').find('h3').first();
+                if ($heading.length) {
+                    title = $heading.text().trim();
+                }
+            }
+            
+            if (url && title && !seen.has(url)) {
+                seen.add(url);
+                results.push({
+                    mangaId: url,
+                    imageUrl: imageUrl,
+                    title,
+                });
+            }
         }
     });
+    
+    // Fallback: Look for h3 with links if no images found
+    if (results.length === 0) {
+        $('h3 a[href*="/manga/"]').each((_, element) => {
+            const $link = $(element);
+            const url = $link.attr('href')?.trim();
+            const title = $link.attr('title')?.trim() || $link.text().trim();
+            
+            let imageUrl = '';
+            const $parent = $link.closest('div, li, article');
+            const $img = $parent.find('img').first();
+            if ($img.length) {
+                imageUrl = $img.attr('src')?.trim() || $img.attr('data-src')?.trim() || '';
+            }
+            
+            if (url && title && !seen.has(url)) {
+                seen.add(url);
+                results.push({
+                    mangaId: url,
+                    imageUrl: imageUrl,
+                    title,
+                });
+            }
+        });
+    }
 
     return results;
 }
 
 export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
-    // MangaBats structure - title is in h1
-    const title = $('h1').first().text().trim() || 'Unknown';
+    // Try to find title from main heading
+    let title = $('h1.manga-title, h1.post-title').first().text().trim();
     
-    // Cover image
-    let thumbnailUrl = '';
-    const $img = $('img[alt*="manga"], img[alt*="cover"], img[src*="thumb"]').first();
-    if ($img.length) {
-        thumbnailUrl = $img.attr('src') || '';
+    // If no specific class, try first h1
+    if (!title) {
+        title = $('h1').first().text().trim();
     }
     
-    // Synopsis - look for description text
-    let synopsis = '';
-    const $descElements = $('div:contains("Description"), div:contains("Summary"), p').filter(function() {
-        const text = $(this).text();
-        return text.length > 50 && text.length < 2000;
-    });
+    // Last resort: look for title in meta or from document
+    if (!title) {
+        title = $('meta[property="og:title"]').attr('content')?.trim() || 'Unknown';
+    }
     
-    if ($descElements.length) {
-        synopsis = $descElements.first().text().replace(/Description\s*:?\s*/gi, '').trim();
+    // Cover image - try multiple selectors
+    let thumbnailUrl = '';
+    
+    // Try common image selectors in order of likelihood
+    let $img = $('img.manga-cover, img.post-cover, img.manga-poster, figure img').first();
+    
+    if (!$img.length || !$img.attr('src')) {
+        // Try images with alt text
+        $img = $('img[alt*="cover"], img[alt*="manga"], img[alt*="poster"]').first();
+    }
+    
+    if (!$img.length || !$img.attr('src')) {
+        // Try images with specific src patterns
+        $img = $('img[src*="thumb"], img[src*="cover"]').first();
+    }
+    
+    if (!$img.length || !$img.attr('src')) {
+        // Try og:image meta tag
+        thumbnailUrl = $('meta[property="og:image"]').attr('content')?.trim() || '';
+    }
+    
+    if ($img.length && !thumbnailUrl) {
+        thumbnailUrl = $img.attr('src')?.trim() || $img.attr('data-src')?.trim() || '';
+    }
+    
+    // Ensure we have a valid image URL
+    if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
+        if (!thumbnailUrl.startsWith('/')) {
+            thumbnailUrl = '';
+        }
+    }
+    
+    // Synopsis - look for description in multiple places
+    let synopsis = '';
+    
+    // Try description containers
+    let $desc = $('[class*="description"], [class*="synopsis"], .manga-excerpt, .summary');
+    if ($desc.length) {
+        synopsis = $desc.first().text().trim();
+    }
+    
+    // If no description found, try meta description
+    if (!synopsis) {
+        synopsis = $('meta[name="description"], meta[property="og:description"]').attr('content')?.trim() || '';
+    }
+    
+    // Last resort: find paragraphs with substantial content
+    if (!synopsis) {
+        $('p').each((_, el) => {
+            const text = $(el).text().trim();
+            if (text.length > 50 && text.length < 2000) {
+                synopsis = text;
+                return false; // break
+            }
+        });
     }
 
-    // Tags/Genres - look for genre information
+    // Tags/Genres
     const tags: { id: string; title: string }[] = [];
-    $('a[href*="genre"], span:contains("Genre") ~ *, div:contains("Genre") a').each((_, elem) => {
+    const seenTags = new Set<string>();
+    
+    $('a[href*="genre"], a[href*="tag"], [class*="genre"] a, [class*="tag"] a').each((_, elem) => {
         const text = $(elem).text().trim();
-        if (text && !text.toLowerCase().includes('genre')) {
-            text.split(',').forEach(g => {
-                const genre = g.trim();
-                if (genre) {
-                    // Create slug format ID: lowercase and replace spaces/special chars with hyphens
-                    const slugId = genre.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
-                    tags.push({ id: slugId, title: genre });
-                }
-            });
+        if (text && text.length > 0 && !text.toLowerCase().includes('genre') && !text.toLowerCase().includes('tag')) {
+            const genre = text.trim();
+            if (genre && !seenTags.has(genre.toLowerCase())) {
+                seenTags.add(genre.toLowerCase());
+                // Create slug format ID
+                const slugId = genre.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+                tags.push({ id: slugId, title: genre });
+            }
         }
     });
 
