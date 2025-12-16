@@ -40,8 +40,8 @@ export class MangaDemonExtension implements MangaDemonImplementation {
     requestManager = new Interceptor('main');
     
     globalRateLimiter = new BasicRateLimiter('rateLimiter', {
-        numberOfRequests: 2,
-        bufferInterval: 1,
+        numberOfRequests: 5,
+        bufferInterval: 2,
         ignoreImages: true,
     });
 
