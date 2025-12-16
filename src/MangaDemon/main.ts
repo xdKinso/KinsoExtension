@@ -40,8 +40,8 @@ export class MangaDemonExtension implements MangaDemonImplementation {
     requestManager = new Interceptor('main');
     
     globalRateLimiter = new BasicRateLimiter('rateLimiter', {
-        numberOfRequests: 5,
-        bufferInterval: 2,
+        numberOfRequests: 10,
+        bufferInterval: 5,
         ignoreImages: true,
     });
 
@@ -61,22 +61,34 @@ export class MangaDemonExtension implements MangaDemonImplementation {
             let searchUrl: string;
             
             if (query.title && query.title.trim() !== '') {
-                searchUrl = `${baseUrl}/search.php?manga=${encodeURIComponent(query.title)}`;
+                // MangaDemon uses a different search endpoint - check if there's an API
+                // The main search page has autocomplete, so we need to search the pages directly
+                searchUrl = `${baseUrl}/lastnvupdates.php`;
             } else {
                 searchUrl = `${baseUrl}/advanced.php?list=${page}&status=all&orderby=VIEWS%20DESC`;
             }
+
+            console.log('[MangaDemon] Performing search request:', searchUrl);
 
             const request = {
                 url: searchUrl,
                 method: 'GET',
             };
 
-            const [_response, data] = await Application.scheduleRequest(request);
+            const [response, data] = await Application.scheduleRequest(request);
+            
+            if (response.status !== 200) {
+                console.error(`[MangaDemon] Search failed with status ${response.status}`);
+                return { items: [] };
+            }
+
             const htmlStr = Application.arrayBufferToUTF8String(data);
             const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
-            const items = parseSearchResults($, baseUrl);
+            const items = parseSearchResults($, baseUrl, query.title || '');
 
-            return { items, metadata: { page } };
+            console.log(`[MangaDemon] Found ${items.length} results`);
+
+            return { items, metadata: items.length > 0 ? { page: page + 1 } : undefined };
         } catch (error) {
             console.error('[MangaDemon] Search error:', error);
             return { items: [] };
