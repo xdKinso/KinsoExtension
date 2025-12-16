@@ -26,7 +26,10 @@ const baseUrl = 'https://www.mangabats.com';
 
 type MangaBatImplementation = Extension &
     SearchResultsProviding &
-    ChapterProviding;
+    ChapterProviding & {
+        getDiscoverySections(): Promise<any[]>;
+        getDiscoveryItems(sectionId: string, metadata?: any): Promise<PagedResults<SearchResultItem>>;
+    };
 
 export class MangaBatExtension implements MangaBatImplementation {
     requestManager = new Interceptor('main');
@@ -53,10 +56,12 @@ export class MangaBatExtension implements MangaBatImplementation {
             let searchUrl: string;
 
             if (query.title && query.title.trim() !== '') {
-                const searchQuery = query.title.trim().replace(/\s+/g, '_');
-                searchUrl = `${baseUrl}/search/story/${encodeURIComponent(searchQuery)}?page=${page}`;
+                // Use the search API endpoint for better results
+                const searchTerm = encodeURIComponent(query.title.trim());
+                searchUrl = `${baseUrl}/?s=${searchTerm}&post_type=wp-manga&page=${page}`;
             } else {
-                searchUrl = `${baseUrl}/manga_list?type=latest&category=all&state=all&page=${page}`;
+                // Default to latest manga
+                searchUrl = `${baseUrl}/manga-list/latest-manga?page=${page}`;
             }
 
             const request = {
@@ -69,7 +74,8 @@ export class MangaBatExtension implements MangaBatImplementation {
             const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
             const items = parseSearchResults($, baseUrl);
             
-            const hasNextPage = $('div.group-page a.page-select + a').length > 0;
+            // Check if there's a next page
+            const hasNextPage = $('a.next').length > 0 || items.length >= 20;
 
             return {
                 items,
@@ -77,6 +83,64 @@ export class MangaBatExtension implements MangaBatImplementation {
             };
         } catch (error) {
             console.error('[MangaBat] Search error:', error);
+            return { items: [] };
+        }
+    }
+
+    async getDiscoverySections(): Promise<any[]> {
+        return [
+            {
+                id: 'latest',
+                title: 'Latest Releases',
+            },
+            {
+                id: 'popular',
+                title: 'Popular Manga',
+            },
+            {
+                id: 'new',
+                title: 'New Manga',
+            },
+        ];
+    }
+
+    async getDiscoveryItems(sectionId: string, metadata?: any): Promise<PagedResults<SearchResultItem>> {
+        const page = metadata?.page || 1;
+        let url: string;
+
+        try {
+            switch (sectionId) {
+                case 'latest':
+                    url = `${baseUrl}/manga-list/latest-manga?page=${page}`;
+                    break;
+                case 'popular':
+                    url = `${baseUrl}/manga-list/hot-manga?page=${page}`;
+                    break;
+                case 'new':
+                    url = `${baseUrl}/manga-list/new-manga?page=${page}`;
+                    break;
+                default:
+                    url = `${baseUrl}/manga-list/latest-manga?page=${page}`;
+            }
+
+            const request = {
+                url,
+                method: 'GET',
+            };
+
+            const [_response, data] = await Application.scheduleRequest(request);
+            const htmlStr = Application.arrayBufferToUTF8String(data);
+            const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
+            const items = parseSearchResults($, baseUrl);
+
+            const hasNextPage = $('a.next').length > 0 || items.length >= 20;
+
+            return {
+                items,
+                metadata: hasNextPage ? { page: page + 1 } : undefined,
+            };
+        } catch (error) {
+            console.error('[MangaBat] Discovery error:', error);
             return { items: [] };
         }
     }
