@@ -257,9 +257,10 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     const request = {
       url: new URLBuilder(DOMAIN_NAME)
-        .addPath("new-manga")
+        .addPath("manga")
         .addPath("page")
         .addPath(page.toString())
+        .addQuery("order", "new")
         .build(),
       method: "GET",
     };
@@ -267,24 +268,19 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
 
-    $("#book_list .item").each((_, element) => {
+    $("div#book_list > div.item").each((_, element) => {
       const unit = $(element);
-      const titleLink = unit.find("h3.title a").first();
-      const title = titleLink.text().trim();
+      
+      const titleLink = unit.find("div.text > h3 > a").first();
       const href = titleLink.attr("href") || "";
+      const title = titleLink.text().trim();
+      
+      if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
-      mangaId = decodeURIComponent(mangaId)
-        .replace(/[^\w@.]/g, "_")
-        .trim();
+      if (!mangaId) return;
 
-      const image = unit.find(".wrap_img img").attr("src") ?? "";
-
-      // Extract latest chapter info
-      const chapters = unit.find(".chapters .chapter a");
-      const latestChapter = chapters.first().text().trim();
-      const subtitleSpan = unit.find("h3.title span").text().trim().replace(/^-\s*/, "");
-      const subtitle = latestChapter || subtitleSpan;
+      const image = unit.find("img").attr("src") ?? "";
 
       if (mangaId && title && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
@@ -292,14 +288,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
           imageUrl: image,
           title: title,
           mangaId: mangaId,
-          subtitle: subtitle,
           type: "simpleCarouselItem",
           contentRating: pbconfig.contentRating,
         });
       }
     });
 
-    // Check for next page
     const nextPageHref = $("a.next.page-numbers").attr("href");
     let nextPage: number | undefined;
     if (nextPageHref) {
