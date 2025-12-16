@@ -67,7 +67,9 @@ export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
             text.split(',').forEach(g => {
                 const genre = g.trim();
                 if (genre) {
-                    tags.push({ id: genre.toLowerCase(), title: genre });
+                    // Create slug format ID: lowercase and replace spaces/special chars with hyphens
+                    const slugId = genre.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+                    tags.push({ id: slugId, title: genre });
                 }
             });
         }
