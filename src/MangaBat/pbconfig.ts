@@ -1,7 +1,7 @@
 import { ContentRating, type SourceInfo, SourceIntents } from '@paperback/types';
 
 export default {
-    version: '0.0.3',
+    version: '0.0.6',
     name: 'MangaBat',
     icon: 'icon.png',
     description: 'Extension for MangaBat (mangabats.com)',

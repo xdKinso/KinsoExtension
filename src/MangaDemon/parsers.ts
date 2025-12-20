@@ -7,23 +7,53 @@ import {
 } from '@paperback/types';
 import type { CheerioAPI } from 'cheerio';
 
-export function parseSearchResults($: CheerioAPI, baseUrl: string): SearchResultItem[] {
+export function parseSearchResults($: CheerioAPI, baseUrl: string, searchTerm: string = ''): SearchResultItem[] {
     const results: SearchResultItem[] = [];
+    const seen = new Set<string>();
     
-    $('div.advanced-element, div.updates-element, body > a[href]').each((_, element) => {
+    // MangaDemon uses JavaScript autocomplete dropdown with links like:
+    // <a href="/manga/Title-Name"></a> with <img src="...">
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    // Parse all manga links in the page
+    $('a[href^="/manga/"]').each((_, element) => {
         const $elem = $(element);
-        const $link = $elem.find('a, h1 a').first();
-        const url = $link.attr('href') || $elem.attr('href');
-        const title = $link.text().trim() || $elem.find('h1, div.seach-right > div').first().text().trim();
-        const imageUrl = $elem.find('img').attr('src') || '';
-
-        if (url && title) {
-            results.push({
-                mangaId: encodeURIComponent(url),
-                imageUrl: imageUrl,
-                title: title,
-            });
+        const href = $elem.attr('href') || '';
+        const text = $elem.text().trim();
+        
+        // Skip if no text
+        if (!text || !href) return;
+        
+        // If we have a search term, filter by it
+        if (searchTerm && !text.toLowerCase().includes(searchTermLower)) {
+            return;
         }
+        
+        // Avoid duplicates
+        if (seen.has(href)) return;
+        seen.add(href);
+        
+        // Try to get image from the same container or following element
+        let imageUrl = '';
+        const $img = $elem.find('img').first();
+        if ($img.length) {
+            imageUrl = $img.attr('src') || $img.attr('data-src') || '';
+        }
+        
+        // Fallback: look in parent or adjacent elements
+        if (!imageUrl) {
+            const $parent = $elem.parent();
+            const $siblingImg = $parent.find('img').first();
+            if ($siblingImg.length) {
+                imageUrl = $siblingImg.attr('src') || $siblingImg.attr('data-src') || '';
+            }
+        }
+        
+        results.push({
+            mangaId: encodeURIComponent(href),
+            imageUrl: imageUrl,
+            title: text,
+        });
     });
 
     return results;

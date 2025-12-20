@@ -10,25 +10,41 @@ export function parseSearchResults($: CheerioAPI, baseUrl: string): SearchResult
     const results: SearchResultItem[] = [];
     const seen = new Set<string>();
     
-    // MangaBats uses h3 > a for manga titles
-    $('h3 a, h1.manga-name').each((_, element) => {
-        const $link = $(element);
+    const $items = $('div.story_item, div.list-comic-item-wrap');
+    
+    $items.each((_, element) => {
+        const $el = $(element);
+        
+        // Get ID from link
+        const $link = $el.find('a').first();
+        if (!$link.length) return;
+        
         const url = $link.attr('href')?.trim();
-        const title = $link.attr('title')?.trim() || $link.text().trim();
+        if (!url) return;
         
-        // Find image - look in parent structure
+        // Get title - try story_name first (for story_item), then img alt (for list-comic-item-wrap)
+        let title = $el.find('.story_name').text().trim();
+        if (!title) {
+            title = $el.find('img').attr('alt')?.trim() || '';
+        }
+        if (!title) return;
+        
+        // Get image - check multiple attributes
         let imageUrl = '';
-        const $parent = $link.closest('[class*="item"], [class*="manga"], div');
+        const $img = $el.find('img').first();
+        if ($img.length) {
+            // Try multiple image attributes in order
+            imageUrl = $img.attr('src')?.trim() || 
+                      $img.attr('data-src')?.trim() || 
+                      $img.attr('data-lazy-src')?.trim() || 
+                      $img.attr('data-cfsrc')?.trim() || '';
+        }
         
-        // Try multiple image selectors
-        imageUrl = $parent.find('img[src*="storage"], img[src*="img"], img').first().attr('src') || '';
-        
-        // Only add if we have both URL and title, and haven't seen this before
-        if (url && title && !seen.has(url)) {
+        if (!seen.has(url)) {
             seen.add(url);
             results.push({
                 mangaId: url,
-                imageUrl: imageUrl || '',
+                imageUrl: imageUrl,
                 title,
             });
         }
@@ -38,38 +54,83 @@ export function parseSearchResults($: CheerioAPI, baseUrl: string): SearchResult
 }
 
 export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
-    // MangaBats structure - title is in h1
-    const title = $('h1').first().text().trim() || 'Unknown';
+    const $main = $('div.main-wrapper');
     
-    // Cover image
+    // Get title - try img alt first, then story name, then h1
+    let title = $main.find('img.manga-image').attr('alt')?.trim() || '';
+    if (!title) {
+        title = $main.find('.story_name, h1').first().text().trim();
+    }
+    if (!title) {
+        title = $('h1.manga-title, h1.post-title, h1').first().text().trim();
+    }
+    if (!title) {
+        title = $('meta[property="og:title"]').attr('content')?.trim() || 'Unknown';
+    }
+    
+    // Get cover image - multiple selectors with fallback attributes
     let thumbnailUrl = '';
-    const $img = $('img[alt*="manga"], img[alt*="cover"], img[src*="thumb"]').first();
+    
+    // Try main wrapper image selectors first
+    let $img = $main.find('img.manga-image, div.manga-info-pic img, span.info-image img').first();
+    
     if ($img.length) {
-        thumbnailUrl = $img.attr('src') || '';
+        // Check multiple image attributes in priority order
+        thumbnailUrl = $img.attr('src')?.trim() || 
+                      $img.attr('data-src')?.trim() || 
+                      $img.attr('data-lazy-src')?.trim() || 
+                      $img.attr('data-cfsrc')?.trim() || '';
     }
     
-    // Synopsis - look for description text
+    // Fallback to other image selectors
+    if (!thumbnailUrl) {
+        $img = $('img[src*="thumb"], img[src*="cover"], img[alt*="cover"]').first();
+        if ($img.length) {
+            thumbnailUrl = $img.attr('src')?.trim() || $img.attr('data-src')?.trim() || '';
+        }
+    }
+    
+    // Final fallback to og:image meta tag
+    if (!thumbnailUrl) {
+        thumbnailUrl = $('meta[property="og:image"]').attr('content')?.trim() || '';
+    }
+    
+    // Get description/synopsis - multiple selectors
     let synopsis = '';
-    const $descElements = $('div:contains("Description"), div:contains("Summary"), p').filter(function() {
-        const text = $(this).text();
-        return text.length > 50 && text.length < 2000;
-    });
-    
-    if ($descElements.length) {
-        synopsis = $descElements.first().text().replace(/Description\s*:?\s*/gi, '').trim();
+    let $desc = $main.find('div#noidungm');
+    if (!$desc.length) {
+        $desc = $main.find('div#panel-story-info-description');
     }
-
-    // Tags/Genres - look for genre information
+    if (!$desc.length) {
+        $desc = $main.find('div#contentBox');
+    }
+    if (!$desc.length) {
+        $desc = $('div.manga-summary, div.manga-description').first();
+    }
+    
+    if ($desc.length) {
+        synopsis = $desc.text().trim();
+    }
+    
+    // Fallback to meta description
+    if (!synopsis) {
+        synopsis = $('meta[name="description"], meta[property="og:description"]').attr('content')?.trim() || '';
+    }
+    
+    // Get genres/tags
     const tags: { id: string; title: string }[] = [];
-    $('a[href*="genre"], span:contains("Genre") ~ *, div:contains("Genre") a').each((_, elem) => {
+    const seenTags = new Set<string>();
+    
+    // Try multiple genre selectors
+    const $genres = $main.find('li.genres a, .genres a, .tag a, a[href*="genre"], a[href*="tag"]');
+    $genres.each((_, elem) => {
         const text = $(elem).text().trim();
-        if (text && !text.toLowerCase().includes('genre')) {
-            text.split(',').forEach(g => {
-                const genre = g.trim();
-                if (genre) {
-                    tags.push({ id: genre.toLowerCase(), title: genre });
-                }
-            });
+        if (text && text.length > 0 && !text.toLowerCase().includes('genre') && !text.toLowerCase().includes('tag')) {
+            if (!seenTags.has(text.toLowerCase())) {
+                seenTags.add(text.toLowerCase());
+                const slugId = text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+                tags.push({ id: slugId, title: text });
+            }
         }
     });
 
