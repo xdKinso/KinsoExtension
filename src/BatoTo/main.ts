@@ -32,6 +32,24 @@ import { AdultGenres, Genres, MatureGenres, type Metadata } from "./models";
 
 const DOMAIN_NAME = "https://bato.si/";
 
+// Extracts a manga identifier from either the legacy /series/ path or the new /title/ slugged path
+const extractMangaIdFromHref = (href: string): string => {
+    const slugMatch = href.match(/\/title\/([^/?#]+)/);
+    if (slugMatch?.[1]) return slugMatch[1];
+
+    const legacyMatch = href.match(/\/series\/(\d+)/);
+    if (legacyMatch?.[1]) return legacyMatch[1];
+
+    return "";
+};
+
+// Keeps the new slug-style IDs intact while stripping unsafe characters
+const sanitizeMangaId = (id: string): string =>
+    decodeURIComponent(id).replace(/[^a-zA-Z0-9@._-]/g, "_").trim();
+
+const normalizeImageUrl = (url: string): string =>
+    url.includes("//k") ? url.replace("//k", "//n") : url;
+
 // Should match the capabilities which you defined in pbconfig.ts
 type BatoToImplementation = SettingsFormProviding &
     Extension &
@@ -171,20 +189,18 @@ export class BatoToExtension implements BatoToImplementation {
 
             const anchor = unit.find("a.item-cover");
             const href = anchor.attr("href") || "";
-            const mangaId = href.match(/\/series\/(\d+)\//)?.[1] || "";
+            const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
-            const image = anchor.find("img").attr("src") || "";
+            const image = normalizeImageUrl(
+                anchor.find("img").attr("src") || "",
+            );
             const title = unit.find("a.item-title").text().trim();
 
-            const safeId = decodeURIComponent(mangaId)
-                .replace(/[^\w@.]/g, "_")
-                .trim();
-
-            if (safeId && title && image && !collectedIds.includes(safeId)) {
-                collectedIds.push(safeId);
+            if (mangaId && title && image && !collectedIds.includes(mangaId)) {
+                collectedIds.push(mangaId);
                 items.push({
                     type: "simpleCarouselItem",
-                    mangaId: safeId,
+                    mangaId: mangaId,
                     imageUrl: image,
                     title: title,
                     metadata: undefined,
@@ -226,7 +242,7 @@ export class BatoToExtension implements BatoToImplementation {
             // Get title and link
             const titleLink = unit.find("a.item-title").first();
             const href = titleLink.attr("href") || "";
-            let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
+            let mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
             // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
@@ -235,9 +251,7 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-lazy-src") || "";
             
             // Fix broken k server URLs immediately for faster loading
-            if (image.includes('//k')) {
-                image = image.replace('//k', '//n');
-            }
+            image = normalizeImageUrl(image);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -245,10 +259,6 @@ export class BatoToExtension implements BatoToImplementation {
             // Get latest chapter text
             const chapterLink = unit.find("div.item-volch a.visited").first();
             const subtitle = chapterLink.text().trim();
-
-            mangaId = decodeURIComponent(mangaId)
-                .replace(/[^\w@.]/g, "_")
-                .trim();
 
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
@@ -310,7 +320,7 @@ export class BatoToExtension implements BatoToImplementation {
             // Get title and link
             const titleLink = unit.find("a.item-title").first();
             const href = titleLink.attr("href") || "";
-            let mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
+            let mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
             // Get image - try src first (it's populated in HTML)
             const imgElement = unit.find("a.item-cover img");
@@ -319,9 +329,7 @@ export class BatoToExtension implements BatoToImplementation {
                          imgElement.attr("data-lazy-src") || "";
             
             // Fix broken k server URLs immediately for faster loading
-            if (image.includes('//k')) {
-                image = image.replace('//k', '//n');
-            }
+            image = normalizeImageUrl(image);
 
             // Get title text
             const title = titleLink.text().trim();
@@ -329,10 +337,6 @@ export class BatoToExtension implements BatoToImplementation {
             // Get latest chapter text
             const chapterLink = unit.find("div.item-volch a.visited").first();
             const subtitle = chapterLink.text().trim();
-
-            mangaId = decodeURIComponent(mangaId)
-                .replace(/[^\w@.]/g, "_")
-                .trim();
 
             if (mangaId && title && image && !collectedIds.includes(mangaId)) {
                 collectedIds.push(mangaId);
@@ -431,90 +435,108 @@ export class BatoToExtension implements BatoToImplementation {
         metadata?: { page?: number },
         sortingOption?: SortingOption,
     ): Promise<PagedResults<SearchResultItem>> {
-        const page = metadata?.page ?? 1; // Default to page 1 if not provided
+        const page = metadata?.page ?? 1;
         const languages: string[] = getLanguages();
 
         const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v4x-search");
 
-        // Add search query
+        // The site accepts both query and path based paging; keep both for safety
+        if (page > 1) {
+            urlBuilder.addPath(page.toString());
+        }
+
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
         }
-        
-        // Add filters matching website defaults
+
         urlBuilder.addQuery("orig", "");
         urlBuilder.addQuery("lang", languages.join(","));
         urlBuilder.addQuery("sort", sortingOption?.id || "views_d360");
         urlBuilder.addQuery("page", page.toString());
 
-        const searchUrl = urlBuilder.build();
-        const request = { url: searchUrl, method: "GET" };
+        const request = { url: urlBuilder.build(), method: "GET" };
         const $ = await this.fetchCheerio(request);
         const searchResults: SearchResultItem[] = [];
+        const collectedIds = new Set<string>();
 
-        // Try multiple selectors for search results (the page structure might vary)
-        let searchItems = $(".grid.grid-cols-1.gap-5.border-t.border-t-base-200.pt-5 > div");
-        if (searchItems.length === 0) {
-            // Try alternative selector - same as browse sections
-            searchItems = $("div#series-list > div.col.item");
-        }
+        // The search page markup changes often, so harvest every anchor that points to a title
+        const anchors = $('a[href*="/title/"]');
 
-        // Parse the search results
-        searchItems.each((_, element) => {
-            const unit = $(element);
-            
-            // Try the detailed search result format first
-            let titleLink = unit.find("h3.font-bold.space-x-1.text-lg a");
-            let href = titleLink.attr("href") || "";
-            let mangaId = href.split("/title/")[1]?.split("/")[0] || "";
-            
-            // If not found, try the browse/series-list format
-            if (!mangaId) {
-                titleLink = unit.find("a.item-title").first();
-                href = titleLink.attr("href") || "";
-                mangaId = href.match(/\/series\/(\d+)/)?.[1] || "";
-                mangaId = decodeURIComponent(mangaId).replace(/[^\w@.]/g, "_").trim();
+        anchors.each((_, element) => {
+            const anchor = $(element);
+            const href = anchor.attr("href") || "";
+            const rawId = extractMangaIdFromHref(href);
+            const mangaId = sanitizeMangaId(rawId);
+
+            if (!mangaId || collectedIds.has(mangaId)) return;
+
+            const container = anchor.closest("article, div, li, section");
+            const resolvedContainer = container.length ? container : anchor;
+
+            const titleText = (
+                anchor.text() ||
+                resolvedContainer.find(".item-title, h3, .font-bold").first().text() ||
+                ""
+            ).trim();
+
+            if (!titleText) return;
+
+            const imgElement = resolvedContainer
+                .find("img")
+                .add(anchor.find("img"))
+                .filter((_, img) => {
+                    const src =
+                        $(img).attr("src") ||
+                        $(img).attr("data-src") ||
+                        $(img).attr("data-lazy-src") ||
+                        "";
+                    return !!src;
+                })
+                .first();
+
+            let image =
+                imgElement.attr("src") ||
+                imgElement.attr("data-src") ||
+                imgElement.attr("data-lazy-src") ||
+                "";
+
+            image = normalizeImageUrl(image);
+
+            searchResults.push({
+                mangaId: mangaId,
+                imageUrl: image,
+                title: titleText,
+                subtitle: "",
+            });
+
+            collectedIds.add(mangaId);
+        });
+
+        // Handle pagination by inspecting both path- and query-based links
+        let maxPage = page;
+
+        $('a[href*="/v4x-search"]').each((_, element) => {
+            const href = $(element).attr("href") || "";
+
+            const pathPage = href.match(/v4x-search\/(\d+)/);
+            if (pathPage?.[1]) {
+                maxPage = Math.max(maxPage, parseInt(pathPage[1], 10));
             }
-            
-            // Get image - try src first (it's populated in HTML)
-            const imgElement = unit.find("img").first();
-            let image = imgElement.attr("src") || 
-                         imgElement.attr("data-src") || 
-                         imgElement.attr("data-lazy-src") || "";
-            
-            // Fix broken k server URLs immediately
-            if (image.includes('//k')) {
-                image = image.replace('//k', '//n');
-            }
-            
-            const title = titleLink.text().trim();
 
-            if (mangaId && title && image) {
-                searchResults.push({
-                    mangaId: mangaId,
-                    imageUrl: image,
-                    title: title,
-                    subtitle: "", // Add subtitle if needed
-                });
+            const queryPage = href.match(/[?&]page=(\d+)/);
+            if (queryPage?.[1]) {
+                maxPage = Math.max(maxPage, parseInt(queryPage[1], 10));
             }
         });
 
-        // Handle pagination
-        let maxPage = 1;
-        let hasNextPage = false;
+        $('a').each((_, element) => {
+            const numericText = parseInt($(element).text().trim(), 10);
+            if (!isNaN(numericText)) {
+                maxPage = Math.max(maxPage, numericText);
+            }
+        });
 
-        // Find all page buttons in the pagination section
-        $(".flex.items-center.flex-wrap.space-x-1.my-10.justify-center a").each(
-            (_, element) => {
-                const pageNumber = parseInt($(element).text().trim(), 10);
-                if (!isNaN(pageNumber) && pageNumber > maxPage) {
-                    maxPage = pageNumber;
-                }
-            },
-        );
-
-        // Check if there's a next page
-        hasNextPage = page < maxPage;
+        const hasNextPage = page < maxPage;
 
         return {
             items: searchResults,
