@@ -30,7 +30,7 @@ import { URLBuilder } from "../utils/url-builder/base";
 import { BatoToSettingsForm, getLanguages } from "./forms";
 import { AdultGenres, Genres, MatureGenres, type Metadata } from "./models";
 
-const DOMAIN_NAME = "https://bato.to";
+const DOMAIN_NAME = "https://bato.si";
 
 // Should match the capabilities which you defined in pbconfig.ts
 type BatoToImplementation = SettingsFormProviding &
@@ -208,7 +208,6 @@ export class BatoToExtension implements BatoToImplementation {
         const collectedIds = metadata?.collectedIds ?? [];
         const languages = getLanguages();
 
-        //https://bato.to/latest?langs=en&orig=all
         const request = {
             url: new URLBuilder(DOMAIN_NAME)
                 .addPath("latest")
@@ -435,7 +434,7 @@ export class BatoToExtension implements BatoToImplementation {
         const page = metadata?.page ?? 1; // Default to page 1 if not provided
         const languages: string[] = getLanguages();
 
-        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v3x-search");
+        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v4x-search");
 
         // Add search query
         if (query.title && query.title.trim() !== "") {
