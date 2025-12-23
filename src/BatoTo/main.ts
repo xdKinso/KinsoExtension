@@ -285,13 +285,21 @@ export class BatoToExtension implements BatoToImplementation {
         const collectedIds = metadata?.collectedIds ?? [];
         const languages = getLanguages();
 
+        const urlBuilder = new URLBuilder(DOMAIN_NAME)
+            .addPath("v3x-search")
+            .addQuery("orig", "")
+            .addQuery("sort", "views_d030");
+
+        // Use singular 'lang' parameter for stricter language filtering
+        const lang = languages[0] ?? "en";
+        urlBuilder.addQuery("lang", lang);
+
+        if (page > 1) {
+            urlBuilder.addQuery("page", page.toString());
+        }
+
         const request = {
-            url: new URLBuilder(DOMAIN_NAME)
-                .addPath("v3x-search")
-                .addQuery("langs", languages.join(","))
-                .addQuery("sort", "views_d030")
-                .addQuery("page", page.toString())
-                .build(),
+            url: urlBuilder.build(),
             method: "GET",
         };
 
@@ -430,8 +438,12 @@ export class BatoToExtension implements BatoToImplementation {
             urlBuilder.addQuery("word", query.title.trim());
         }
 
-        // Default to English (or user-selected languages)
-        urlBuilder.addQuery("langs", languages.join(","));
+        // Add orig parameter (empty string filters by original language)
+        urlBuilder.addQuery("orig", "");
+
+        // Use singular 'lang' parameter for stricter language filtering
+        const lang = languages[0] ?? "en";
+        urlBuilder.addQuery("lang", lang);
 
         // Use provided sorting option or default to 30-day views
         const sort = sortingOption?.id || "views_d030";
