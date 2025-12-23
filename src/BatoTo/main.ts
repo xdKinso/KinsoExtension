@@ -30,7 +30,7 @@ import { URLBuilder } from "../utils/url-builder/base";
 import { BatoToSettingsForm, getLanguages } from "./forms";
 import { AdultGenres, Genres, MatureGenres, type Metadata } from "./models";
 
-const DOMAIN_NAME = "https://ato.to/";
+const DOMAIN_NAME = "https://ato.to";
 
 // Extracts a manga identifier from either the legacy /series/ path or the new /title/ slugged path
 const extractMangaIdFromHref = (href: string): string => {
@@ -226,9 +226,8 @@ export class BatoToExtension implements BatoToImplementation {
 
         const request = {
             url: new URLBuilder(DOMAIN_NAME)
-                .addPath("latest")
+                .addPath("v3x-latest")
                 .addQuery("langs", languages.join(","))
-                .addQuery("orig", "all")
                 .build(),
             method: "GET",
         };
@@ -299,13 +298,11 @@ export class BatoToExtension implements BatoToImplementation {
         const collectedIds = metadata?.collectedIds ?? [];
         const languages = getLanguages();
 
-        //https://bato.to/browse?langs=nl&sort=views_m.za&orig=all
         const request = {
             url: new URLBuilder(DOMAIN_NAME)
-                .addPath("browse")
+                .addPath("v3x-search")
                 .addQuery("langs", languages.join(","))
-                .addQuery("sort", "views_m.za")
-                .addQuery("orig", "all")
+                .addQuery("sort", "field_upload")
                 .addQuery("page", page.toString())
                 .build(),
             method: "GET",
@@ -437,7 +434,7 @@ export class BatoToExtension implements BatoToImplementation {
     ): Promise<PagedResults<SearchResultItem>> {
         const page = metadata?.page ?? 1;
 
-        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("search");
+        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v3x-search");
 
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
@@ -452,8 +449,8 @@ export class BatoToExtension implements BatoToImplementation {
         const searchResults: SearchResultItem[] = [];
         const collectedIds = new Set<string>();
 
-        // Parse the search page results - each result is in a container with a link to /series/
-        $('a[href*="/series/"]').each((_, element) => {
+        // Parse the search page results - each result is in a container with a link to /title/
+        $('a[href*="/title/"]').each((_, element) => {
             const anchor = $(element);
             const href = anchor.attr("href") || "";
             const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
@@ -491,7 +488,7 @@ export class BatoToExtension implements BatoToImplementation {
         // Handle pagination by inspecting page links
         let maxPage = page;
 
-        $('a[href*="/search"]').each((_, element) => {
+        $('a[href*="v3x-search"]').each((_, element) => {
             const href = $(element).attr("href") || "";
 
             const queryPage = href.match(/[?&]page=(\d+)/);

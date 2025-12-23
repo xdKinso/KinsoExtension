@@ -7,7 +7,7 @@ import {
 export default {
     name: "Bato.Dev",
     description: "Extension that pulls content from bato.is.",
-    version: "0.0.22",
+    version: "0.0.23",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
