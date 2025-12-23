@@ -453,28 +453,24 @@ export class BatoToExtension implements BatoToImplementation {
         const searchResults: SearchResultItem[] = [];
         const collectedIds = new Set<string>();
 
-        // Parse the search page results - each result is in a container with a link to /title/
-        $('a[href*="/title/"]').each((_, element) => {
-            const anchor = $(element);
-            const href = anchor.attr("href") || "";
+        // Parse the search page results - items are rows in the v3x list
+        $('div.flex.border-b').each((_, element) => {
+            const row = $(element);
+
+            // Rows with actual entries have an h3 containing a /title/ anchor
+            const titleAnchor = row.find('h3 a[href*="/title/"]').first();
+            const href = titleAnchor.attr('href') || '';
             const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
             if (!mangaId || collectedIds.has(mangaId)) return;
 
-            // Get image - first check in the anchor itself, then in container
-            const imgInAnchor = anchor.find("img").first();
-            let image = imgInAnchor.attr("src") || 
-                         imgInAnchor.attr("data-src") || 
-                         imgInAnchor.attr("data-lazy-src") || "";
-            
-            // Get title - look for a sibling anchor with text or the parent container
-            const container = anchor.closest("div, article");
-            const titleAnchor = container.find('a[href*="/series/"]').filter((_, a) => {
-                return $(a).text().trim().length > 0;
-            }).first();
-            
-            const title = (titleAnchor.text() || anchor.text() || "").trim();
-            
+            // Image sits in the thumb column
+            const img = row.find('img').first();
+            let image = img.attr('src') || img.attr('data-src') || img.attr('data-lazy-src') || '';
+
+            // Title text is inside the h3 anchor, but split into highlight spans
+            const title = titleAnchor.text().replace(/\s+/g, ' ').trim();
+
             if (!title || !image) return;
 
             image = normalizeImageUrl(image);
@@ -483,7 +479,7 @@ export class BatoToExtension implements BatoToImplementation {
                 mangaId: mangaId,
                 imageUrl: image,
                 title: title,
-                subtitle: "",
+                subtitle: '',
             });
 
             collectedIds.add(mangaId);
