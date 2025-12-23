@@ -116,11 +116,14 @@ export const parseChapters = (
         let chapNum = 0;
         let chapterType = "";
         const matches = title.match(floatRegex);
-        if (matches && matches[matches.length - 1]) {
-            chapNum = parseFloat(matches[matches.length - 1] ?? "0");
-            chapterType = title
-                .slice(0, -matches[matches.length - 1].length)
-                .trim();
+        if (matches && matches.length > 0) {
+            const lastMatch = matches[matches.length - 1];
+            if (lastMatch) {
+                chapNum = parseFloat(lastMatch);
+                chapterType = title
+                    .slice(0, -lastMatch.length)
+                    .trim();
+            }
         }
         sortingIndex--;
         if (!(chapterType in chapterTypeToIdMap)) {
@@ -158,8 +161,8 @@ export const parseChapters = (
     // i.e. Berserk has Prologue 1 etc. and then Chapter 1
     if (totalTypes > 1) {
         for (const chapter of chapters) {
-            chapter.volume =
-                totalTypes + chapterTypeToIdMap[chapter.chapterType];
+            const typeId = chapterTypeToIdMap[chapter.chapterType] ?? 0;
+            chapter.volume = totalTypes + typeId;
         }
     }
 

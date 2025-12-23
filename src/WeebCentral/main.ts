@@ -361,7 +361,7 @@ export class WeebCentralExtension
                 "user-agent": await Application.getDefaultUserAgent(),
                 accept: "image/webp,image/apng,image/*,*/*;q=0.8",
             },
-        };
+        } as unknown as Request;
     }
 
     async getSettingsForm(): Promise<Form> {
