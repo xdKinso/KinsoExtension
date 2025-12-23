@@ -410,6 +410,8 @@ export class BatoToExtension implements BatoToImplementation {
 
     async getSortingOptions(): Promise<SortingOption[]> {
         return [
+            { id: "views_d030", label: "Views (30 days)" },
+            { id: "views_d000", label: "Views (All time)" },
             { id: "field_score", label: "Rating Score" },
             { id: "field_follow", label: "Most Follows" },
             { id: "field_review", label: "Most Reviews" },
@@ -418,8 +420,6 @@ export class BatoToExtension implements BatoToImplementation {
             { id: "field_upload", label: "Latest Upload" },
             { id: "field_public", label: "Recently Created" },
             { id: "field_name", label: "Name A-Z" },
-            { id: "views_d030", label: "Views (30 days)" },
-            { id: "views_d000", label: "Views (All time)" },
         ];
     }
 
