@@ -433,12 +433,16 @@ export class BatoToExtension implements BatoToImplementation {
         sortingOption?: SortingOption,
     ): Promise<PagedResults<SearchResultItem>> {
         const page = metadata?.page ?? 1;
+        const languages: string[] = getLanguages();
 
         const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v3x-search");
 
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
         }
+
+        // Default to English (or user-selected languages)
+        urlBuilder.addQuery("langs", languages.join(","));
 
         if (page > 1) {
             urlBuilder.addQuery("page", page.toString());
