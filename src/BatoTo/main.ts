@@ -436,55 +436,52 @@ export class BatoToExtension implements BatoToImplementation {
         sortingOption?: SortingOption,
     ): Promise<PagedResults<SearchResultItem>> {
         const page = metadata?.page ?? 1;
-        const languages: string[] = getLanguages();
 
-        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("browse");
+        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("search");
 
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
         }
 
-        urlBuilder.addQuery("langs", languages.join(","));
-        urlBuilder.addQuery("sort", sortingOption?.id || "update.za");
-        urlBuilder.addQuery("page", page.toString());
+        if (page > 1) {
+            urlBuilder.addQuery("page", page.toString());
+        }
 
         const request = { url: urlBuilder.build(), method: "GET" };
         const $ = await this.fetchCheerio(request);
         const searchResults: SearchResultItem[] = [];
         const collectedIds = new Set<string>();
 
-        // Parse the browse page results
-        $("div#series-list > div.col.item").each((_, element) => {
-            const unit = $(element);
-
-            // Get title and link
-            const titleLink = unit.find("a.item-title").first();
-            const href = titleLink.attr("href") || "";
+        // Parse the search page results - each result is in a container with a link to /series/
+        $('a[href*="/series/"]').each((_, element) => {
+            const anchor = $(element);
+            const href = anchor.attr("href") || "";
             const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
             if (!mangaId || collectedIds.has(mangaId)) return;
 
+            // Find the container (usually the parent or a close ancestor)
+            const container = anchor.closest("div, article");
+            
+            // Get title - could be in the anchor text or nearby
+            const title = (anchor.text() || container.find("a").first().text() || "").trim();
+            
+            if (!title) return;
+
             // Get image
-            const imgElement = unit.find("a.item-cover img");
+            const imgElement = container.find("img").first();
             let image = imgElement.attr("src") || 
                          imgElement.attr("data-src") || 
                          imgElement.attr("data-lazy-src") || "";
             
             image = normalizeImageUrl(image);
 
-            // Get title text
-            const title = titleLink.text().trim();
-
-            // Get latest chapter text
-            const chapterLink = unit.find("div.item-volch a.visited").first();
-            const subtitle = chapterLink.text().trim();
-
-            if (title && image) {
+            if (image) {
                 searchResults.push({
                     mangaId: mangaId,
                     imageUrl: image,
                     title: title,
-                    subtitle: subtitle,
+                    subtitle: "",
                 });
 
                 collectedIds.add(mangaId);
@@ -494,7 +491,7 @@ export class BatoToExtension implements BatoToImplementation {
         // Handle pagination by inspecting page links
         let maxPage = page;
 
-        $('a[href*="/browse"]').each((_, element) => {
+        $('a[href*="/search"]').each((_, element) => {
             const href = $(element).attr("href") || "";
 
             const queryPage = href.match(/[?&]page=(\d+)/);
