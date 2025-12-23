@@ -30,7 +30,7 @@ import { URLBuilder } from "../utils/url-builder/base";
 import { BatoToSettingsForm, getLanguages } from "./forms";
 import { AdultGenres, Genres, MatureGenres, type Metadata } from "./models";
 
-const DOMAIN_NAME = "https://bato.si/";
+const DOMAIN_NAME = "https://ato.to/";
 
 // Extracts a manga identifier from either the legacy /series/ path or the new /title/ slugged path
 const extractMangaIdFromHref = (href: string): string => {

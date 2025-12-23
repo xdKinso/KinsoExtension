@@ -5,8 +5,8 @@ import {
 } from "@paperback/types";
 
 export default {
-    name: "Bato.To",
-    description: "Extension that pulls content from bato.to.",
+    name: "Bato.Dev",
+    description: "Extension that pulls content from bato.is.",
     version: "0.0.19",
     icon: "icon.png",
     language: "en",
