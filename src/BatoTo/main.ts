@@ -221,13 +221,10 @@ export class BatoToExtension implements BatoToImplementation {
         const page = metadata?.page ?? 1;
         const items: DiscoverSectionItem[] = [];
         const collectedIds = metadata?.collectedIds ?? [];
-        const languages = getLanguages();
 
+        // Latest releases are only available on homepage (no separate endpoint)
         const request = {
-            url: new URLBuilder(DOMAIN_NAME)
-                .addPath("v3x-latest")
-                .addQuery("langs", languages.join(","))
-                .build(),
+            url: DOMAIN_NAME,
             method: "GET",
         };
 
@@ -271,19 +268,10 @@ export class BatoToExtension implements BatoToImplementation {
             }
         });
 
-        // Check for "Load More" button to determine if there are more items
-        const loadMoreButton = $("div.load-more button");
-        let nextOffset: number | undefined;
-
-        if (loadMoreButton.length > 0) {
-            nextOffset = page + 1;
-        }
-
+        // Latest releases on homepage don't have pagination
         return {
             items: items,
-            metadata: nextOffset
-                ? { page: nextOffset, collectedIds: collectedIds }
-                : undefined,
+            metadata: undefined,
         };
     }
 
