@@ -7,7 +7,7 @@ import {
 export default {
     name: "Weeb Central",
     description: "Extension that pulls content from weebcentral.com.",
-    version: "0.0.02",
+    version: "0.0.03",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
