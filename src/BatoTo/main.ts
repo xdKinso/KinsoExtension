@@ -460,32 +460,32 @@ export class BatoToExtension implements BatoToImplementation {
 
             if (!mangaId || collectedIds.has(mangaId)) return;
 
-            // Find the container (usually the parent or a close ancestor)
+            // Get image - first check in the anchor itself, then in container
+            const imgInAnchor = anchor.find("img").first();
+            let image = imgInAnchor.attr("src") || 
+                         imgInAnchor.attr("data-src") || 
+                         imgInAnchor.attr("data-lazy-src") || "";
+            
+            // Get title - look for a sibling anchor with text or the parent container
             const container = anchor.closest("div, article");
+            const titleAnchor = container.find('a[href*="/series/"]').filter((_, a) => {
+                return $(a).text().trim().length > 0;
+            }).first();
             
-            // Get title - could be in the anchor text or nearby
-            const title = (anchor.text() || container.find("a").first().text() || "").trim();
+            const title = (titleAnchor.text() || anchor.text() || "").trim();
             
-            if (!title) return;
+            if (!title || !image) return;
 
-            // Get image
-            const imgElement = container.find("img").first();
-            let image = imgElement.attr("src") || 
-                         imgElement.attr("data-src") || 
-                         imgElement.attr("data-lazy-src") || "";
-            
             image = normalizeImageUrl(image);
 
-            if (image) {
-                searchResults.push({
-                    mangaId: mangaId,
-                    imageUrl: image,
-                    title: title,
-                    subtitle: "",
-                });
+            searchResults.push({
+                mangaId: mangaId,
+                imageUrl: image,
+                title: title,
+                subtitle: "",
+            });
 
-                collectedIds.add(mangaId);
-            }
+            collectedIds.add(mangaId);
         });
 
         // Handle pagination by inspecting page links
