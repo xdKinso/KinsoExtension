@@ -438,20 +438,14 @@ export class BatoToExtension implements BatoToImplementation {
         const page = metadata?.page ?? 1;
         const languages: string[] = getLanguages();
 
-        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v4x-search");
-
-        // The site accepts both query and path based paging; keep both for safety
-        if (page > 1) {
-            urlBuilder.addPath(page.toString());
-        }
+        const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("browse");
 
         if (query.title && query.title.trim() !== "") {
             urlBuilder.addQuery("word", query.title.trim());
         }
 
-        urlBuilder.addQuery("orig", "");
-        urlBuilder.addQuery("lang", languages.join(","));
-        urlBuilder.addQuery("sort", sortingOption?.id || "views_d360");
+        urlBuilder.addQuery("langs", languages.join(","));
+        urlBuilder.addQuery("sort", sortingOption?.id || "update.za");
         urlBuilder.addQuery("page", page.toString());
 
         const request = { url: urlBuilder.build(), method: "GET" };
@@ -459,69 +453,49 @@ export class BatoToExtension implements BatoToImplementation {
         const searchResults: SearchResultItem[] = [];
         const collectedIds = new Set<string>();
 
-        // The search page markup changes often, so harvest every anchor that points to a title
-        const anchors = $('a[href*="/title/"]');
+        // Parse the browse page results
+        $("div#series-list > div.col.item").each((_, element) => {
+            const unit = $(element);
 
-        anchors.each((_, element) => {
-            const anchor = $(element);
-            const href = anchor.attr("href") || "";
-            const rawId = extractMangaIdFromHref(href);
-            const mangaId = sanitizeMangaId(rawId);
+            // Get title and link
+            const titleLink = unit.find("a.item-title").first();
+            const href = titleLink.attr("href") || "";
+            const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
 
             if (!mangaId || collectedIds.has(mangaId)) return;
 
-            const container = anchor.closest("article, div, li, section");
-            const resolvedContainer = container.length ? container : anchor;
-
-            const titleText = (
-                anchor.text() ||
-                resolvedContainer.find(".item-title, h3, .font-bold").first().text() ||
-                ""
-            ).trim();
-
-            if (!titleText) return;
-
-            const imgElement = resolvedContainer
-                .find("img")
-                .add(anchor.find("img"))
-                .filter((_, img) => {
-                    const src =
-                        $(img).attr("src") ||
-                        $(img).attr("data-src") ||
-                        $(img).attr("data-lazy-src") ||
-                        "";
-                    return !!src;
-                })
-                .first();
-
-            let image =
-                imgElement.attr("src") ||
-                imgElement.attr("data-src") ||
-                imgElement.attr("data-lazy-src") ||
-                "";
-
+            // Get image
+            const imgElement = unit.find("a.item-cover img");
+            let image = imgElement.attr("src") || 
+                         imgElement.attr("data-src") || 
+                         imgElement.attr("data-lazy-src") || "";
+            
             image = normalizeImageUrl(image);
 
-            searchResults.push({
-                mangaId: mangaId,
-                imageUrl: image,
-                title: titleText,
-                subtitle: "",
-            });
+            // Get title text
+            const title = titleLink.text().trim();
 
-            collectedIds.add(mangaId);
+            // Get latest chapter text
+            const chapterLink = unit.find("div.item-volch a.visited").first();
+            const subtitle = chapterLink.text().trim();
+
+            if (title && image) {
+                searchResults.push({
+                    mangaId: mangaId,
+                    imageUrl: image,
+                    title: title,
+                    subtitle: subtitle,
+                });
+
+                collectedIds.add(mangaId);
+            }
         });
 
-        // Handle pagination by inspecting both path- and query-based links
+        // Handle pagination by inspecting page links
         let maxPage = page;
 
-        $('a[href*="/v4x-search"]').each((_, element) => {
+        $('a[href*="/browse"]').each((_, element) => {
             const href = $(element).attr("href") || "";
-
-            const pathPage = href.match(/v4x-search\/(\d+)/);
-            if (pathPage?.[1]) {
-                maxPage = Math.max(maxPage, parseInt(pathPage[1], 10));
-            }
 
             const queryPage = href.match(/[?&]page=(\d+)/);
             if (queryPage?.[1]) {
