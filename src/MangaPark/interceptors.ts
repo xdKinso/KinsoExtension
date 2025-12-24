@@ -11,6 +11,9 @@ const SERVER_PATTERN = /https:\/\/s\d{2}/;
 // Track failed servers to avoid repeated attempts
 const failedServers = new Set<string>();
 
+// Track URLs that have been retried to prevent infinite loops
+const urlRetryMap = new Map<string, string[]>();
+
 // Get server ID from URL (e.g., "s01", "s03")
 function getServerFromUrl(url: string): string | null {
   const match = url.match(/https:\/\/(s\d{2})\./);
@@ -30,9 +33,19 @@ function getNextWorkingServer(currentServer?: string): string {
       return server;
     }
   }
-  // If all servers tried, clear failed list and start over with first priority server
+  // If all servers tried, clear failed list and start over
   failedServers.clear();
   return CDN_SERVERS[0] ?? 's01';
+}
+
+// Get next untried server for a URL (for actual retries)
+function getNextUntriedServer(mediaPath: string, triedServers: string[]): string | null {
+  for (const server of CDN_SERVERS) {
+    if (!triedServers.includes(server)) {
+      return server;
+    }
+  }
+  return null; // All servers tried
 }
 
 // Check if URL is a CDN image request
@@ -87,12 +100,28 @@ export class Interceptor extends PaperbackInterceptor {
     if (isCDNImageUrl(request.url)) {
       const currentServer = getServerFromUrl(request.url);
       
-      // Mark server as failed on errors or empty responses
+      // Mark server as failed on any error
       if (response.status >= 400 || data.byteLength === 0) {
         if (currentServer) {
           failedServers.add(currentServer);
-          console.log(`[MangaPark] Server ${currentServer} marked as failed (status: ${response.status})`);
+          console.log(`[MangaPark] Server ${currentServer} failed (status: ${response.status})`);
+          
+          // Extract media path from URL for potential retries
+          const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
+          const retryKey = mediaPath;
+          
+          // Track attempted servers for this image
+          const triedServers = urlRetryMap.get(retryKey) || [];
+          triedServers.push(currentServer);
+          urlRetryMap.set(retryKey, triedServers);
+          
+          console.log(`[MangaPark] Tried servers for ${mediaPath.substring(0, 30)}...: ${triedServers.join(', ')}`);
         }
+      } else if (currentServer && response.status === 200) {
+        // Success - clear retry tracking for this URL
+        const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
+        urlRetryMap.delete(mediaPath);
+        console.log(`[MangaPark] Successfully loaded from ${currentServer}`);
       }
     }
     
@@ -101,4 +130,4 @@ export class Interceptor extends PaperbackInterceptor {
 }
 
 // Export helper functions for use in main.ts
-export { getServerFromUrl, replaceServer, getNextWorkingServer, isCDNImageUrl, SERVER_PATTERN, CDN_SERVERS, failedServers };
+export { getServerFromUrl, replaceServer, getNextWorkingServer, getNextUntriedServer, isCDNImageUrl, SERVER_PATTERN, CDN_SERVERS, failedServers, urlRetryMap };

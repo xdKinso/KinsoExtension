@@ -665,23 +665,12 @@ export class MangaParkExtension implements MangaParkImplementation {
       }
     });
 
-    // Normalize all image URLs to use s00 (most reliable server)
-    // The interceptor will automatically try other servers if s00 fails
-    const { getServerFromUrl, replaceServer } = await import("./interceptors");
-    
-    const fixedPages = pages.map(url => {
-      const currentServer = getServerFromUrl(url);
-      // Replace any server with s00 for consistency and reliability
-      if (currentServer && currentServer !== 's00') {
-        return replaceServer(url, 's00');
-      }
-      return url;
-    });
-
+    // Keep original servers from page source - interceptor will handle server switching on failures
+    // This allows Paperback's retry mechanism to work properly
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages: fixedPages,
+      pages: pages,
     };
   }
 
