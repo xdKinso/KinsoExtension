@@ -2,8 +2,8 @@ import { PaperbackInterceptor, type Request, type Response } from "@paperback/ty
 import { generateBrowserHeaders } from "./browserHeaders";
 
 // Priority ordered server list based on user reports and testing (most reliable first)
-// Order: s00, s01, s03, s04, then remaining servers
-const CDN_SERVERS = ['s00', 's01', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's02'];
+// Order: s00, s01, s03, s04, then remaining servers. s07 moved to end due to frequent 503 errors
+const CDN_SERVERS = ['s00', 's01', 's03', 's04', 's05', 's06', 's08', 's09', 's10', 's02', 's07'];
 
 // Regex to match CDN server pattern in URLs
 const SERVER_PATTERN = /https:\/\/s\d{2}/;
