@@ -1,8 +1,9 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 import { generateBrowserHeaders } from "./browserHeaders";
 
-// Priority ordered server list from Mihon extension (most reliable first)
-const CDN_SERVERS = ['s01', 's03', 's04', 's00', 's05', 's06', 's07', 's08', 's09', 's10', 's02'];
+// Priority ordered server list based on user reports and testing (most reliable first)
+// Order: s00, s01, s03, s04, then remaining servers
+const CDN_SERVERS = ['s00', 's01', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's02'];
 
 // Regex to match CDN server pattern in URLs
 const SERVER_PATTERN = /https:\/\/s\d{2}/;
