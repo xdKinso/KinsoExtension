@@ -58,7 +58,17 @@ export class Interceptor extends PaperbackInterceptor {
     // Apply image fallback for CDN requests
     if (isCDNImageUrl(request.url)) {
       const currentServer = getServerFromUrl(request.url);
-      if (currentServer && failedServers.has(currentServer)) {
+      const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
+      const triedServers = urlRetryMap.get(mediaPath) || [];
+      
+      // Check if this server was already tried for this image (404 case)
+      if (currentServer && triedServers.includes(currentServer)) {
+        const nextServer = getNextUntriedServer(mediaPath, triedServers);
+        if (nextServer) {
+          request.url = replaceServer(request.url, nextServer);
+          console.log(`[MangaPark] Retrying with ${nextServer} (${currentServer} returned 404)`);
+        }
+      } else if (currentServer && failedServers.has(currentServer)) {
         // This server has failed before, try next available
         const newServer = getNextWorkingServer(currentServer);
         request.url = replaceServer(request.url, newServer);
