@@ -665,24 +665,16 @@ export class MangaParkExtension implements MangaParkImplementation {
       }
     });
 
-    // Apply proactive image fallback - replace unreliable servers before loading
-    // Import necessary functions from interceptors
-    const { getServerFromUrl, replaceServer, getNextWorkingServer, failedServers } = await import("./interceptors");
+    // Normalize all image URLs to use s00 (most reliable server)
+    // The interceptor will automatically try other servers if s00 fails
+    const { getServerFromUrl, replaceServer } = await import("./interceptors");
     
     const fixedPages = pages.map(url => {
       const currentServer = getServerFromUrl(url);
-      
-      // Proactively replace s07 and s02 (known problematic servers) with s00 (most reliable)
-      if (currentServer === 's07' || currentServer === 's02') {
+      // Replace any server with s00 for consistency and reliability
+      if (currentServer && currentServer !== 's00') {
         return replaceServer(url, 's00');
       }
-      
-      // If this URL uses a server we know has failed, replace it proactively
-      if (currentServer && failedServers.has(currentServer)) {
-        const newServer = getNextWorkingServer(currentServer);
-        return replaceServer(url, newServer);
-      }
-      
       return url;
     });
 

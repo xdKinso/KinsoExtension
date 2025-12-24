@@ -41,6 +41,10 @@ function isCDNImageUrl(url: string): boolean {
 }
 
 export class Interceptor extends PaperbackInterceptor {
+  // Track retry attempts per URL to prevent infinite loops
+  private retryAttempts = new Map<string, number>();
+  private maxRetries = 3;
+
   override async interceptRequest(request: Request): Promise<Request> {
     // Apply image fallback for CDN requests
     if (isCDNImageUrl(request.url)) {
@@ -49,6 +53,7 @@ export class Interceptor extends PaperbackInterceptor {
         // This server has failed before, try next available
         const newServer = getNextWorkingServer(currentServer);
         request.url = replaceServer(request.url, newServer);
+        console.log(`[MangaPark] Proactively switching from ${currentServer} to ${newServer}`);
       }
     }
 
@@ -82,7 +87,7 @@ export class Interceptor extends PaperbackInterceptor {
       console.error(`[MangaPark] 520 Unknown Error for: ${request.url}`);
     }
 
-    // Track failed CDN servers
+    // Track failed CDN servers and attempt retry with different server
     if (isCDNImageUrl(request.url)) {
       const currentServer = getServerFromUrl(request.url);
       
@@ -91,7 +96,45 @@ export class Interceptor extends PaperbackInterceptor {
         if (currentServer) {
           failedServers.add(currentServer);
           console.log(`[MangaPark] Server ${currentServer} marked as failed (status: ${response.status})`);
+          
+          // Attempt retry with next server
+          const baseUrl = request.url.replace(SERVER_PATTERN, '');
+          const retryKey = baseUrl;
+          const attempts = this.retryAttempts.get(retryKey) || 0;
+          
+          if (attempts < this.maxRetries) {
+            this.retryAttempts.set(retryKey, attempts + 1);
+            const nextServer = getNextWorkingServer(currentServer);
+            const newUrl = replaceServer(request.url, nextServer);
+            
+            console.log(`[MangaPark] Retry attempt ${attempts + 1}/${this.maxRetries}: Switching from ${currentServer} to ${nextServer}`);
+            
+            // Make new request with different server
+            const retryRequest = {
+              ...request,
+              url: newUrl,
+            };
+            
+            try {
+              const retryResponse = await Application.fetch(retryRequest);
+              
+              if (retryResponse.status === 200 && retryResponse.data.byteLength > 0) {
+                console.log(`[MangaPark] Retry successful with ${nextServer}`);
+                this.retryAttempts.delete(retryKey);
+                return retryResponse.data;
+              }
+            } catch (error) {
+              console.error(`[MangaPark] Retry failed: ${error}`);
+            }
+          } else {
+            // Max retries reached, clean up
+            this.retryAttempts.delete(retryKey);
+          }
         }
+      } else if (currentServer && response.status === 200) {
+        // Success - clear retry counter for this URL
+        const baseUrl = request.url.replace(SERVER_PATTERN, '');
+        this.retryAttempts.delete(baseUrl);
       }
     }
     
