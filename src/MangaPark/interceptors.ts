@@ -100,24 +100,23 @@ export class Interceptor extends PaperbackInterceptor {
     if (isCDNImageUrl(request.url)) {
       const currentServer = getServerFromUrl(request.url);
       
-      // Mark server as failed on any error
-      if (response.status >= 400 || data.byteLength === 0) {
-        if (currentServer) {
-          failedServers.add(currentServer);
-          console.log(`[MangaPark] Server ${currentServer} failed (status: ${response.status})`);
-          
-          // Extract media path from URL for potential retries
-          const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
-          const retryKey = mediaPath;
-          
-          // Track attempted servers for this image
-          const triedServers = urlRetryMap.get(retryKey) || [];
-          triedServers.push(currentServer);
-          urlRetryMap.set(retryKey, triedServers);
-          
-          console.log(`[MangaPark] Tried servers for ${mediaPath.substring(0, 30)}...: ${triedServers.join(', ')}`);
-        }
-      } else if (currentServer && response.status === 200) {
+      // Only mark server as failed on actual server errors (5xx), not on 404 "not found"
+      // 404 just means this particular image isn't on this server, not that the server is down
+      if ((response.status >= 500 || data.byteLength === 0) && currentServer) {
+        failedServers.add(currentServer);
+        console.log(`[MangaPark] Server ${currentServer} marked as failed (status: ${response.status})`);
+      }
+      
+      // For 404s and other 4xx errors, just track that this server doesn't have this image
+      if (response.status === 404 && currentServer) {
+        // Extract media path from URL
+        const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
+        const retryKey = mediaPath;
+        const triedServers = urlRetryMap.get(retryKey) || [];
+        triedServers.push(currentServer);
+        urlRetryMap.set(retryKey, triedServers);
+        console.log(`[MangaPark] Image not on ${currentServer}, will try next server`);
+      } else if (response.status === 200 && currentServer) {
         // Success - clear retry tracking for this URL
         const mediaPath = request.url.replace(SERVER_PATTERN, '').substring(8);
         urlRetryMap.delete(mediaPath);
