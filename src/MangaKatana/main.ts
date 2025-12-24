@@ -626,7 +626,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
       const imageArrayNameRegex = /data-src['"],\s*(\w+)/;
       const imageUrlRegex = /\'([^\']*)\'/;
 
-      const imageScript = $("script:containsData(data-src)").first().html() || "";
+      const imageScript = $("script:contains(data-src)").first().html() || "";
 
       if (imageScript) {
         const imageArrayNameMatch = imageScript.match(imageArrayNameRegex);
