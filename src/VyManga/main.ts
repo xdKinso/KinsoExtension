@@ -137,43 +137,37 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     // Handle different sections differently
     if (section.id === "popular") {
-      // Popular section: Find all img tags with src attributes and their associated links
-      $("img[src*='thumbnail']").each((_, element) => {
-        const $img = $(element);
-        const imageUrl = $img.attr("src") || "";
-        let title = $img.attr("alt") || $img.attr("title") || "";
-
-        if (!imageUrl || !title) return;
-
-        // Find the link associated with this image
-        let $link = $img.closest("a[href*='/manga/']");
-        if (!$link.length) {
-          // Try finding link in parent elements
-          $link = $img.parent().find("a[href*='/manga/']").first();
-        }
-        if (!$link.length) {
-          // Try finding link as sibling
-          $link = $img.siblings("a[href*='/manga/']").first();
-        }
-
-        let mangaId = "";
-        if ($link.length) {
-          const href = $link.attr("href") || "";
-          const extractedId = this.extractMangaId(href);
-          if (extractedId) {
-            mangaId = extractedId;
-          }
-        }
-
-        // Fallback: try to extract ID from image src or data attributes
-        if (!mangaId) {
-          const srcMatch = imageUrl.match(/\/(\d+)\//);
-          if (srcMatch && srcMatch[1]) {
-            mangaId = srcMatch[1];
-          }
-        }
+      // Popular section: Find all links to manga pages first
+      $("a[href*='/manga/']").each((_, element) => {
+        const $link = $(element);
+        const href = $link.attr("href") || "";
+        const mangaId = this.extractMangaId(href);
 
         if (!mangaId || seenIds.has(mangaId)) return;
+
+        // Find the associated image
+        const $img = $link.find("img[src*='thumbnail'], img[src*='cover']").first();
+        let imageUrl = "";
+        let title = "";
+
+        if ($img.length) {
+          imageUrl = $img.attr("src") || $img.attr("data-src") || "";
+          title = $img.attr("alt") || $img.attr("title") || "";
+        }
+
+        // Try to find image in parent or sibling elements if not found in link
+        if (!imageUrl) {
+          const $nearbyImg = $link
+            .parent()
+            .find("img[src*='thumbnail'], img[src*='cover']")
+            .first();
+          if ($nearbyImg.length) {
+            imageUrl = $nearbyImg.attr("src") || $nearbyImg.attr("data-src") || "";
+            title = $nearbyImg.attr("alt") || $nearbyImg.attr("title") || "";
+          }
+        }
+
+        if (!title || !imageUrl) return;
 
         seenIds.add(mangaId);
         items.push({
