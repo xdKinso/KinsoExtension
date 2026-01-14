@@ -27,7 +27,7 @@ import {
   type TagSection,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
-import { URLBuilder } from "../utils/url-builder/base";
+import { URLBuilder } from "../../src/utils/url-builder/base";
 import { getLanguages, MangaFireSettingsForm } from "./forms";
 import { FireInterceptor } from "./interceptors";
 import { Genres, type ImageData, type Metadata, type PageResponse, type Result } from "./models";
