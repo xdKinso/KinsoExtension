@@ -55,7 +55,7 @@ export const parseSearch = ($: CheerioAPI): SearchResultItem[] => {
       const title = titleLink.text().trim();
       const href = titleLink.attr("href") || "";
       let id = href.split("/").pop() || "";
-      
+
       const image = $(manga).find("img").attr("src") ?? "";
       const subtitle = $(manga).find(".chapter").first().text().trim();
 

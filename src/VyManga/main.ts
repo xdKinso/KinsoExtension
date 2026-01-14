@@ -38,10 +38,12 @@ class VyMangaInterceptor extends PaperbackInterceptor {
   async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
-      "referer": "https://vymanga.com/",
-      "origin": "https://vymanga.com",
-      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      referer: "https://vymanga.com/",
+      origin: "https://vymanga.com",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     };
     return request;
   }
@@ -86,7 +88,7 @@ export class VyMangaExtension implements VyMangaImplementation {
       {
         id: "genres",
         title: "Genres",
-        tags: Genres.map(g => ({ id: g.id, title: g.label })),
+        tags: Genres.map((g) => ({ id: g.id, title: g.label })),
       },
     ];
   }
@@ -116,7 +118,7 @@ export class VyMangaExtension implements VyMangaImplementation {
     metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
     const page = metadata?.page ?? 1;
-    
+
     let url = DOMAIN;
     if (section.id === "latest-update") {
       url = `${DOMAIN}/search?sort=updated_at&page=${page}`;
@@ -131,20 +133,26 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
-    
+
     if (section.id === "popular") {
       // Parse Popular Manga from homepage
       $('a[href*="/manga/"]').each((_, element) => {
         const $elem = $(element);
-        const href = $elem.attr('href');
-        const title = $elem.find('h3, h4, .title').first().text().trim() || $elem.attr('title')?.trim();
-        const image = $elem.find('img').first().attr('src') || $elem.find('img').first().attr('data-src') || '';
-        
+        const href = $elem.attr("href");
+        const title =
+          $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
+        const image =
+          $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
+
         if (href && title) {
           const mangaId = this.extractMangaId(href);
-          if (mangaId && items.length < 20 && !items.find(i => 'mangaId' in i && i.mangaId === mangaId)) {
+          if (
+            mangaId &&
+            items.length < 20 &&
+            !items.find((i) => "mangaId" in i && i.mangaId === mangaId)
+          ) {
             items.push({
-              type: 'prominentCarouselItem',
+              type: "prominentCarouselItem",
               mangaId: mangaId,
               title: title,
               imageUrl: image,
@@ -156,24 +164,26 @@ export class VyMangaExtension implements VyMangaImplementation {
       // Parse manga list from search pages
       $('a[href*="/manga/"]').each((_, element) => {
         const $elem = $(element);
-        const href = $elem.attr('href');
-        const title = $elem.find('h3, h4, .title').first().text().trim() || $elem.attr('title')?.trim();
-        const image = $elem.find('img').first().attr('src') || $elem.find('img').first().attr('data-src') || '';
-        
+        const href = $elem.attr("href");
+        const title =
+          $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
+        const image =
+          $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
+
         if (href && title) {
           const mangaId = this.extractMangaId(href);
-          if (mangaId && !items.find(i => 'mangaId' in i && i.mangaId === mangaId)) {
+          if (mangaId && !items.find((i) => "mangaId" in i && i.mangaId === mangaId)) {
             if (section.id === "latest-update") {
               items.push({
-                type: 'chapterUpdatesCarouselItem',
+                type: "chapterUpdatesCarouselItem",
                 mangaId: mangaId,
                 title: title,
                 imageUrl: image,
-                chapterId: 'latest',
+                chapterId: "latest",
               });
             } else {
               items.push({
-                type: 'simpleCarouselItem',
+                type: "simpleCarouselItem",
                 mangaId: mangaId,
                 title: title,
                 imageUrl: image,
@@ -195,7 +205,7 @@ export class VyMangaExtension implements VyMangaImplementation {
     metadata: Metadata | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
     const page = metadata?.page ?? 1;
-    const searchTerm = query.title?.trim() || '';
+    const searchTerm = query.title?.trim() || "";
 
     let url = `${DOMAIN}/search?q=${encodeURIComponent(searchTerm)}&page=${page}`;
 
@@ -209,11 +219,13 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     $('a[href*="/manga/"]').each((_, element) => {
       const $elem = $(element);
-      const href = $elem.attr('href');
-      const title = $elem.find('h3, h4, .title').first().text().trim() || $elem.attr('title')?.trim();
-      const image = $elem.find('img').first().attr('src') || $elem.find('img').first().attr('data-src') || '';
-      
-      if (href && title && !results.find(r => r.mangaId === this.extractMangaId(href))) {
+      const href = $elem.attr("href");
+      const title =
+        $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
+      const image =
+        $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
+
+      if (href && title && !results.find((r) => r.mangaId === this.extractMangaId(href))) {
         const mangaId = this.extractMangaId(href);
         if (mangaId) {
           results.push({
@@ -241,25 +253,31 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    const title = $('h1, .manga-title, .title').first().text().trim();
-    const image = $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img').first().attr('src') || 
-                  $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img').first().attr('data-src') || '';
-    
-    const description = $('.summary, .description, .synopsis, p').first().text().trim();
-    
+    const title = $("h1, .manga-title, .title").first().text().trim();
+    const image =
+      $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img')
+        .first()
+        .attr("src") ||
+      $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img')
+        .first()
+        .attr("data-src") ||
+      "";
+
+    const description = $(".summary, .description, .synopsis, p").first().text().trim();
+
     // Try to parse author and artist
-    let author = 'Unknown';
-    let artist = 'Unknown';
-    
-    $('div, span, p').each((_, element) => {
+    let author = "Unknown";
+    let artist = "Unknown";
+
+    $("div, span, p").each((_, element) => {
       const text = $(element).text();
-      if (text.includes('Author')) {
+      if (text.includes("Author")) {
         const match = text.match(/Author[:\s]+([^•\n]+)/i);
         if (match && match[1]) {
           author = match[1].trim();
         }
       }
-      if (text.includes('Artist')) {
+      if (text.includes("Artist")) {
         const match = text.match(/Artist[:\s]+([^•\n]+)/i);
         if (match && match[1]) {
           artist = match[1].trim();
@@ -268,10 +286,10 @@ export class VyMangaExtension implements VyMangaImplementation {
     });
 
     // Parse status
-    let status = 'ONGOING';
-    const statusText = $('.status, .manga-status').text().toLowerCase();
-    if (statusText.includes('completed') || statusText.includes('complete')) {
-      status = 'COMPLETED';
+    let status = "ONGOING";
+    const statusText = $(".status, .manga-status").text().toLowerCase();
+    if (statusText.includes("completed") || statusText.includes("complete")) {
+      status = "COMPLETED";
     }
 
     // Parse genres
@@ -279,7 +297,7 @@ export class VyMangaExtension implements VyMangaImplementation {
     $('a[href*="/genre/"], .genres a, .tags a').each((_, element) => {
       const tag = $(element).text().trim();
       if (tag) {
-        tags.push({ id: tag.toLowerCase().replace(/\s+/g, '-'), title: tag });
+        tags.push({ id: tag.toLowerCase().replace(/\s+/g, "-"), title: tag });
       }
     });
 
@@ -294,7 +312,7 @@ export class VyMangaExtension implements VyMangaImplementation {
         author: author,
         contentRating: ContentRating.MATURE,
         synopsis: description,
-        tagGroups: tags.length > 0 ? [{ id: 'genres', title: 'Genres', tags }] : [],
+        tagGroups: tags.length > 0 ? [{ id: "genres", title: "Genres", tags }] : [],
       },
     };
   }
@@ -313,19 +331,24 @@ export class VyMangaExtension implements VyMangaImplementation {
     // VyManga chapter list
     $('a[href*="/chapter/"], .chapter-list a, a[href*="chapter"]').each((_, element) => {
       const $elem = $(element);
-      const href = $elem.attr('href');
-      const chapterTitle = $elem.text().trim() || $elem.find('.chapter-title, .title').text().trim();
-      
-      if (href && href.includes('chapter') && chapterTitle) {
+      const href = $elem.attr("href");
+      const chapterTitle =
+        $elem.text().trim() || $elem.find(".chapter-title, .title").text().trim();
+
+      if (href && href.includes("chapter") && chapterTitle) {
         const chapterId = this.extractChapterId(href);
-        if (chapterId && !chapters.find(c => c.chapterId === chapterId)) {
+        if (chapterId && !chapters.find((c) => c.chapterId === chapterId)) {
           // Extract chapter number from title or URL
-          const chapterNumMatch = chapterTitle.match(/chapter[:\s]+(\d+(?:\.\d+)?)/i) || 
-                                  href.match(/chapter[:\-_]+(\d+(?:\.\d+)?)/i);
-          const chapterNum = chapterNumMatch && chapterNumMatch[1] ? parseFloat(chapterNumMatch[1]) : chapters.length;
+          const chapterNumMatch =
+            chapterTitle.match(/chapter[:\s]+(\d+(?:\.\d+)?)/i) ||
+            href.match(/chapter[:\-_]+(\d+(?:\.\d+)?)/i);
+          const chapterNum =
+            chapterNumMatch && chapterNumMatch[1]
+              ? parseFloat(chapterNumMatch[1])
+              : chapters.length;
 
           // Try to parse date
-          const dateText = $elem.find('.chapter-date, .date, time').text().trim();
+          const dateText = $elem.find(".chapter-date, .date, time").text().trim();
           let date = new Date();
           if (dateText) {
             date = this.parseRelativeDate(dateText);
@@ -347,7 +370,7 @@ export class VyMangaExtension implements VyMangaImplementation {
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    const url = `${DOMAIN}${chapter.chapterId.startsWith('/') ? '' : '/'}${chapter.chapterId}`;
+    const url = `${DOMAIN}${chapter.chapterId.startsWith("/") ? "" : "/"}${chapter.chapterId}`;
 
     const request = {
       url: url,
@@ -358,10 +381,12 @@ export class VyMangaExtension implements VyMangaImplementation {
     const pages: string[] = [];
 
     // Try to find images in the chapter reader
-    $('.chapter-content img, .reader-content img, #chapter-reader img, .page-break img, img[alt*="page"]').each((_, element) => {
+    $(
+      '.chapter-content img, .reader-content img, #chapter-reader img, .page-break img, img[alt*="page"]',
+    ).each((_, element) => {
       const $img = $(element);
-      const src = $img.attr('src') || $img.attr('data-src') || $img.attr('data-lazy-src') || '';
-      if (src && !src.includes('loading') && !src.includes('spinner') && !src.includes('icon')) {
+      const src = $img.attr("src") || $img.attr("data-src") || $img.attr("data-lazy-src") || "";
+      if (src && !src.includes("loading") && !src.includes("spinner") && !src.includes("icon")) {
         pages.push(src.trim());
       }
     });
@@ -372,7 +397,11 @@ export class VyMangaExtension implements VyMangaImplementation {
       const imageMatches = html.matchAll(/https?:\/\/[^\s"']+?\.(?:jpg|jpeg|png|gif|webp)/gi);
       for (const match of imageMatches) {
         const imageUrl = match[0];
-        if (!imageUrl.includes('loading') && !imageUrl.includes('spinner') && !imageUrl.includes('icon')) {
+        if (
+          !imageUrl.includes("loading") &&
+          !imageUrl.includes("spinner") &&
+          !imageUrl.includes("icon")
+        ) {
           pages.push(imageUrl);
         }
       }
@@ -399,7 +428,7 @@ export class VyMangaExtension implements VyMangaImplementation {
       return urlObj.pathname;
     } catch {
       // If not a full URL, assume it's already a path
-      return url.startsWith('/') ? url : '/' + url;
+      return url.startsWith("/") ? url : "/" + url;
     }
   }
 
@@ -408,32 +437,32 @@ export class VyMangaExtension implements VyMangaImplementation {
     const lower = dateString.toLowerCase();
 
     // Handle relative dates
-    if (lower.includes('ago')) {
+    if (lower.includes("ago")) {
       const match = dateString.match(/(\d+)\s+(second|minute|hour|day|week|month|year)/i);
       if (match && match[1] && match[2]) {
         const value = parseInt(match[1]);
         const unit = match[2].toLowerCase();
 
         switch (unit) {
-          case 'second':
+          case "second":
             now.setSeconds(now.getSeconds() - value);
             break;
-          case 'minute':
+          case "minute":
             now.setMinutes(now.getMinutes() - value);
             break;
-          case 'hour':
+          case "hour":
             now.setHours(now.getHours() - value);
             break;
-          case 'day':
+          case "day":
             now.setDate(now.getDate() - value);
             break;
-          case 'week':
+          case "week":
             now.setDate(now.getDate() - value * 7);
             break;
-          case 'month':
+          case "month":
             now.setMonth(now.getMonth() - value);
             break;
-          case 'year':
+          case "year":
             now.setFullYear(now.getFullYear() - value);
             break;
         }

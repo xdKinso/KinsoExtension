@@ -41,7 +41,7 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "oneshot", label: "Oneshot" },
     { id: "_4_koma", label: "4-Koma" },
     { id: "ai_art", label: "Art-by-AI" },
-    { id: "ai_story", label: "Story-by-AI" }
+    { id: "ai_story", label: "Story-by-AI" },
   ],
   demographics: [
     { id: "shoujo", label: "Shoujo(G)" },
@@ -56,7 +56,7 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "old_people", label: "Silver & Golden" },
     { id: "shoujo_ai", label: "Shoujo ai" },
     { id: "shounen_ai", label: "Shounen ai" },
-    { id: "non_human", label: "Non-human" }
+    { id: "non_human", label: "Non-human" },
   ],
   contentRating: [
     { id: "gore", label: "Gore" },
@@ -65,7 +65,7 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "ecchi", label: "Ecchi" },
     { id: "adult", label: "Adult" },
     { id: "mature", label: "Mature" },
-    { id: "smut", label: "Smut" }
+    { id: "smut", label: "Smut" },
   ],
   genres: [
     { id: "action", label: "Action" },
@@ -164,20 +164,20 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "wuxia", label: "Wuxia" },
     { id: "xianxia", label: "Xianxia" },
     { id: "xuanhuan", label: "Xuanhuan" },
-    { id: "zombies", label: "Zombies" }
+    { id: "zombies", label: "Zombies" },
   ],
   status: [
     { id: "pending", label: "Pending" },
     { id: "ongoing", label: "Ongoing" },
     { id: "completed", label: "Completed" },
     { id: "hiatus", label: "Hiatus" },
-    { id: "cancelled", label: "Cancelled" }
+    { id: "cancelled", label: "Cancelled" },
   ],
   languages: [
     { id: "0", label: "Chinese" },
     { id: "1", label: "English" },
     { id: "2", label: "Japanese" },
-    { id: "3", label: "Korean" }
+    { id: "3", label: "Korean" },
   ],
   years: [],
   lengths: [
@@ -206,7 +206,7 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "30-39", label: "39~30" },
     { id: "20-29", label: "29~20" },
     { id: "10-19", label: "19~10" },
-    { id: "1-9", label: "9~1" }
+    { id: "1-9", label: "9~1" },
   ],
   sorts: [
     { id: "field_score", label: "Order by Score" },
@@ -214,6 +214,6 @@ export const STATIC_SEARCH_DETAILS: SearchDetails = {
     { id: "field_chapter", label: "Most Chapters" },
     { id: "field_update", label: "New Chapters" },
     { id: "field_create", label: "Recently Created" },
-    { id: "field_name", label: "Name A-Z" }
-  ]
+    { id: "field_name", label: "Name A-Z" },
+  ],
 };

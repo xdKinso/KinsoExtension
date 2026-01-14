@@ -38,10 +38,11 @@ class ThunderScansInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
-      "referer": "https://en-thunderscans.com/",
-      "origin": "https://en-thunderscans.com",
-      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+      referer: "https://en-thunderscans.com/",
+      origin: "https://en-thunderscans.com",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      accept: "image/webp,image/apng,image/*,*/*;q=0.8",
     };
     return request;
   }
@@ -87,7 +88,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
       {
         id: "genres",
         title: "Genres",
-        tags: Genres.map(g => ({ id: g.id, title: g.label })),
+        tags: Genres.map((g) => ({ id: g.id, title: g.label })),
       },
     ];
   }
@@ -126,22 +127,23 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
-    
+
     if (section.id === "popular") {
       // Parse Popular Today - first .pop-list section
-      const $popularSection = $('.pop-list').first();
-      $popularSection.find('.swiper-slide .bsx').each((_, element) => {
+      const $popularSection = $(".pop-list").first();
+      $popularSection.find(".swiper-slide .bsx").each((_, element) => {
         const $elem = $(element);
-        const $link = $elem.find('a').first();
-        const href = $link.attr('href');
-        const title = $elem.find('.tt').text().trim();
-        const image = $elem.find('img.ts-post-image, img.wp-post-image, img').first().attr('src') || '';
-        
+        const $link = $elem.find("a").first();
+        const href = $link.attr("href");
+        const title = $elem.find(".tt").text().trim();
+        const image =
+          $elem.find("img.ts-post-image, img.wp-post-image, img").first().attr("src") || "";
+
         if (href && title) {
           const mangaId = this.extractMangaId(href);
           if (mangaId) {
             items.push({
-              type: 'prominentCarouselItem',
+              type: "prominentCarouselItem",
               mangaId: mangaId,
               title: title,
               imageUrl: image,
@@ -152,24 +154,25 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     } else if (section.id === "editors") {
       // Parse Editor's Pick - second .pop-list section (after "Editor's Pick" h2)
       let foundEditorsSection = false;
-      $('h2').each((_, h2Element) => {
+      $("h2").each((_, h2Element) => {
         const h2Text = $(h2Element).text().trim();
         if (h2Text.includes("Editor") && !foundEditorsSection) {
           foundEditorsSection = true;
           // Find the .pop-list that comes after this h2
-          const $editorsSection = $(h2Element).closest('.releases').next('.pop-list');
-          $editorsSection.find('.swiper-slide .bsx').each((_, element) => {
+          const $editorsSection = $(h2Element).closest(".releases").next(".pop-list");
+          $editorsSection.find(".swiper-slide .bsx").each((_, element) => {
             const $elem = $(element);
-            const $link = $elem.find('a').first();
-            const href = $link.attr('href');
-            const title = $elem.find('.tt').text().trim();
-            const image = $elem.find('img.ts-post-image, img.wp-post-image, img').first().attr('src') || '';
-            
+            const $link = $elem.find("a").first();
+            const href = $link.attr("href");
+            const title = $elem.find(".tt").text().trim();
+            const image =
+              $elem.find("img.ts-post-image, img.wp-post-image, img").first().attr("src") || "";
+
             if (href && title) {
               const mangaId = this.extractMangaId(href);
               if (mangaId) {
                 items.push({
-                  type: 'simpleCarouselItem',
+                  type: "simpleCarouselItem",
                   mangaId: mangaId,
                   title: title,
                   imageUrl: image,
@@ -181,24 +184,24 @@ export class ThunderScansExtension implements ThunderScansImplementation {
       });
     } else if (section.id === "latest") {
       // Parse Latest Update section - main content area with .bsx
-      $('.bs .bsx').each((_, element) => {
+      $(".bs .bsx").each((_, element) => {
         const $elem = $(element);
-        const $link = $elem.find('a').first();
-        const href = $link.attr('href');
-        const title = $elem.find('.tt').text().trim();
-        const image = $elem.find('img').first().attr('src') || '';
-        
+        const $link = $elem.find("a").first();
+        const href = $link.attr("href");
+        const title = $elem.find(".tt").text().trim();
+        const image = $elem.find("img").first().attr("src") || "";
+
         // Get the first chapter link
-        const $firstChapter = $elem.find('.chapter-list a').first();
-        const chapterHref = $firstChapter.attr('href');
-        const chapterText = $firstChapter.find('.epxs').text().trim();
-        
+        const $firstChapter = $elem.find(".chapter-list a").first();
+        const chapterHref = $firstChapter.attr("href");
+        const chapterText = $firstChapter.find(".epxs").text().trim();
+
         if (href && title && chapterHref) {
           const mangaId = this.extractMangaId(href);
           const chapterId = this.extractChapterId(chapterHref);
           if (mangaId && chapterId) {
             items.push({
-              type: 'chapterUpdatesCarouselItem',
+              type: "chapterUpdatesCarouselItem",
               mangaId: mangaId,
               title: title,
               imageUrl: image,
@@ -220,7 +223,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     metadata: Metadata | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
     const page = metadata?.page ?? 1;
-    const searchTerm = query.title?.trim() || '';
+    const searchTerm = query.title?.trim() || "";
 
     let url = `${DOMAIN}/page/${page}/?s=${encodeURIComponent(searchTerm)}`;
 
@@ -233,13 +236,13 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const results: SearchResultItem[] = [];
 
-    $('.bsx').each((_, element) => {
+    $(".bsx").each((_, element) => {
       const $elem = $(element);
-      const $link = $elem.find('a').first();
-      const href = $link.attr('href');
-      const title = $elem.find('.tt').text().trim();
-      const image = $elem.find('img').first().attr('src') || '';
-      
+      const $link = $elem.find("a").first();
+      const href = $link.attr("href");
+      const title = $elem.find(".tt").text().trim();
+      const image = $elem.find("img").first().attr("src") || "";
+
       if (href && title) {
         const mangaId = this.extractMangaId(href);
         if (mangaId) {
@@ -268,18 +271,25 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    const title = $('h1.entry-title, h1, .entry-title').first().text().trim();
-    const image = $('.infoanime img, .summary_image img, img.ts-post-image, img.wp-post-image').first().attr('src') || '';
-    
-    const description = $('.entry-content-single, .entry-content, .summary__content, .description, .synopsis').text().trim();
-    const author = $('.infox .spe span:contains("Author")').next().text().trim() || 'Unknown';
+    const title = $("h1.entry-title, h1, .entry-title").first().text().trim();
+    const image =
+      $(".infoanime img, .summary_image img, img.ts-post-image, img.wp-post-image")
+        .first()
+        .attr("src") || "";
+
+    const description = $(
+      ".entry-content-single, .entry-content, .summary__content, .description, .synopsis",
+    )
+      .text()
+      .trim();
+    const author = $('.infox .spe span:contains("Author")').next().text().trim() || "Unknown";
     const artist = $('.infox .spe span:contains("Artist")').next().text().trim() || author;
 
     // Parse status
-    let status = 'ONGOING';
-    const statusText = $('.post-status, .status').text().toLowerCase();
-    if (statusText.includes('completed') || statusText.includes('complete')) {
-      status = 'COMPLETED';
+    let status = "ONGOING";
+    const statusText = $(".post-status, .status").text().toLowerCase();
+    if (statusText.includes("completed") || statusText.includes("complete")) {
+      status = "COMPLETED";
     }
 
     // Parse genres
@@ -287,7 +297,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     $('a[rel="tag"], .genres a, .tags a').each((_, element) => {
       const tag = $(element).text().trim();
       if (tag) {
-        tags.push({ id: tag.toLowerCase().replace(/\s+/g, '-'), title: tag });
+        tags.push({ id: tag.toLowerCase().replace(/\s+/g, "-"), title: tag });
       }
     });
 
@@ -302,7 +312,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
         author: author,
         contentRating: ContentRating.EVERYONE,
         synopsis: description,
-        tagGroups: tags.length > 0 ? [{ id: 'genres', title: 'Genres', tags }] : [],
+        tagGroups: tags.length > 0 ? [{ id: "genres", title: "Genres", tags }] : [],
       },
     };
   }
@@ -320,21 +330,24 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     const chapters: Chapter[] = [];
 
     // Try multiple selectors for different chapter list structures
-    $('ul.eplister li, .eplister li, .wp-manga-chapter, .chapter-item, .listing-chapters_wrap a').each((_, element) => {
+    $(
+      "ul.eplister li, .eplister li, .wp-manga-chapter, .chapter-item, .listing-chapters_wrap a",
+    ).each((_, element) => {
       const $elem = $(element);
-      const $link = $elem.is('a') ? $elem : $elem.find('a').first();
-      const href = $link.attr('href');
+      const $link = $elem.is("a") ? $elem : $elem.find("a").first();
+      const href = $link.attr("href");
       const chapterTitle = $link.text().trim();
-      
+
       if (href && chapterTitle) {
         const chapterId = this.extractChapterId(href);
         if (chapterId) {
           // Extract chapter number from title
           const chapterNumMatch = chapterTitle.match(/chapter[:\s]+(\d+(?:\.\d+)?)/i);
-          const chapterNum = chapterNumMatch && chapterNumMatch[1] ? parseFloat(chapterNumMatch[1]) : 0;
+          const chapterNum =
+            chapterNumMatch && chapterNumMatch[1] ? parseFloat(chapterNumMatch[1]) : 0;
 
           // Try to parse date
-          const dateText = $elem.find('.chapter-release-date, .post-on').text().trim();
+          const dateText = $elem.find(".chapter-release-date, .post-on").text().trim();
           let date = new Date();
           if (dateText) {
             date = this.parseRelativeDate(dateText);
@@ -370,28 +383,28 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     // ThunderScans loads images via JavaScript - extract from ts_reader.run() script
     const html = $.html();
     const scriptMatch = html.match(/ts_reader\.run\((\{[\s\S]+?\})\);/);
-    
+
     if (scriptMatch && scriptMatch[1]) {
       try {
         // Extract the JSON from the script and fix escaped slashes
-        const jsonStr = scriptMatch[1].replace(/\\\//g, '/');
+        const jsonStr = scriptMatch[1].replace(/\\\//g, "/");
         const readerData = JSON.parse(jsonStr);
-        
+
         // Get images from the first source
         if (readerData.sources && readerData.sources.length > 0 && readerData.sources[0].images) {
           readerData.sources[0].images.forEach((imageUrl: string) => {
-            if (imageUrl && !imageUrl.includes('loading') && !imageUrl.includes('spinner')) {
+            if (imageUrl && !imageUrl.includes("loading") && !imageUrl.includes("spinner")) {
               pages.push(imageUrl);
             }
           });
         }
       } catch (e) {
         // Fallback to DOM parsing if JSON parsing fails
-        console.error('Failed to parse ts_reader.run JSON:', e);
-        $('#readerarea img.ts-main-image, #readerarea img').each((_, element) => {
+        console.error("Failed to parse ts_reader.run JSON:", e);
+        $("#readerarea img.ts-main-image, #readerarea img").each((_, element) => {
           const $img = $(element);
-          const src = $img.attr('src') || $img.attr('data-src') || '';
-          if (src && !src.includes('loading') && !src.includes('spinner')) {
+          const src = $img.attr("src") || $img.attr("data-src") || "";
+          if (src && !src.includes("loading") && !src.includes("spinner")) {
             pages.push(src.trim());
           }
         });
@@ -418,7 +431,7 @@ export class ThunderScansExtension implements ThunderScansImplementation {
       return match[1];
     }
     // Alternative: extract from full path
-    const parts = url.split('/').filter(p => p);
+    const parts = url.split("/").filter((p) => p);
     const lastPart = parts[parts.length - 1];
     return lastPart ? lastPart : null;
   }
@@ -428,32 +441,32 @@ export class ThunderScansExtension implements ThunderScansImplementation {
     const lower = dateString.toLowerCase();
 
     // Handle relative dates
-    if (lower.includes('ago')) {
+    if (lower.includes("ago")) {
       const match = dateString.match(/(\d+)\s+(second|minute|hour|day|week|month|year)/i);
       if (match && match[1] && match[2]) {
         const value = parseInt(match[1]);
         const unit = match[2].toLowerCase();
 
         switch (unit) {
-          case 'second':
+          case "second":
             now.setSeconds(now.getSeconds() - value);
             break;
-          case 'minute':
+          case "minute":
             now.setMinutes(now.getMinutes() - value);
             break;
-          case 'hour':
+          case "hour":
             now.setHours(now.getHours() - value);
             break;
-          case 'day':
+          case "day":
             now.setDate(now.getDate() - value);
             break;
-          case 'week':
+          case "week":
             now.setDate(now.getDate() - value * 7);
             break;
-          case 'month':
+          case "month":
             now.setMonth(now.getMonth() - value);
             break;
-          case 'year':
+          case "year":
             now.setFullYear(now.getFullYear() - value);
             break;
         }

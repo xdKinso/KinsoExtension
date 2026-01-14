@@ -100,7 +100,7 @@ export class MangaParkExtension implements MangaParkImplementation {
     // Use realistic browser headers from our utility
     const { generateBrowserHeaders } = await import("./browserHeaders");
     const headers = generateBrowserHeaders(baseUrl);
-    
+
     return {
       url: baseUrl,
       method: "GET",
@@ -167,8 +167,7 @@ export class MangaParkExtension implements MangaParkImplementation {
     filters.push({
       id: "genres",
       type: "multiselect",
-      options:
-        searchDetails?.genres?.map((g) => ({ id: g.id, value: g.label })) || [],
+      options: searchDetails?.genres?.map((g) => ({ id: g.id, value: g.label })) || [],
       allowExclusion: true,
       value: genreValue,
       title: "Genre Filter",
@@ -221,8 +220,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       type: "dropdown",
       options: [
         { id: "all", value: "All" },
-        ...(searchDetails?.status?.map((s) => ({ id: s.id, value: s.label })) ||
-          []),
+        ...(searchDetails?.status?.map((s) => ({ id: s.id, value: s.label })) || []),
       ],
       value: "all",
       title: "Status Filter",
@@ -268,22 +266,13 @@ export class MangaParkExtension implements MangaParkImplementation {
 
     // Mangapark search URL format:
     // https://mangapark.org/search?genres=manga,shounen,ecchi,action|loli,reverse_harem,sm_bdsm&status=ongoing&chapters=1&sortby=field_score&page=1
-    const searchUrl = new URLBuilder(baseUrl)
-      .addPath("search")
-      .addQuery("page", page.toString());
+    const searchUrl = new URLBuilder(baseUrl).addPath("search").addQuery("page", page.toString());
 
-    const getFilterValue = (id: string) =>
-      query.filters.find((filter) => filter.id == id)?.value;
+    const getFilterValue = (id: string) => query.filters.find((filter) => filter.id == id)?.value;
 
-    const types = getFilterValue("type") as
-      | Record<string, "included" | "excluded">
-      | undefined;
-    const genres = getFilterValue("genres") as
-      | Record<string, "included" | "excluded">
-      | undefined;
-    const contentRating = getFilterValue("contentRating") as
-      | Record<string, "included">
-      | undefined;
+    const types = getFilterValue("type") as Record<string, "included" | "excluded"> | undefined;
+    const genres = getFilterValue("genres") as Record<string, "included" | "excluded"> | undefined;
+    const contentRating = getFilterValue("contentRating") as Record<string, "included"> | undefined;
     const demographics = getFilterValue("demographics") as
       | Record<string, "included" | "excluded">
       | undefined;
@@ -368,37 +357,41 @@ export class MangaParkExtension implements MangaParkImplementation {
       const unit = $(element);
       const titleLink = unit.find("h3 a");
       const title = titleLink.find("span").text().trim();
-      
+
       // Try multiple selectors to find the image
       let imgElem = unit.find("img").first();
       if (!imgElem.length) imgElem = unit.find("picture img").first();
       if (!imgElem.length) imgElem = unit.find("a img").first();
-      
+
       // Try all possible image attributes - prioritize src first (actual value in HTML)
-      let imageSrc = imgElem.attr("src") || imgElem.attr("data-src") || 
-                     imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
-                     imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
-      
+      let imageSrc =
+        imgElem.attr("src") ||
+        imgElem.attr("data-src") ||
+        imgElem.attr("data-lazy-src") ||
+        imgElem.attr("data-original") ||
+        imgElem.attr("srcset")?.split(",")[0]?.split(" ")[0] ||
+        "";
+
       // Clean and normalize image URL
       imageSrc = imageSrc.trim();
       let image = imageSrc.startsWith("http")
         ? imageSrc
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`
-          : imageSrc ? `${baseUrl}${imageSrc}` : "";
-      
+          : imageSrc
+            ? `${baseUrl}${imageSrc}`
+            : "";
+
       // Fix CDN server - use s01 for faster loading (priority server)
       if (image.match(/https:\/\/s\d{1,2}\./)) {
-        image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
+        image = image.replace(/https:\/\/s\d{1,2}\./, "https://s01.");
       }
-      
+
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
       const chapterLink = unit.find(".flex.flex-nowrap.justify-between a");
       const latestChapter = chapterLink.find("span").text().trim();
       const latestChapterMatch = latestChapter.match(/Chapter (\d+)/);
-      const subtitle = latestChapterMatch
-        ? `Ch. ${latestChapterMatch[1]}`
-        : undefined;
+      const subtitle = latestChapterMatch ? `Ch. ${latestChapterMatch[1]}` : undefined;
       const chapterId = chapterLink.attr("href")?.split("/").pop() || "";
 
       if (!title || !mangaId || !image || collectedIds.includes(mangaId)) {
@@ -420,9 +413,7 @@ export class MangaParkExtension implements MangaParkImplementation {
 
     return {
       items: searchResults,
-      metadata: hasNextPage
-        ? { page: page + 1, searchCollectedIds: collectedIds }
-        : undefined,
+      metadata: hasNextPage ? { page: page + 1, searchCollectedIds: collectedIds } : undefined,
     };
   }
 
@@ -438,21 +429,19 @@ export class MangaParkExtension implements MangaParkImplementation {
     const altTitles = [$("div[q\\:key='tz_2'] span").first().text().trim()];
     const imageElem = $("img[alt]").first();
     // Prioritize src first (actual value in HTML)
-    let image = imageElem.attr("src") || imageElem.attr("data-src") || imageElem.attr("data-lazy-src") || "";
+    let image =
+      imageElem.attr("src") || imageElem.attr("data-src") || imageElem.attr("data-lazy-src") || "";
     image = image.trim();
     if (image && !image.startsWith("http")) {
       // normalize to absolute URL
-      image = image.startsWith("/")
-        ? `${baseUrl}${image.slice(1)}`
-        : `${baseUrl}${image}`;
+      image = image.startsWith("/") ? `${baseUrl}${image.slice(1)}` : `${baseUrl}${image}`;
     }
     // Fix CDN server - use s01 for faster loading (priority server)
     if (image.match(/https:\/\/s\d{1,2}\./)) {
-      image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
+      image = image.replace(/https:\/\/s\d{1,2}\./, "https://s01.");
     }
     const description =
-      $(".limit-html").first().text().trim() ||
-      $(".manga-detail .info .description").text().trim();
+      $(".limit-html").first().text().trim() || $(".manga-detail .info .description").text().trim();
     const authors: string[] = [];
     $("div[q\\:key='tz_4'] a").each((_index: number, authorElement: Element) => {
       authors.push($(authorElement).text().trim());
@@ -492,10 +481,7 @@ export class MangaParkExtension implements MangaParkImplementation {
         contentRating: ContentRating.EVERYONE,
         status: status,
         tagGroups: tags,
-        shareUrl: new URLBuilder(baseUrl)
-          .addPath("title")
-          .addPath(mangaId)
-          .build(),
+        shareUrl: new URLBuilder(baseUrl).addPath("title").addPath(mangaId).build(),
       },
     };
   }
@@ -530,9 +516,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       // Remove any Volume prefix like "Vol.02" before extracting chapter
       const cleanedTitle = title.replace(/Vol\.?\s*\d+(?:\.\d+)?/gi, "").trim();
       let chapNum = 0;
-      const match = cleanedTitle.match(
-        /(?:Ch(?:apter)?[.\s-]*(\d+(?:\.\d+)?))/i,
-      );
+      const match = cleanedTitle.match(/(?:Ch(?:apter)?[.\s-]*(\d+(?:\.\d+)?))/i);
       {
         const captured = match?.[1];
         if (captured) chapNum = parseFloat(captured);
@@ -541,9 +525,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       if (!chapNum) {
         // Fallback: try extracting from href like /.../ch-020 or /.../chapter-020
         const hrefLower = href.toLowerCase();
-        const hrefMatch = hrefLower.match(
-          /\/(?:ch|chapter)[-_]?(\d+(?:\.\d+)?)(?:\b|\/|$)/i,
-        );
+        const hrefMatch = hrefLower.match(/\/(?:ch|chapter)[-_]?(\d+(?:\.\d+)?)(?:\b|\/|$)/i);
         const captured = hrefMatch?.[1];
         if (captured) chapNum = parseFloat(captured);
       }
@@ -558,11 +540,7 @@ export class MangaParkExtension implements MangaParkImplementation {
           ".ml-auto.inline-flex.flex-wrap.justify-end.items-center.text-sm.opacity-70.space-x-2",
         )
         .first();
-      let groupName = meta
-        .find(".inline-flex.items-center.space-x-1 span")
-        .first()
-        .text()
-        .trim();
+      let groupName = meta.find(".inline-flex.items-center.space-x-1 span").first().text().trim();
       if (!groupName) groupName = "Unknown";
 
       let viewsForThisChapter = 0;
@@ -655,11 +633,12 @@ export class MangaParkExtension implements MangaParkImplementation {
       const scriptContent = $(script).text();
       if (scriptContent) {
         // More comprehensive regex to capture various CDN patterns
-        const urlRegex = /https?:\/\/[a-zA-Z0-9.-]+\.(org|com|net|io)\/media\/[^"'\s()<>]+\.(jpg|jpeg|png|webp|gif)/gi;
+        const urlRegex =
+          /https?:\/\/[a-zA-Z0-9.-]+\.(org|com|net|io)\/media\/[^"'\s()<>]+\.(jpg|jpeg|png|webp|gif)/gi;
         const matches = scriptContent.match(urlRegex);
         if (matches) {
           // Remove duplicates and clean URLs
-          const uniquePages = [...new Set(matches)].map(url => url.replace(/\\"/g, ''));
+          const uniquePages = [...new Set(matches)].map((url) => url.replace(/\\"/g, ""));
           pages.push(...uniquePages);
         }
       }
@@ -693,11 +672,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       label: "New Chapters",
     };
 
-    const searchResults = await this.getSearchResults(
-      searchQuery,
-      metadata,
-      sortingOption,
-    );
+    const searchResults = await this.getSearchResults(searchQuery, metadata, sortingOption);
 
     // Convert SearchResultItem[] to DiscoverSectionItem[]
     const items: DiscoverSectionItem[] = searchResults.items.map((item) => ({
@@ -734,28 +709,32 @@ export class MangaParkExtension implements MangaParkImplementation {
     // Updated selectors based on current Mangapark HTML structure
     $(".relative.w-full.group").each((_index: number, element: Element) => {
       const unit = $(element);
-      const titleLink = unit
-        .find("div.absolute a.link.link-hover.text-sm")
-        .first();
+      const titleLink = unit.find("div.absolute a.link.link-hover.text-sm").first();
       const title = titleLink.text().trim();
       // Try multiple selectors to find the image
       let imgElem = unit.find("a.block.w-full img").first();
       if (!imgElem.length) imgElem = unit.find("img").first();
       if (!imgElem.length) imgElem = unit.find("picture img").first();
-      
+
       // Prioritize src first (actual loaded value in HTML) for faster loading
-      let imageSrc = imgElem.attr("src") || imgElem.attr("data-src") || 
-                     imgElem.attr("data-lazy-src") || imgElem.attr("data-original") ||
-                     imgElem.attr("srcset")?.split(',')[0]?.split(' ')[0] || "";
+      let imageSrc =
+        imgElem.attr("src") ||
+        imgElem.attr("data-src") ||
+        imgElem.attr("data-lazy-src") ||
+        imgElem.attr("data-original") ||
+        imgElem.attr("srcset")?.split(",")[0]?.split(" ")[0] ||
+        "";
       imageSrc = imageSrc.trim();
       let image = imageSrc.startsWith("http")
         ? imageSrc
         : imageSrc.startsWith("/")
           ? `${baseUrl}${imageSrc.slice(1)}`
-          : imageSrc ? `${baseUrl}${imageSrc}` : "";
+          : imageSrc
+            ? `${baseUrl}${imageSrc}`
+            : "";
       // Fix CDN server - use s01 for faster loading (priority server)
       if (image.match(/https:\/\/s\d{1,2}\./)) {
-        image = image.replace(/https:\/\/s\d{1,2}\./, 'https://s01.');
+        image = image.replace(/https:\/\/s\d{1,2}\./, "https://s01.");
       }
       const mangaId = titleLink.attr("href")?.replace("/title/", "") || "";
 
@@ -764,9 +743,7 @@ export class MangaParkExtension implements MangaParkImplementation {
         .first();
       const latestChapter = chapterLink.text().trim();
       const latestChapterMatch = latestChapter.match(/Chapter (\d+)/);
-      const supertitle = latestChapterMatch
-        ? `Ch. ${latestChapterMatch[1]}`
-        : undefined;
+      const supertitle = latestChapterMatch ? `Ch. ${latestChapterMatch[1]}` : undefined;
 
       if (title && mangaId && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
@@ -804,11 +781,7 @@ export class MangaParkExtension implements MangaParkImplementation {
       label: "Recently Created",
     };
 
-    const searchResults = await this.getSearchResults(
-      searchQuery,
-      metadata,
-      sortingOption,
-    );
+    const searchResults = await this.getSearchResults(searchQuery, metadata, sortingOption);
 
     // Convert SearchResultItem[] to DiscoverSectionItem[]
     const items: DiscoverSectionItem[] = searchResults.items.map((item) => ({
@@ -905,8 +878,7 @@ export class MangaParkExtension implements MangaParkImplementation {
           filters: [
             {
               id: item.type,
-              value:
-                item.type === "genres" ? { [item.id]: "included" } : item.id,
+              value: item.type === "genres" ? { [item.id]: "included" } : item.id,
             },
           ],
         },
@@ -950,9 +922,9 @@ export class MangaParkExtension implements MangaParkImplementation {
           method: "GET",
           headers: {
             "user-agent": await Application.getDefaultUserAgent(),
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "accept-language": "en-US,en;q=0.9",
-            "referer": baseUrl,
+            referer: baseUrl,
           },
         },
         "Cloudflare detected! Please complete the verification.",

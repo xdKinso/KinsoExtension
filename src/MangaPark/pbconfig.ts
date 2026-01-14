@@ -19,6 +19,6 @@ export default {
     {
       name: "Kinso",
       github: "https://github.com/xdKinso",
-    }
+    },
   ],
 } satisfies SourceInfo;

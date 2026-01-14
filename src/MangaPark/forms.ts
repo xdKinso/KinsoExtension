@@ -1,23 +1,13 @@
-import {
-  Form,
-  LabelRow,
-  NavigationRow,
-  Section,
-  SelectRow,
-} from "@paperback/types";
+import { Form, LabelRow, NavigationRow, Section, SelectRow } from "@paperback/types";
 import type { FormSectionElement } from "@paperback/types";
 import { STATIC_SEARCH_DETAILS } from "./model";
 
 export function getBlacklistGenres(): string[] {
-  return (
-    (Application.getState("blacklistGenres") as string[] | undefined) ?? []
-  );
+  return (Application.getState("blacklistGenres") as string[] | undefined) ?? [];
 }
 
 export function getWhitelistGenres(): string[] {
-  return (
-    (Application.getState("whitelistGenres") as string[] | undefined) ?? []
-  );
+  return (Application.getState("whitelistGenres") as string[] | undefined) ?? [];
 }
 
 export function getGenres(): { id: string; label: string }[] {
@@ -49,15 +39,11 @@ export function setDemographics(demographics: { id: string; label: string }[]): 
 }
 
 export function getBlacklistDemographics(): string[] {
-  return (
-    (Application.getState("blacklistDemographics") as string[] | undefined) ?? []
-  );
+  return (Application.getState("blacklistDemographics") as string[] | undefined) ?? [];
 }
 
 export function getWhitelistDemographics(): string[] {
-  return (
-    (Application.getState("whitelistDemographics") as string[] | undefined) ?? []
-  );
+  return (Application.getState("whitelistDemographics") as string[] | undefined) ?? [];
 }
 
 export function setBlacklistDemographics(demographics: string[]): void {
@@ -224,10 +210,7 @@ export class ContentSettingsForm extends Form {
           })),
           minItemCount: 0,
           maxItemCount: Math.max(1, getGenres().length),
-          onValueChange: Application.Selector(
-            this as ContentSettingsForm,
-            "updateWhitelistGenres",
-          ),
+          onValueChange: Application.Selector(this as ContentSettingsForm, "updateWhitelistGenres"),
         }),
         SelectRow("blacklistGenres", {
           title: "Blacklist Genres",
@@ -239,10 +222,7 @@ export class ContentSettingsForm extends Form {
           })),
           minItemCount: 0,
           maxItemCount: Math.max(1, getGenres().length),
-          onValueChange: Application.Selector(
-            this as ContentSettingsForm,
-            "updateBlacklistGenres",
-          ),
+          onValueChange: Application.Selector(this as ContentSettingsForm, "updateBlacklistGenres"),
         }),
         SelectRow("whitelistDemographics", {
           title: "Whitelist Demographics",

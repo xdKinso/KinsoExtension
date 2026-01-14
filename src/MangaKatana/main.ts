@@ -154,12 +154,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     // Hot updates use a different container
     $("div#hot_update > div.item").each((_, element) => {
       const unit = $(element);
-      
+
       // Get title and link
       const titleLink = unit.find("h3.title a").first();
       const title = titleLink.text().trim();
       const href = titleLink.attr("href") || "";
-      
+
       if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
@@ -203,12 +203,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     $("div#book_list > div.item").each((_, element) => {
       const unit = $(element);
-      
+
       // Get title and link using correct selector
       const titleLink = unit.find("div.text > h3 > a").first();
       const href = titleLink.attr("href") || "";
       const title = titleLink.text().trim();
-      
+
       if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
@@ -270,11 +270,11 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
 
     $("div#book_list > div.item").each((_, element) => {
       const unit = $(element);
-      
+
       const titleLink = unit.find("div.text > h3 > a").first();
       const href = titleLink.attr("href") || "";
       const title = titleLink.text().trim();
-      
+
       if (!title || !href) return;
 
       let mangaId = href.split("/").pop() || "";
@@ -701,7 +701,12 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
     const altNames: string[] = [];
     const altNameText = $(".alt_name").text().trim();
     if (altNameText) {
-      altNames.push(...altNameText.split(";").map((t) => t.trim()).filter((t) => t));
+      altNames.push(
+        ...altNameText
+          .split(";")
+          .map((t) => t.trim())
+          .filter((t) => t),
+      );
     }
 
     // Extract authors
@@ -734,7 +739,10 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
         id: "genres",
         title: "Genres",
         tags: genres.map((genre) => ({
-          id: genre.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]/g, ""),
+          id: genre
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w\-]/g, ""),
           title: genre,
         })),
       });
