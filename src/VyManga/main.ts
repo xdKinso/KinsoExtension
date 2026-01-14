@@ -140,10 +140,8 @@ export class VyMangaExtension implements VyMangaImplementation {
       const $elem = $(element);
       const href = $elem.attr("href");
 
-      // Skip if not a direct manga link
-      if (!href || !href.match(/\/manga\/[a-zA-Z0-9\-]+$/)) {
-        return;
-      }
+      // Skip if href is missing or doesn't look like a manga page
+      if (!href) return;
 
       const mangaId = this.extractMangaId(href);
 
@@ -153,18 +151,36 @@ export class VyMangaExtension implements VyMangaImplementation {
       }
 
       // Get title - try multiple methods
-      let title = $elem.text().trim();
-      if (!title || title.includes("Chapter")) {
-        // If the link text contains chapter info, try to get clean title
-        title = $elem.attr("title")?.trim() || "";
+      let title = $elem.attr("title")?.trim() || "";
+      if (!title) {
+        title = $elem.text().trim();
+        // Clean up title if it contains chapter info
+        if (title.includes("Chapter")) {
+          const lines = title.split("\n");
+          title = lines[0]?.trim() || "";
+        }
       }
 
-      // Get image - look for img within or near the link
+      // Get image - look for img within the link or in parent/sibling elements
+      let image = "";
       const $img = $elem.find("img").first();
-      const image = $img.attr("src") || $img.attr("data-src") || "";
+      if ($img.length) {
+        image = $img.attr("src") || $img.attr("data-src") || "";
+      }
+      // If no image in link, try to find nearby image
+      if (!image) {
+        const $parentImg = $elem.parent().find("img").first();
+        image = $parentImg.attr("src") || $parentImg.attr("data-src") || "";
+      }
 
+      // Skip if no title
       if (!title) {
         return;
+      }
+
+      // Provide a placeholder image if none found
+      if (!image || !image.startsWith("http")) {
+        image = "https://vymanga.com/web/img/placeholder.png";
       }
 
       seenIds.add(mangaId);
@@ -296,10 +312,20 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     // Parse genres
     const tags: Tag[] = [];
-    $('a[href*="/genre/"], .genres a, .tags a').each((_, element) => {
-      const tag = $(element).text().trim();
-      if (tag) {
-        tags.push({ id: tag.toLowerCase().replace(/\s+/g, "-"), title: tag });
+    $('a[href*="/genre/"]').each((_, element) => {
+      const $el = $(element);
+      const href = $el.attr("href") || "";
+      const tag = $el.text().trim();
+
+      // Extract genre ID from URL like /genre/webtoons
+      const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
+      if (genreMatch && genreMatch[1] && tag) {
+        // Use the URL slug as ID - it's already sanitized
+        const id = genreMatch[1].toLowerCase();
+        // Make sure ID is valid (alphanumeric with allowed symbols)
+        if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+          tags.push({ id: id, title: tag });
+        }
       }
     });
 
@@ -417,17 +443,21 @@ export class VyMangaExtension implements VyMangaImplementation {
   }
 
   private extractMangaId(url: string): string | null {
-    // Extract manga ID from URL like /manga/manga-slug or /manga/manga-slug/
-    const match = url.match(/\/manga\/([a-zA-Z0-9\-]+)$/);
+    // Extract manga ID from URL like /manga/manga-slug or https://vymanga.com/manga/manga-slug
+    const match = url.match(/\/manga\/([a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])(?:\/|\?|$|#)/);
     if (!match || !match[1]) {
+      // Try simpler match for short slugs
+      const simpleMatch = url.match(/\/manga\/([a-zA-Z0-9-]+)/);
+      if (simpleMatch && simpleMatch[1]) {
+        const id = simpleMatch[1];
+        // Validate: must not be just dashes, must have alphanumeric chars
+        if (id.replace(/-/g, "").length >= 2) {
+          return id;
+        }
+      }
       return null;
     }
-    const id = match[1];
-    // Validate - must not end with just a dash or be too short
-    if (id.length < 3 || id.endsWith("-")) {
-      return null;
-    }
-    return id;
+    return match[1];
   }
 
   private extractChapterId(url: string): string | null {
