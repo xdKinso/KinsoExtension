@@ -61,8 +61,8 @@ export class VyMangaExtension implements VyMangaImplementation {
   interceptor = new VyMangaInterceptor("interceptor");
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 3,
-    bufferInterval: 5,
+    numberOfRequests: 10,
+    bufferInterval: 2,
     ignoreImages: false,
   });
 
