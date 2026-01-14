@@ -79,6 +79,77 @@ export class VyMangaExtension implements VyMangaImplementation {
     return `${DOMAIN}/manga/${mangaId}`;
   }
 
+  // Helper method to extract author from HTML
+  private extractAuthor($: CheerioAPI): string {
+    const $authorLink = $('a[href*="/author/"]').first();
+    if ($authorLink.length) {
+      return $authorLink.text().trim();
+    }
+    return "Unknown";
+  }
+
+  // Helper method to extract status from HTML
+  private extractStatus($: CheerioAPI): "ONGOING" | "COMPLETED" {
+    if ($("span.text-completed").length) {
+      return "COMPLETED";
+    } else if ($("span.text-ongoing").length) {
+      return "ONGOING";
+    }
+    // Fallback: check generic status text
+    const statusText = $(".status, .manga-status").text().toLowerCase();
+    if (statusText.includes("completed") || statusText.includes("complete")) {
+      return "COMPLETED";
+    }
+    return "ONGOING";
+  }
+
+  // Helper method to extract genres/tags from HTML
+  private extractGenres($: CheerioAPI): Tag[] {
+    const tags: Tag[] = [];
+
+    // Find the genres section by looking for the pre-title span containing "Genres"
+    $("span.pre-title").each((_, element) => {
+      const $label = $(element);
+      if ($label.text().includes("Genres")) {
+        // Get the parent container and find all genre links after the label
+        const $container = $label.closest("div, span, p") || $label.parent();
+        $container.find('a[href*="/genre/"].badge').each((_, genreEl) => {
+          const $genreLink = $(genreEl);
+          const href = $genreLink.attr("href") || "";
+          const tag = $genreLink.text().trim();
+
+          // Extract genre ID from URL like /genre/webtoons
+          const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
+          if (genreMatch && genreMatch[1] && tag) {
+            const id = genreMatch[1].toLowerCase();
+            if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+              tags.push({ id: id, title: tag });
+            }
+          }
+        });
+      }
+    });
+
+    // Fallback: if no genres found with the above method, try generic genre links
+    if (tags.length === 0) {
+      $('a[href*="/genre/"].badge').each((_, element) => {
+        const $el = $(element);
+        const href = $el.attr("href") || "";
+        const tag = $el.text().trim();
+
+        const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
+        if (genreMatch && genreMatch[1] && tag) {
+          const id = genreMatch[1].toLowerCase();
+          if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+            tags.push({ id: id, title: tag });
+          }
+        }
+      });
+    }
+
+    return tags;
+  }
+
   async getSearchFilters(): Promise<SearchFilter[]> {
     return [];
   }
@@ -349,68 +420,10 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const description = $(".summary, .description, .synopsis, p").first().text().trim();
 
-    // Parse author - look for a[href*="/author/"]
-    let author = "Unknown";
-    const $authorLink = $('a[href*="/author/"]').first();
-    if ($authorLink.length) {
-      author = $authorLink.text().trim();
-    }
-
-    // Parse status - look for span.text-ongoing or span.text-completed
-    let status = "ONGOING";
-    if ($("span.text-completed").length) {
-      status = "COMPLETED";
-    } else if (!$("span.text-ongoing").length) {
-      // Fallback: check generic status text
-      const statusText = $(".status, .manga-status").text().toLowerCase();
-      if (statusText.includes("completed") || statusText.includes("complete")) {
-        status = "COMPLETED";
-      }
-    }
-
-    // Parse genres - find the genres section specifically
-    // Look for "Genres" label followed by genre badge links
-    const tags: Tag[] = [];
-
-    // Find the genres section by looking for the pre-title span containing "Genres"
-    $("span.pre-title").each((_, element) => {
-      const $label = $(element);
-      if ($label.text().includes("Genres")) {
-        // Get the parent container and find all genre links after the label
-        const $container = $label.closest("div, span, p") || $label.parent();
-        $container.find('a[href*="/genre/"].badge').each((_, genreEl) => {
-          const $genreLink = $(genreEl);
-          const href = $genreLink.attr("href") || "";
-          const tag = $genreLink.text().trim();
-
-          // Extract genre ID from URL like /genre/webtoons
-          const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
-          if (genreMatch && genreMatch[1] && tag) {
-            const id = genreMatch[1].toLowerCase();
-            if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
-              tags.push({ id: id, title: tag });
-            }
-          }
-        });
-      }
-    });
-
-    // Fallback: if no genres found with the above method, try generic genre links
-    if (tags.length === 0) {
-      $('a[href*="/genre/"].badge').each((_, element) => {
-        const $el = $(element);
-        const href = $el.attr("href") || "";
-        const tag = $el.text().trim();
-
-        const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
-        if (genreMatch && genreMatch[1] && tag) {
-          const id = genreMatch[1].toLowerCase();
-          if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
-            tags.push({ id: id, title: tag });
-          }
-        }
-      });
-    }
+    // Use helper methods for consistent extraction
+    const author = this.extractAuthor($);
+    const status = this.extractStatus($);
+    const tags = this.extractGenres($);
 
     return {
       mangaId: mangaId,
@@ -418,7 +431,7 @@ export class VyMangaExtension implements VyMangaImplementation {
         primaryTitle: title,
         secondaryTitles: [],
         thumbnailUrl: image,
-        status: status as "ONGOING" | "COMPLETED",
+        status: status,
         artist: "Unknown",
         author: author,
         contentRating: ContentRating.MATURE,
