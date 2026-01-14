@@ -135,97 +135,111 @@ export class VyMangaExtension implements VyMangaImplementation {
     const items: DiscoverSectionItem[] = [];
     const seenIds = new Set<string>();
 
-    // For homepage popular section - look for manga links in carousel/grid
+    // Handle different sections differently
     if (section.id === "popular") {
-      // Try to find manga cards - look for links with images
-      $('a[href*="/manga/"]').each((_, element) => {
-        const $link = $(element);
+      // Popular section uses carousel with comic-thumb divs with data-background-image
+      $("div.comic-thumb.lozad").each((_, element) => {
+        const $thumb = $(element);
+
+        // Get the background image from data-background-image attribute
+        const bgImage = $thumb.attr("data-background-image") || "";
+
+        // Find the link within or near this thumb to get the manga ID and title
+        const $link = $thumb.find("a[href*='/manga/']").first();
+        if (!$link.length) return;
+
         const href = $link.attr("href") || "";
         const mangaId = this.extractMangaId(href);
+        if (!mangaId || seenIds.has(mangaId)) return;
 
-        if (!mangaId || seenIds.has(mangaId) || items.length >= 20) return;
-
-        // Get image from within link or nearby
-        let imageUrl = "";
-        const $img = $link.find("img").first();
-        if ($img.length) {
-          imageUrl = $img.attr("src") || $img.attr("data-src") || $img.attr("data-lazy-src") || "";
+        // Try to find title - look for h1.title or fallback to link text
+        let title = "";
+        const $title = $thumb.find("h1.title").first();
+        if ($title.length) {
+          title = $title.text().trim();
         }
-
-        // Get title - try link title attribute or text content
-        let title = $link.attr("title") || "";
         if (!title) {
-          // Try to find title text, avoiding chapter info
-          const text = $link.clone().find("span, div").remove().end().text().trim();
-          if (text && !text.toLowerCase().includes("chapter")) {
-            title = text;
+          title = $link.text().trim();
+          // Clean up if it has extra text
+          if (title.toLowerCase().includes("start reading")) {
+            title = "";
           }
         }
 
-        if (title && mangaId) {
-          // Ensure image URL is valid
-          if (!imageUrl || !imageUrl.startsWith("http")) {
-            imageUrl = "https://vymanga.com/web/img/placeholder.png";
+        // If still no title, try to find it from nearby elements
+        if (!title) {
+          const $parent = $thumb.parent();
+          const $titleEl = $parent.find("h1.title, .manga-title, .title").first();
+          if ($titleEl.length) {
+            title = $titleEl.text().trim();
           }
+        }
 
-          seenIds.add(mangaId);
+        if (!title || !bgImage) return;
+
+        seenIds.add(mangaId);
+        items.push({
+          type: "prominentCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: bgImage.startsWith("http")
+            ? bgImage
+            : "https://vymanga.com/web/img/placeholder.png",
+        });
+      });
+    } else {
+      // Latest Update and New Release sections use .comic-image divs with img.image.lozad
+      $("div.comic-image").each((_, element) => {
+        const $imageDiv = $(element);
+
+        // Find the image and get data from it
+        const $img = $imageDiv.find("img.image.lozad").first();
+        if (!$img.length) return;
+
+        // Get image URL from data-src or src
+        const imageUrl = $img.attr("data-src") || $img.attr("src") || "";
+
+        // Get title from alt attribute
+        const title = $img.attr("alt")?.trim() || $img.attr("title")?.trim() || "";
+
+        if (!title || !imageUrl) return;
+
+        // Find the manga link to get the ID - look for onclick with manga ID or search for link
+        let mangaId = "";
+
+        // Try to extract from onclick attribute: onclick="toggleBookmark(event,'99651')"
+        const bookmarkBtn = $imageDiv.find(".btn-bookmark").first();
+        const onclickAttr = bookmarkBtn.attr("onclick") || "";
+        const idMatch = onclickAttr.match(/toggleBookmark\(event,'(\d+)'\)/);
+        if (idMatch && idMatch[1]) {
+          mangaId = idMatch[1];
+        }
+
+        // Fallback: look for manga_id attribute
+        if (!mangaId) {
+          const readBtn = $imageDiv.find(".btn-mark-as-read").first();
+          mangaId = readBtn.attr("manga_id") || "";
+        }
+
+        if (!mangaId || seenIds.has(mangaId)) return;
+
+        seenIds.add(mangaId);
+
+        if (section.id === "latest-update") {
           items.push({
-            type: "prominentCarouselItem",
+            type: "chapterUpdatesCarouselItem",
+            mangaId: mangaId,
+            title: title,
+            imageUrl: imageUrl,
+            chapterId: "latest",
+          });
+        } else {
+          items.push({
+            type: "simpleCarouselItem",
             mangaId: mangaId,
             title: title,
             imageUrl: imageUrl,
           });
-        }
-      });
-    } else {
-      // For search/list pages - parse manga cards
-      $('a[href*="/manga/"]').each((_, element) => {
-        const $link = $(element);
-        const href = $link.attr("href") || "";
-        const mangaId = this.extractMangaId(href);
-
-        if (!mangaId || seenIds.has(mangaId)) return;
-
-        // Find image
-        let imageUrl = "";
-        const $img = $link.find("img").first();
-        if ($img.length) {
-          imageUrl = $img.attr("src") || $img.attr("data-src") || $img.attr("data-lazy-src") || "";
-        }
-
-        // Get title
-        let title = $link.attr("title") || $link.find("img").attr("alt") || "";
-        if (!title) {
-          const text = $link.text().trim().split("\n")[0]?.trim() || "";
-          if (text && !text.toLowerCase().includes("chapter")) {
-            title = text;
-          }
-        }
-
-        if (title && mangaId) {
-          // Ensure image URL is valid
-          if (!imageUrl || !imageUrl.startsWith("http")) {
-            imageUrl = "https://vymanga.com/web/img/placeholder.png";
-          }
-
-          seenIds.add(mangaId);
-
-          if (section.id === "latest-update") {
-            items.push({
-              type: "chapterUpdatesCarouselItem",
-              mangaId: mangaId,
-              title: title,
-              imageUrl: imageUrl,
-              chapterId: "latest",
-            });
-          } else {
-            items.push({
-              type: "simpleCarouselItem",
-              mangaId: mangaId,
-              title: title,
-              imageUrl: imageUrl,
-            });
-          }
         }
       });
     }
@@ -467,12 +481,12 @@ export class VyMangaExtension implements VyMangaImplementation {
     // Extract manga ID from URL like /manga/manga-slug or https://vymanga.com/manga/manga-slug
     const match = url.match(/\/manga\/([a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])(?:\/|\?|$|#)/);
     if (!match || !match[1]) {
-      // Try simpler match for short slugs
+      // Try simpler match for short slugs or numeric IDs
       const simpleMatch = url.match(/\/manga\/([a-zA-Z0-9-]+)/);
       if (simpleMatch && simpleMatch[1]) {
         const id = simpleMatch[1];
         // Validate: must not be just dashes, must have alphanumeric chars
-        if (id.replace(/-/g, "").length >= 2) {
+        if (id.replace(/-/g, "").length >= 1) {
           return id;
         }
       }
