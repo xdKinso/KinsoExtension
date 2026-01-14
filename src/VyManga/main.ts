@@ -178,37 +178,42 @@ export class VyMangaExtension implements VyMangaImplementation {
         });
       });
     } else {
-      // Latest Update and New Release sections use .comic-image divs with img.image.lozad
+      // Latest Update and New Release sections - find manga cards with links
       $("div.comic-image").each((_, element) => {
         const $imageDiv = $(element);
 
-        // Find the image and get data from it
+        // Find the image to get title and imageUrl
         const $img = $imageDiv.find("img.image.lozad").first();
         if (!$img.length) return;
 
-        // Get image URL from data-src or src
         const imageUrl = $img.attr("data-src") || $img.attr("src") || "";
-
-        // Get title from alt attribute
         const title = $img.attr("alt")?.trim() || $img.attr("title")?.trim() || "";
 
         if (!title || !imageUrl) return;
 
-        // Find the manga link to get the ID - look for onclick with manga ID or search for link
+        // Find the manga link - it should be near the comic-image div
         let mangaId = "";
 
-        // Try to extract from onclick attribute: onclick="toggleBookmark(event,'99651')"
-        const bookmarkBtn = $imageDiv.find(".btn-bookmark").first();
-        const onclickAttr = bookmarkBtn.attr("onclick") || "";
-        const idMatch = onclickAttr.match(/toggleBookmark\(event,'(\d+)'\)/);
-        if (idMatch && idMatch[1]) {
-          mangaId = idMatch[1];
+        // Try to find link in parent or sibling elements
+        const $parent = $imageDiv.parent();
+        let $link = $parent.find("a[href*='/manga/']").first();
+
+        // If not found, try in grandparent
+        if (!$link.length) {
+          $link = $parent.parent().find("a[href*='/manga/']").first();
         }
 
-        // Fallback: look for manga_id attribute
-        if (!mangaId) {
-          const readBtn = $imageDiv.find(".btn-mark-as-read").first();
-          mangaId = readBtn.attr("manga_id") || "";
+        // Try siblings
+        if (!$link.length) {
+          $link = $imageDiv.siblings("a[href*='/manga/']").first();
+        }
+
+        if ($link.length) {
+          const href = $link.attr("href") || "";
+          const extractedId = this.extractMangaId(href);
+          if (extractedId) {
+            mangaId = extractedId;
+          }
         }
 
         if (!mangaId || seenIds.has(mangaId)) return;
