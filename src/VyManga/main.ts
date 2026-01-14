@@ -482,11 +482,11 @@ export class VyMangaExtension implements VyMangaImplementation {
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    // The chapterId contains the redirect URL from aovheroes.com
-    // Add view=horizontal parameter to load all images at once instead of lazy-loading
+    // The chapterId contains the redirect URL
+    // Try view=0 parameter to load all images at once (0 = horizontal/all at once view)
     let url = chapter.chapterId;
     const separator = url.includes("?") ? "&" : "?";
-    url = `${url}${separator}view=horizontal`;
+    url = `${url}${separator}view=0`;
 
     const request = {
       url: url,
