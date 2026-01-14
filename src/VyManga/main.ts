@@ -300,14 +300,25 @@ export class VyMangaExtension implements VyMangaImplementation {
     const $ = await this.fetchCheerio(request);
 
     const title = $("h1, .manga-title, .title").first().text().trim();
-    const image =
-      $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img')
-        .first()
-        .attr("src") ||
-      $('img[alt*="' + title + '"], .manga-cover img, .thumbnail img, img')
-        .first()
-        .attr("data-src") ||
-      "";
+
+    // Find the cover image - look for img with src containing 'thumbnail' or 'cover'
+    let image = "";
+    const $coverImg = $("img[src*='thumbnail'], img[src*='cover']").first();
+    if ($coverImg.length) {
+      image = $coverImg.attr("src") || $coverImg.attr("data-src") || "";
+    }
+    // Fallback: try to find any img with alt matching title
+    if (!image && title) {
+      const $titleImg = $(`img[alt="${title}"], img[title="${title}"]`).first();
+      if ($titleImg.length) {
+        image = $titleImg.attr("src") || $titleImg.attr("data-src") || "";
+      }
+    }
+    // Final fallback: first img tag
+    if (!image) {
+      const $firstImg = $("img").first();
+      image = $firstImg.attr("src") || $firstImg.attr("data-src") || "";
+    }
 
     const description = $(".summary, .description, .synopsis, p").first().text().trim();
 
