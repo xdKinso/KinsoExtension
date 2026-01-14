@@ -261,24 +261,38 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const $ = await this.fetchCheerio(request);
     const results: SearchResultItem[] = [];
+    const seenIds = new Set<string>();
 
-    $('a[href*="/manga/"]').each((_, element) => {
-      const $elem = $(element);
-      const href = $elem.attr("href");
-      const title =
-        $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
-      const image =
-        $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
+    // Search results use div.comic-item structure
+    $("div.comic-item").each((_, element) => {
+      const $item = $(element);
 
-      if (href && title && !results.find((r) => r.mangaId === this.extractMangaId(href))) {
-        const mangaId = this.extractMangaId(href);
-        if (mangaId) {
-          results.push({
-            mangaId: mangaId,
-            title: title,
-            imageUrl: image,
-          });
-        }
+      // Find the manga link
+      const $link = $item.find("a[href*='/manga/']").first();
+      if (!$link.length) return;
+
+      const href = $link.attr("href") || "";
+      const mangaId = this.extractMangaId(href);
+      if (!mangaId || seenIds.has(mangaId)) return;
+
+      // Get title from div.comic-title or img alt/title
+      let title = $item.find("div.comic-title").first().text().trim();
+      if (!title) {
+        const $img = $item.find("img.image").first();
+        title = $img.attr("alt") || $img.attr("title") || "";
+      }
+
+      // Get image URL
+      const $img = $item.find("img.image.lozad").first();
+      const imageUrl = $img.attr("data-src") || $img.attr("src") || "";
+
+      if (title && imageUrl) {
+        seenIds.add(mangaId);
+        results.push({
+          mangaId: mangaId,
+          title: title.trim(),
+          imageUrl: imageUrl,
+        });
       }
     });
 
