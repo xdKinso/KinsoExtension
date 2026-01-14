@@ -483,7 +483,10 @@ export class VyMangaExtension implements VyMangaImplementation {
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     // The chapterId contains the redirect URL from aovheroes.com
-    const url = chapter.chapterId;
+    // Add view=horizontal parameter to load all images at once instead of lazy-loading
+    let url = chapter.chapterId;
+    const separator = url.includes("?") ? "&" : "?";
+    url = `${url}${separator}view=horizontal`;
 
     const request = {
       url: url,
@@ -494,8 +497,8 @@ export class VyMangaExtension implements VyMangaImplementation {
     const pages: string[] = [];
     const seenPages = new Set<string>();
 
-    // VyManga uses lazy-loaded images with class 'lozad' and data-src attribute
-    // First priority: img.lozad
+    // When view=horizontal is used, images should load all at once
+    // First priority: img.lozad with data-src (lazy-load image URLs)
     $("img.lozad").each((_, element) => {
       const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
       if (src && src.startsWith("http") && !seenPages.has(src)) {
