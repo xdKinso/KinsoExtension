@@ -300,20 +300,32 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const title = $("h1, .manga-title, .title").first().text().trim();
 
-    // Find the cover image - look for img inside .img-manga div
+    // Find the cover image - try multiple approaches
     let image = "";
+
+    // 1. Look for img inside .img-manga div
     const $mangaImg = $("div.img-manga img").first();
     if ($mangaImg.length) {
       image = $mangaImg.attr("src") || $mangaImg.attr("data-src") || "";
     }
-    // Fallback: look for img with src containing 'thumbnail' or 'cover'
+
+    // 2. Look for any img with cdnxyz.xyz domain (VyManga's CDN)
+    if (!image) {
+      const $cdnImg = $("img[src*='cdnxyz.xyz']").first();
+      if ($cdnImg.length) {
+        image = $cdnImg.attr("src") || $cdnImg.attr("data-src") || "";
+      }
+    }
+
+    // 3. Look for img with src containing 'thumbnail' or 'cover'
     if (!image) {
       const $coverImg = $("img[src*='thumbnail'], img[src*='cover']").first();
       if ($coverImg.length) {
         image = $coverImg.attr("src") || $coverImg.attr("data-src") || "";
       }
     }
-    // Final fallback: try to find any img with alt matching title
+
+    // 4. Try to find any img with alt/title matching the manga title
     if (!image && title) {
       const $titleImg = $(`img[alt="${title}"], img[title="${title}"]`).first();
       if ($titleImg.length) {
