@@ -439,9 +439,15 @@ export class VyMangaExtension implements VyMangaImplementation {
     const $ = await this.fetchCheerio(request);
     const chapters: Chapter[] = [];
 
-    // Try to find all chapter links - they use .list-chapter class
-    // Search broadly first, as single-chapter manga may have different structure
-    const $allChapterLinks = $("a.list-chapter");
+    // Try to find all chapter links - they can have different structures:
+    // Multi-chapter: a.list-chapter
+    // Single chapter: a.btn with id="chapter-X"
+    let $allChapterLinks = $("a.list-chapter");
+
+    // If no list-chapter found, try button-style chapters (single chapter manga)
+    if ($allChapterLinks.length === 0) {
+      $allChapterLinks = $('a[id^="chapter-"]');
+    }
 
     if ($allChapterLinks.length > 0) {
       // Found chapters using the standard selector
@@ -451,8 +457,14 @@ export class VyMangaExtension implements VyMangaImplementation {
 
         if (!href) return;
 
-        // Get chapter title/number from span
-        const chapterTitle = $elem.find("span").first().text().trim() || $elem.text().trim();
+        // Get chapter title/number from span or p tags
+        let chapterTitle = $elem.find("span").first().text().trim();
+        if (!chapterTitle) {
+          chapterTitle = $elem.find("p").first().text().trim();
+        }
+        if (!chapterTitle) {
+          chapterTitle = $elem.text().trim();
+        }
 
         // Try to parse chapter number from text (e.g., "Chapter 123" -> 123)
         let chapterNum = 0;
