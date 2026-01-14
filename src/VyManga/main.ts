@@ -439,57 +439,49 @@ export class VyMangaExtension implements VyMangaImplementation {
     const $ = await this.fetchCheerio(request);
     const chapters: Chapter[] = [];
 
-    // Find the Chapter List section first
-    let $chapterContainer: any = null;
-    $("p.title").each((_, element) => {
-      const $title = $(element);
-      if ($title.text().includes("Chapter List")) {
-        // Found the chapter list title, get its container
-        $chapterContainer = $title.closest("div") || $title.parent();
-      }
-    });
+    // Try to find all chapter links - they use .list-chapter class
+    // Search broadly first, as single-chapter manga may have different structure
+    const $allChapterLinks = $("a.list-chapter");
 
-    // If we found the chapter container, search within it; otherwise search the whole page
-    const $searchArea = $chapterContainer && $chapterContainer.length ? $chapterContainer : $;
+    if ($allChapterLinks.length > 0) {
+      // Found chapters using the standard selector
+      $allChapterLinks.each((index: number, element: any) => {
+        const $elem = $(element);
+        const href = $elem.attr("href");
 
-    // VyManga uses .list-chapter class for chapter links with redirect URLs
-    $searchArea.find("a.list-chapter").each((index: number, element: any) => {
-      const $elem = $(element);
-      const href = $elem.attr("href");
-      const chapterId = $elem.attr("id"); // e.g., "chapter-1"
+        if (!href) return;
 
-      if (!href || !chapterId) return;
+        // Get chapter title/number from span
+        const chapterTitle = $elem.find("span").first().text().trim() || $elem.text().trim();
 
-      // Get chapter title/number from span
-      const chapterTitle = $elem.find("span").first().text().trim() || $elem.text().trim();
-
-      // Try to parse chapter number from text (e.g., "Chapter 123" -> 123)
-      let chapterNum = 0;
-      const numMatch = chapterTitle.match(/chapter\s+(\d+(?:\.\d+)?)/i);
-      if (numMatch && numMatch[1]) {
-        chapterNum = parseFloat(numMatch[1]);
-      }
-
-      // Get chapter date from the small paragraph
-      const dateText = $elem.find("p.small").text().trim();
-      let date = new Date();
-      if (dateText) {
-        const parsedDate = new Date(dateText);
-        if (!isNaN(parsedDate.getTime())) {
-          date = parsedDate;
+        // Try to parse chapter number from text (e.g., "Chapter 123" -> 123)
+        let chapterNum = 0;
+        const numMatch = chapterTitle.match(/chapter\s+(\d+(?:\.\d+)?)/i);
+        if (numMatch && numMatch[1]) {
+          chapterNum = parseFloat(numMatch[1]);
         }
-      }
 
-      // Store the redirect URL - we'll use it to fetch chapter images
-      chapters.push({
-        chapterId: href, // Store the full redirect URL as chapterId
-        sourceManga: sourceManga,
-        langCode: "en",
-        chapNum: chapterNum,
-        title: chapterTitle,
-        publishDate: date,
+        // Get chapter date from the small paragraph
+        const dateText = $elem.find("p.small").text().trim();
+        let date = new Date();
+        if (dateText) {
+          const parsedDate = new Date(dateText);
+          if (!isNaN(parsedDate.getTime())) {
+            date = parsedDate;
+          }
+        }
+
+        // Store the redirect URL - we'll use it to fetch chapter images
+        chapters.push({
+          chapterId: href, // Store the full redirect URL as chapterId
+          sourceManga: sourceManga,
+          langCode: "en",
+          chapNum: chapterNum,
+          title: chapterTitle,
+          publishDate: date,
+        });
       });
-    });
+    }
 
     return chapters.reverse(); // Reverse to get oldest first
   }
@@ -510,22 +502,39 @@ export class VyMangaExtension implements VyMangaImplementation {
     const pages: string[] = [];
     const seenPages = new Set<string>();
 
-    // When view=horizontal is used, images should load all at once
-    // First priority: img.lozad with data-src (lazy-load image URLs)
-    $("img.lozad").each((_, element) => {
-      const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
-      if (src && src.startsWith("http") && !seenPages.has(src)) {
+    // First priority: Look for carousel items with data-page attribute (full chapter view)
+    $("div.carousel-item[data-page]").each((index: number, element: any) => {
+      const $item = $(element);
+      const $img = $item.find("img.lozad").first();
+
+      if (!$img.length) return;
+
+      const src = ($img.attr("data-src") || $img.attr("src") || "").trim();
+
+      // Make sure it's a real image URL, not the loading gif
+      if (src && src.startsWith("http") && !src.includes("loading.gif") && !seenPages.has(src)) {
         pages.push(src);
         seenPages.add(src);
       }
     });
 
-    // Fallback: if no lozad images found, try all images - but filter intelligently
+    // Fallback: if no carousel items found, look for regular lozad images
     if (pages.length === 0) {
-      $("img").each((_, element) => {
+      $("img.lozad").each((index: number, element: any) => {
+        const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
+        if (src && src.startsWith("http") && !src.includes("loading.gif") && !seenPages.has(src)) {
+          pages.push(src);
+          seenPages.add(src);
+        }
+      });
+    }
+
+    // Final fallback: if still no images, try all images - but filter intelligently
+    if (pages.length === 0) {
+      $("img").each((index: number, element: any) => {
         const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
 
-        // Skip small/ui images
+        // Skip small/ui images and ads
         if (
           !src ||
           src.includes("icon") ||
@@ -533,7 +542,9 @@ export class VyMangaExtension implements VyMangaImplementation {
           src.includes("loading") ||
           src.includes("avatar") ||
           src.includes("user") ||
-          src.includes("small")
+          src.includes("small") ||
+          src.includes("ad") ||
+          src.includes("advertisement")
         ) {
           return;
         }
