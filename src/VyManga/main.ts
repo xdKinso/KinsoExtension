@@ -439,8 +439,21 @@ export class VyMangaExtension implements VyMangaImplementation {
     const $ = await this.fetchCheerio(request);
     const chapters: Chapter[] = [];
 
+    // Find the Chapter List section first
+    let $chapterContainer: any = null;
+    $("p.title").each((_, element) => {
+      const $title = $(element);
+      if ($title.text().includes("Chapter List")) {
+        // Found the chapter list title, get its container
+        $chapterContainer = $title.closest("div") || $title.parent();
+      }
+    });
+
+    // If we found the chapter container, search within it; otherwise search the whole page
+    const $searchArea = $chapterContainer && $chapterContainer.length ? $chapterContainer : $;
+
     // VyManga uses .list-chapter class for chapter links with redirect URLs
-    $("a.list-chapter").each((_, element) => {
+    $searchArea.find("a.list-chapter").each((index: number, element: any) => {
       const $elem = $(element);
       const href = $elem.attr("href");
       const chapterId = $elem.attr("id"); // e.g., "chapter-1"
