@@ -133,66 +133,68 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const $ = await this.fetchCheerio(request);
     const items: DiscoverSectionItem[] = [];
+    const seenIds = new Set<string>();
 
-    if (section.id === "popular") {
-      // Parse Popular Manga from homepage
-      $('a[href*="/manga/"]').each((_, element) => {
-        const $elem = $(element);
-        const href = $elem.attr("href");
-        const title =
-          $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
-        const image =
-          $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
+    // Parse manga cards - VyManga uses direct links to /manga/ pages in list items
+    $('a[href*="/manga/"]').each((_, element) => {
+      const $elem = $(element);
+      const href = $elem.attr("href");
 
-        if (href && title) {
-          const mangaId = this.extractMangaId(href);
-          if (
-            mangaId &&
-            items.length < 20 &&
-            !items.find((i) => "mangaId" in i && i.mangaId === mangaId)
-          ) {
-            items.push({
-              type: "prominentCarouselItem",
-              mangaId: mangaId,
-              title: title,
-              imageUrl: image,
-            });
-          }
+      // Skip if not a direct manga link
+      if (!href || !href.match(/\/manga\/[a-zA-Z0-9\-]+$/)) {
+        return;
+      }
+
+      const mangaId = this.extractMangaId(href);
+
+      // Skip if invalid ID or already seen
+      if (!mangaId || seenIds.has(mangaId)) {
+        return;
+      }
+
+      // Get title - try multiple methods
+      let title = $elem.text().trim();
+      if (!title || title.includes("Chapter")) {
+        // If the link text contains chapter info, try to get clean title
+        title = $elem.attr("title")?.trim() || "";
+      }
+
+      // Get image - look for img within or near the link
+      const $img = $elem.find("img").first();
+      const image = $img.attr("src") || $img.attr("data-src") || "";
+
+      if (!title) {
+        return;
+      }
+
+      seenIds.add(mangaId);
+
+      if (section.id === "popular") {
+        if (items.length < 20) {
+          items.push({
+            type: "prominentCarouselItem",
+            mangaId: mangaId,
+            title: title,
+            imageUrl: image,
+          });
         }
-      });
-    } else if (section.id === "latest-update" || section.id === "new-release") {
-      // Parse manga list from search pages
-      $('a[href*="/manga/"]').each((_, element) => {
-        const $elem = $(element);
-        const href = $elem.attr("href");
-        const title =
-          $elem.find("h3, h4, .title").first().text().trim() || $elem.attr("title")?.trim();
-        const image =
-          $elem.find("img").first().attr("src") || $elem.find("img").first().attr("data-src") || "";
-
-        if (href && title) {
-          const mangaId = this.extractMangaId(href);
-          if (mangaId && !items.find((i) => "mangaId" in i && i.mangaId === mangaId)) {
-            if (section.id === "latest-update") {
-              items.push({
-                type: "chapterUpdatesCarouselItem",
-                mangaId: mangaId,
-                title: title,
-                imageUrl: image,
-                chapterId: "latest",
-              });
-            } else {
-              items.push({
-                type: "simpleCarouselItem",
-                mangaId: mangaId,
-                title: title,
-                imageUrl: image,
-              });
-            }
-          }
-        }
-      });
-    }
+      } else if (section.id === "latest-update") {
+        items.push({
+          type: "chapterUpdatesCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: image,
+          chapterId: "latest",
+        });
+      } else if (section.id === "new-release") {
+        items.push({
+          type: "simpleCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: image,
+        });
+      }
+    });
 
     return {
       items: items,
@@ -416,8 +418,16 @@ export class VyMangaExtension implements VyMangaImplementation {
 
   private extractMangaId(url: string): string | null {
     // Extract manga ID from URL like /manga/manga-slug or /manga/manga-slug/
-    const match = url.match(/\/manga\/([^\/\?#]+)/);
-    return match && match[1] ? match[1] : null;
+    const match = url.match(/\/manga\/([a-zA-Z0-9\-]+)$/);
+    if (!match || !match[1]) {
+      return null;
+    }
+    const id = match[1];
+    // Validate - must not end with just a dash or be too short
+    if (id.length < 3 || id.endsWith("-")) {
+      return null;
+    }
+    return id;
   }
 
   private extractChapterId(url: string): string | null {
