@@ -301,23 +301,25 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const title = $("h1, .manga-title, .title").first().text().trim();
 
-    // Find the cover image - look for img with src containing 'thumbnail' or 'cover'
+    // Find the cover image - look for img inside .img-manga div
     let image = "";
-    const $coverImg = $("img[src*='thumbnail'], img[src*='cover']").first();
-    if ($coverImg.length) {
-      image = $coverImg.attr("src") || $coverImg.attr("data-src") || "";
+    const $mangaImg = $("div.img-manga img").first();
+    if ($mangaImg.length) {
+      image = $mangaImg.attr("src") || $mangaImg.attr("data-src") || "";
     }
-    // Fallback: try to find any img with alt matching title
+    // Fallback: look for img with src containing 'thumbnail' or 'cover'
+    if (!image) {
+      const $coverImg = $("img[src*='thumbnail'], img[src*='cover']").first();
+      if ($coverImg.length) {
+        image = $coverImg.attr("src") || $coverImg.attr("data-src") || "";
+      }
+    }
+    // Final fallback: try to find any img with alt matching title
     if (!image && title) {
       const $titleImg = $(`img[alt="${title}"], img[title="${title}"]`).first();
       if ($titleImg.length) {
         image = $titleImg.attr("src") || $titleImg.attr("data-src") || "";
       }
-    }
-    // Final fallback: first img tag
-    if (!image) {
-      const $firstImg = $("img").first();
-      image = $firstImg.attr("src") || $firstImg.attr("data-src") || "";
     }
 
     const description = $(".summary, .description, .synopsis, p").first().text().trim();
