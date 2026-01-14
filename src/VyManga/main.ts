@@ -349,51 +349,68 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const description = $(".summary, .description, .synopsis, p").first().text().trim();
 
-    // Try to parse author and artist
+    // Parse author - look for a[href*="/author/"]
     let author = "Unknown";
-    let artist = "Unknown";
-
-    $("div, span, p").each((_, element) => {
-      const text = $(element).text();
-      if (text.includes("Author")) {
-        const match = text.match(/Author[:\s]+([^•\n]+)/i);
-        if (match && match[1]) {
-          author = match[1].trim();
-        }
-      }
-      if (text.includes("Artist")) {
-        const match = text.match(/Artist[:\s]+([^•\n]+)/i);
-        if (match && match[1]) {
-          artist = match[1].trim();
-        }
-      }
-    });
-
-    // Parse status
-    let status = "ONGOING";
-    const statusText = $(".status, .manga-status").text().toLowerCase();
-    if (statusText.includes("completed") || statusText.includes("complete")) {
-      status = "COMPLETED";
+    const $authorLink = $('a[href*="/author/"]').first();
+    if ($authorLink.length) {
+      author = $authorLink.text().trim();
     }
 
-    // Parse genres
-    const tags: Tag[] = [];
-    $('a[href*="/genre/"]').each((_, element) => {
-      const $el = $(element);
-      const href = $el.attr("href") || "";
-      const tag = $el.text().trim();
+    // Parse status - look for span.text-ongoing or span.text-completed
+    let status = "ONGOING";
+    if ($("span.text-completed").length) {
+      status = "COMPLETED";
+    } else if (!$("span.text-ongoing").length) {
+      // Fallback: check generic status text
+      const statusText = $(".status, .manga-status").text().toLowerCase();
+      if (statusText.includes("completed") || statusText.includes("complete")) {
+        status = "COMPLETED";
+      }
+    }
 
-      // Extract genre ID from URL like /genre/webtoons
-      const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
-      if (genreMatch && genreMatch[1] && tag) {
-        // Use the URL slug as ID - it's already sanitized
-        const id = genreMatch[1].toLowerCase();
-        // Make sure ID is valid (alphanumeric with allowed symbols)
-        if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
-          tags.push({ id: id, title: tag });
-        }
+    // Parse genres - find the genres section specifically
+    // Look for "Genres" label followed by genre badge links
+    const tags: Tag[] = [];
+
+    // Find the genres section by looking for the pre-title span containing "Genres"
+    $("span.pre-title").each((_, element) => {
+      const $label = $(element);
+      if ($label.text().includes("Genres")) {
+        // Get the parent container and find all genre links after the label
+        const $container = $label.closest("div, span, p") || $label.parent();
+        $container.find('a[href*="/genre/"].badge').each((_, genreEl) => {
+          const $genreLink = $(genreEl);
+          const href = $genreLink.attr("href") || "";
+          const tag = $genreLink.text().trim();
+
+          // Extract genre ID from URL like /genre/webtoons
+          const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
+          if (genreMatch && genreMatch[1] && tag) {
+            const id = genreMatch[1].toLowerCase();
+            if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+              tags.push({ id: id, title: tag });
+            }
+          }
+        });
       }
     });
+
+    // Fallback: if no genres found with the above method, try generic genre links
+    if (tags.length === 0) {
+      $('a[href*="/genre/"].badge').each((_, element) => {
+        const $el = $(element);
+        const href = $el.attr("href") || "";
+        const tag = $el.text().trim();
+
+        const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
+        if (genreMatch && genreMatch[1] && tag) {
+          const id = genreMatch[1].toLowerCase();
+          if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+            tags.push({ id: id, title: tag });
+          }
+        }
+      });
+    }
 
     return {
       mangaId: mangaId,
@@ -402,7 +419,7 @@ export class VyMangaExtension implements VyMangaImplementation {
         secondaryTitles: [],
         thumbnailUrl: image,
         status: status as "ONGOING" | "COMPLETED",
-        artist: artist,
+        artist: "Unknown",
         author: author,
         contentRating: ContentRating.MATURE,
         synopsis: description,
@@ -475,31 +492,39 @@ export class VyMangaExtension implements VyMangaImplementation {
 
     const $ = await this.fetchCheerio(request);
     const pages: string[] = [];
+    const seenPages = new Set<string>();
 
     // VyManga uses lazy-loaded images with class 'lozad' and data-src attribute
+    // First priority: img.lozad
     $("img.lozad").each((_, element) => {
-      const $img = $(element);
-      // Try data-src first (lazy load), then fall back to src
-      const src = $img.attr("data-src") || $img.attr("src") || "";
-
-      if (src && src.startsWith("http")) {
+      const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
+      if (src && src.startsWith("http") && !seenPages.has(src)) {
         pages.push(src);
+        seenPages.add(src);
       }
     });
 
-    // Fallback: if no lozad images found, try all images with data-src or src
+    // Fallback: if no lozad images found, try all images - but filter intelligently
     if (pages.length === 0) {
       $("img").each((_, element) => {
-        const $img = $(element);
-        const src = $img.attr("data-src") || $img.attr("src") || "";
+        const src = ($(element).attr("data-src") || $(element).attr("src") || "").trim();
 
-        // Skip small images (thumbnails, icons, logos, etc.)
-        if (!src || src.includes("icon") || src.includes("logo") || src.includes("loading")) {
+        // Skip small/ui images
+        if (
+          !src ||
+          src.includes("icon") ||
+          src.includes("logo") ||
+          src.includes("loading") ||
+          src.includes("avatar") ||
+          src.includes("user") ||
+          src.includes("small")
+        ) {
           return;
         }
 
-        if (src.startsWith("http")) {
+        if (src.startsWith("http") && !seenPages.has(src)) {
           pages.push(src);
+          seenPages.add(src);
         }
       });
     }

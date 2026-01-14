@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types"
 export default {
   name: "VyManga",
   description: "Extension that pulls content from vymanga.com.",
-  version: "0.0.5",
+  version: "0.0.6",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.MATURE,
