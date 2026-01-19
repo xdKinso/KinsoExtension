@@ -149,7 +149,7 @@ export class MangaGoParser {
         const genreMatch = href.match(/\/genre\/([^/?]+)/);
         if (genreMatch && genreMatch[1]) {
           const id = genreMatch[1].toLowerCase();
-          if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+          if (id && /^[a-zA-Z0-9._\-@()%?#+=\/&:]+$/.test(id)) {
             tags.push({ id: id, title: tag });
           }
         }
