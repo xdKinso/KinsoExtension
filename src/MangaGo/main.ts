@@ -168,16 +168,6 @@ export class MangaGoExtension implements MangaGoImplementation {
         title: "School Life Manga Top 5",
         type: DiscoverSectionType.simpleCarousel,
       },
-      {
-        id: "latest-update",
-        title: "Latest Update",
-        type: DiscoverSectionType.chapterUpdates,
-      },
-      {
-        id: "new-release",
-        title: "New Release",
-        type: DiscoverSectionType.simpleCarousel,
-      },
     ];
   }
 
@@ -185,17 +175,8 @@ export class MangaGoExtension implements MangaGoImplementation {
     section: DiscoverSection,
     metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
-    const page = metadata?.page ?? 1;
-
-    let url = DOMAIN;
-    if (section.id === "latest-update") {
-      url = `${DOMAIN}/search?sort=updated_at&page=${page}`;
-    } else if (section.id === "new-release") {
-      url = `${DOMAIN}/search?sort=created_at&page=${page}`;
-    }
-
     const request = {
-      url: url,
+      url: DOMAIN,
       method: "GET",
     };
 
@@ -232,11 +213,12 @@ export class MangaGoExtension implements MangaGoImplementation {
         });
       });
     } else if (section.id === "new-chapters") {
-      // New chapters from div#toplist_panel
-      const $container = $("div#toplist_panel");
-      $container.find("li.toplist").each((_, element) => {
+      // New chapters from li.updateli items
+      $("li.updateli").each((_, element) => {
         const $li = $(element);
-        const $link = $li.find("div.left_listimg a").first();
+
+        // Find the manga link and image
+        const $link = $li.find("a.thm-effect").first();
         const href = $link.attr("href") || "";
         const mangaId = this.extractMangaId(href);
         if (!mangaId || seenIds.has(mangaId)) return;
@@ -280,8 +262,8 @@ export class MangaGoExtension implements MangaGoImplementation {
       let $items;
 
       if (section.id === "popular") {
-        // For popular, get all items from the first section or all sections
-        $items = $container.find("div.flexl_listitem");
+        // For popular, get items from div.row_2 with div.left_listimg
+        $items = $("div.row_2:has(div.left_listimg)");
       } else if (targetGenre) {
         // For genre top 5s, find the section with matching genre title
         const $genreSection = $container
@@ -301,7 +283,7 @@ export class MangaGoExtension implements MangaGoImplementation {
 
       $items.each((_, element) => {
         const $item = $(element);
-        const $link = $item.find("a.thm-effect").first();
+        const $link = $item.find("div.left_listimg a.thm-effect").first();
         const href = $link.attr("href") || "";
         const mangaId = this.extractMangaId(href);
         if (!mangaId || seenIds.has(mangaId)) return;
@@ -311,35 +293,7 @@ export class MangaGoExtension implements MangaGoImplementation {
 
         let imageUrl =
           $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
-        let title =
-          $item.find("span.title").text().trim() || $img.attr("alt") || $link.attr("title") || "";
-        title = title.replace(" manga", "").trim();
-
-        if (!title || !imageUrl) return;
-
-        seenIds.add(mangaId);
-        items.push({
-          type: "simpleCarouselItem",
-          mangaId: mangaId,
-          title: title,
-          imageUrl: imageUrl,
-        });
-      });
-    } else {
-      // For latest-update and new-release, use the default parsing
-      const $container = $("body");
-      $container.find("a[href*='/read-manga/']").each((_, element) => {
-        const $link = $(element);
-        const href = $link.attr("href") || "";
-        const mangaId = this.extractMangaId(href);
-        if (!mangaId || seenIds.has(mangaId)) return;
-
-        const $img = $link.find("img").first();
-        if (!$img.length) return;
-
-        let imageUrl =
-          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
-        let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+        let title = $img.attr("alt") || $img.attr("title") || $link.attr("title") || "";
         title = title.replace(" manga", "").trim();
 
         if (!title || !imageUrl) return;
@@ -354,28 +308,10 @@ export class MangaGoExtension implements MangaGoImplementation {
       });
     }
 
-    // Don't paginate for static sections (featured, new-chapters, popular, genre top 5s)
-    const staticSections = [
-      "featured",
-      "new-chapters",
-      "popular",
-      ...Object.keys({
-        "yaoi-top5": 1,
-        "comedy-top5": 1,
-        "shounen-ai-top5": 1,
-        "shoujo-top5": 1,
-        "yuri-top5": 1,
-        "josei-top5": 1,
-        "fantasy-top5": 1,
-        "school-life-top5": 1,
-      }),
-    ];
-
-    const hasMore = !staticSections.includes(section.id) && items.length > 0;
-
+    // All sections are static - no pagination
     return {
       items: items,
-      metadata: hasMore ? { page: page + 1 } : undefined,
+      metadata: undefined,
     };
   }
 
