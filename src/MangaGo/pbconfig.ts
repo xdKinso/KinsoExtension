@@ -3,7 +3,7 @@ import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types"
 export default {
   name: "MangaGo",
   description: "Extension that pulls content from mangago.me.",
-  version: "0.0.6",
+  version: "0.0.7",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.MATURE,
