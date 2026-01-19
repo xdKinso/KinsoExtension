@@ -57,6 +57,7 @@ export class MangaFireExtension implements MangaFireImplementation {
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
+    this.cookieStorageInterceptor.registerInterceptor();
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -130,6 +131,13 @@ export class MangaFireExtension implements MangaFireImplementation {
         this.cookieStorageInterceptor.setCookie(cookie);
       }
     }
+  }
+
+  async getCloudflareBypassRequest(): Promise<Request> {
+    return {
+      url: baseUrl,
+      method: "GET",
+    };
   }
 
   private async getSearchDetails() {
