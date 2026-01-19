@@ -1,6 +1,8 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
 import { generateBrowserHeaders } from "../MangaPark/browserHeaders";
 
+const baseUrl = "https://demonicscans.org";
+
 export class Interceptor extends PaperbackInterceptor {
   constructor(id: string) {
     super(id);
@@ -8,7 +10,12 @@ export class Interceptor extends PaperbackInterceptor {
 
   override async interceptRequest(request: Request): Promise<Request> {
     const headers = generateBrowserHeaders(request.url);
-    request.headers = { ...headers, ...request.headers };
+    // Add Referer header for better compatibility (matches Keiyoushi implementation)
+    request.headers = { 
+      ...headers, 
+      "Referer": `${baseUrl}/`,
+      ...request.headers 
+    };
     return request;
   }
 

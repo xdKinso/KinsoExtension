@@ -34,15 +34,24 @@ type MangaDemonImplementation = Extension &
 export class MangaDemonExtension implements MangaDemonImplementation {
   requestManager = new Interceptor("main");
 
+  // Main rate limiter: 2 requests per second (matching Keiyoushi)
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
-    numberOfRequests: 10,
-    bufferInterval: 5,
+    numberOfRequests: 2,
+    bufferInterval: 1,
     ignoreImages: true,
+  });
+
+  // Separate rate limiter for thumbnails: 6 requests per second (faster loading)
+  thumbnailRateLimiter = new BasicRateLimiter("thumbnailRateLimiter", {
+    numberOfRequests: 6,
+    bufferInterval: 1,
+    ignoreImages: false,
   });
 
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
+    this.thumbnailRateLimiter.registerInterceptor();
   }
 
   async getSearchResults(
@@ -74,7 +83,7 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
       if (response.status !== 200) {
         console.error(`[MangaDemon] Search failed with status ${response.status}`);
-        return { items: [] };
+        throw new Error(`Failed to fetch search results: HTTP ${response.status}`);
       }
 
       const htmlStr = Application.arrayBufferToUTF8String(data);

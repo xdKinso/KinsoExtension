@@ -25,15 +25,15 @@ export function parseSearchResults(
     const href = $elem.attr("href") || "";
     const text = $elem.text().trim();
 
-    // Skip if no text
+    // Skip if no text or href
     if (!text || !href) return;
 
-    // If we have a search term, filter by it
+    // If we have a search term, filter by it (case-insensitive)
     if (searchTerm && !text.toLowerCase().includes(searchTermLower)) {
       return;
     }
 
-    // Avoid duplicates
+    // Avoid duplicates using Set
     if (seen.has(href)) return;
     seen.add(href);
 
