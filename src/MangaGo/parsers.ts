@@ -3,8 +3,20 @@ import type { DiscoverSectionItem } from "@paperback/types";
 
 export class MangaGoParser {
   extractMangaId(href: string): string {
-    const match = href.match(/\/read-manga\/([^/?]+)/);
-    return match?.[1] ?? "";
+    // Try to match /read-manga/ URLs first
+    let match = href.match(/\/read-manga\/([^/?]+)/);
+    if (match?.[1]) return match[1];
+
+    // Try to match /read/ (chapter) URLs and extract manga ID
+    // Example: /read/manga-id/chapter-slug
+    match = href.match(/\/read\/([^/?]+)/);
+    if (match?.[1]) {
+      // Remove any chapter part (usually starts with chapter_ or c_)
+      const parts = match[1].split('/');
+      return parts[0] ?? "";
+    }
+
+    return "";
   }
 
   parseFeaturedManga($: CheerioAPI): DiscoverSectionItem[] {
@@ -47,8 +59,12 @@ export class MangaGoParser {
     // Look for div.flexl_listitem items
     $("div.flexl_listitem").each((_, element) => {
       const $item = $(element);
-      const $link = $item.find("div.updatesli div.left a.thm-effect").first();
-      const href = $link.attr("href") || "";
+      // Prefer the link which points to a manga page; fall back to the first anchor
+      const $link =
+        $item.find("a[href*='/read-manga/']").first() ||
+        $item.find("div.updatesli div.left a.thm-effect").first();
+
+      const href = $link?.attr("href") || "";
 
       // Skip if no href found
       if (!href) return;
@@ -96,8 +112,10 @@ export class MangaGoParser {
       const $container = $(element);
       $container.find("div.flexl_listitem").each((_, itemElement) => {
         const $item = $(itemElement);
-        const $link = $item.find("div.updatesli div.left a.thm-effect").first();
-        const href = $link.attr("href") || "";
+        const $link =
+          $item.find("a[href*='/read-manga/']").first() ||
+          $item.find("div.updatesli div.left a.thm-effect").first();
+        const href = $link?.attr("href") || "";
         
         if (!href) return;
         
