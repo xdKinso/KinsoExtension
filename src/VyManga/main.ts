@@ -18,6 +18,7 @@ import {
   type SearchQuery,
   type SearchResultItem,
   type SearchResultsProviding,
+  type SortingOption,
   type SourceManga,
   type Tag,
   type TagSection,
@@ -77,6 +78,20 @@ export class VyMangaExtension implements VyMangaImplementation {
 
   getMangaShareUrl(mangaId: string): string {
     return `${DOMAIN}/manga/${mangaId}`;
+  }
+
+  // Extract included tag IDs for a given TagSection (e.g., "genres")
+  private getIncludedTags(
+    filters: SearchQuery["filters"] | undefined,
+    sectionId: string,
+  ): string[] {
+    const values = filters?.find((f) => f.id === sectionId)?.value as
+      | Record<string, "included" | "excluded">
+      | undefined;
+    if (!values) return [];
+    return Object.entries(values)
+      .filter(([, v]) => v === "included")
+      .map(([id]) => id);
   }
 
   // Helper method to extract author from HTML
@@ -319,11 +334,26 @@ export class VyMangaExtension implements VyMangaImplementation {
   async getSearchResults(
     query: SearchQuery,
     metadata: Metadata | undefined,
+    sortingOption?: SortingOption,
   ): Promise<PagedResults<SearchResultItem>> {
     const page = metadata?.page ?? 1;
     const searchTerm = query.title?.trim() || "";
 
     let url = `${DOMAIN}/search?q=${encodeURIComponent(searchTerm)}&page=${page}`;
+
+    // Include-only genre filters from TagSection "genres"
+    const includedGenres = this.getIncludedTags(query.filters, "genres");
+    for (const g of includedGenres) {
+      url += `&genre[]=${encodeURIComponent(g)}`;
+    }
+
+    // Optional sort parameter
+    if (sortingOption?.id) {
+      url += `&sort=${encodeURIComponent(sortingOption.id)}`;
+    } else {
+      // Default sort when none provided
+      url += `&sort=updated_at`;
+    }
 
     const request = {
       url: url,
@@ -371,6 +401,14 @@ export class VyMangaExtension implements VyMangaImplementation {
       items: results,
       metadata: results.length >= 20 ? { page: page + 1 } : undefined,
     };
+  }
+
+  async getSortingOptions(): Promise<SortingOption[]> {
+    return [
+      { id: "updated_at", label: "Latest Update" },
+      { id: "created_at", label: "Newest" },
+      { id: "views", label: "Most Viewed" },
+    ];
   }
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
