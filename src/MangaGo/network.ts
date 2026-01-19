@@ -1,8 +1,8 @@
-import { 
-  BasicRateLimiter, 
+import {
+  BasicRateLimiter,
   PaperbackInterceptor,
   type Request,
-  type Response
+  type Response,
 } from "@paperback/types";
 
 export const DOMAIN = "https://www.mangago.me";
@@ -14,7 +14,11 @@ export const rateLimiter = new BasicRateLimiter("MangaGoRateLimiter", {
 });
 
 export class MangaGoInterceptor extends PaperbackInterceptor {
-  override async interceptResponse(request: Request, response: Response, data: ArrayBuffer): Promise<ArrayBuffer> {
+  override async interceptResponse(
+    request: Request,
+    response: Response,
+    data: ArrayBuffer,
+  ): Promise<ArrayBuffer> {
     void request;
     void response;
     return data;

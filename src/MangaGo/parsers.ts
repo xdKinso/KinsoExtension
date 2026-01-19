@@ -12,7 +12,7 @@ export class MangaGoParser {
     match = href.match(/\/read\/([^/?]+)/);
     if (match?.[1]) {
       // Remove any chapter part (usually starts with chapter_ or c_)
-      const parts = match[1].split('/');
+      const parts = match[1].split("/");
       return parts[0] ?? "";
     }
 
@@ -33,8 +33,7 @@ export class MangaGoParser {
       const $img = $link.find("img").first();
       if (!$img.length) return;
 
-      let imageUrl =
-        $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+      let imageUrl = $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
       let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
       title = title.replace(" manga", "").trim();
 
@@ -77,8 +76,7 @@ export class MangaGoParser {
       const $img = $link.find("img").first();
       if (!$img.length) return;
 
-      let imageUrl =
-        $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+      let imageUrl = $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
       let title = $img.attr("alt") || $img.attr("title") || $link.attr("title") || "";
       title = title.replace(" manga", "").trim();
 
@@ -116,9 +114,9 @@ export class MangaGoParser {
           $item.find("a[href*='/read-manga/']").first() ||
           $item.find("div.updatesli div.left a.thm-effect").first();
         const href = $link?.attr("href") || "";
-        
+
         if (!href) return;
-        
+
         const mangaId = this.extractMangaId(href);
         if (!mangaId || seenIds.has(mangaId)) return;
 
