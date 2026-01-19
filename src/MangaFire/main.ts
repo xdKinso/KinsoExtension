@@ -55,9 +55,9 @@ export class MangaFireExtension implements MangaFireImplementation {
   });
 
   async initialise(): Promise<void> {
+    this.cookieStorageInterceptor.registerInterceptor();
     this.requestManager.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
-    this.cookieStorageInterceptor.registerInterceptor();
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -134,9 +134,22 @@ export class MangaFireExtension implements MangaFireImplementation {
   }
 
   async getCloudflareBypassRequest(): Promise<Request> {
+    const headers = {
+      // Aim to look like a real browser to satisfy CF
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      Referer: `${baseUrl}/`,
+    };
+
     return {
       url: baseUrl,
       method: "GET",
+      headers,
     };
   }
 
@@ -568,7 +581,7 @@ export class MangaFireExtension implements MangaFireImplementation {
         const vrf = await genVrf(`${mangaId}@chapter@${language}`);
         console.log(`[MangaFire] Generated VRF for ${language}: ${vrf.substring(0, 20)}...`);
 
-        const chaptersRequest: Request = {
+        const primaryRequest: Request = {
           url: new URLBuilder(baseUrl)
             .addPath("ajax")
             .addPath("read")
@@ -580,19 +593,29 @@ export class MangaFireExtension implements MangaFireImplementation {
           method: "GET",
         };
 
-        console.log(`[MangaFire] Requesting: ${chaptersRequest.url}`);
+        console.log(`[MangaFire] Requesting primary: ${primaryRequest.url}`);
 
-        const [response, buffer] = await Application.scheduleRequest(chaptersRequest);
-        this.checkCloudflareStatus(response.status);
+        const [primaryResponse, primaryBuffer] = await Application.scheduleRequest(primaryRequest);
+        this.checkCloudflareStatus(primaryResponse.status);
 
-        if (response.status !== 200) {
+        // If Cloudflare is not the problem but the endpoint returns 404, fall back to the secondary endpoint
+        const needsFallback = primaryResponse.status === 404;
+        const fallbackResult = needsFallback
+          ? await this.fetchChaptersFallback(mangaId, language, vrf)
+          : undefined;
+        const finalResponse = needsFallback ? fallbackResult?.response : primaryResponse;
+        const finalBuffer = needsFallback ? fallbackResult?.buffer : primaryBuffer;
+
+        if (!finalResponse || !finalBuffer || finalResponse.status !== 200) {
           console.error(
-            `[MangaFire] Failed to fetch chapters for ${language}: HTTP ${response.status}`,
+            `[MangaFire] Failed to fetch chapters for ${language}: HTTP ${
+              finalResponse?.status ?? "unknown"
+            }`,
           );
           continue;
         }
 
-        const responseText = Application.arrayBufferToUTF8String(buffer);
+        const responseText = Application.arrayBufferToUTF8String(finalBuffer);
         console.log(`[MangaFire] Response length for ${language}: ${responseText.length} bytes`);
 
         const json = JSON.parse(responseText) as Result;
@@ -660,6 +683,29 @@ export class MangaFireExtension implements MangaFireImplementation {
 
     console.log(`[MangaFire] Total chapters found: ${chapters.length}`);
     return chapters;
+  }
+
+  private async fetchChaptersFallback(mangaId: string, language: string, vrf: string) {
+    const fallbackRequest: Request = {
+      url: new URLBuilder(baseUrl)
+        .addPath("ajax")
+        .addPath("manga")
+        .addPath(mangaId)
+        .addPath("chapters")
+        .addQuery("lang", language)
+        .addQuery("vrf", vrf)
+        .build(),
+      method: "GET",
+    };
+
+    console.warn(
+      `[MangaFire] Primary chapter endpoint 404, trying fallback: ${fallbackRequest.url}`,
+    );
+
+    const [response, buffer] = await Application.scheduleRequest(fallbackRequest);
+    this.checkCloudflareStatus(response.status);
+
+    return { response, buffer };
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
