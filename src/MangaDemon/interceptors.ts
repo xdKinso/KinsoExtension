@@ -10,11 +10,10 @@ export class Interceptor extends PaperbackInterceptor {
 
   override async interceptRequest(request: Request): Promise<Request> {
     const headers = generateBrowserHeaders(request.url);
-    // Add Referer header for better compatibility (matches Keiyoushi implementation)
-    request.headers = { 
-      ...headers, 
-      "Referer": `${baseUrl}/`,
-      ...request.headers 
+    request.headers = {
+      ...headers,
+      Referer: `${baseUrl}/`,
+      ...request.headers,
     };
     return request;
   }

@@ -65,13 +65,13 @@ export class MangaBatExtension implements MangaBatImplementation {
       };
 
       const [response, data] = await Application.scheduleRequest(request);
-      
+
       // Better error handling with HTTP status codes
       if (response.status !== 200) {
         console.error(`[MangaBat] Search failed with status ${response.status}`);
         throw new Error(`Failed to fetch search results: HTTP ${response.status}`);
       }
-      
+
       const htmlStr = Application.arrayBufferToUTF8String(data);
       const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
       const items = parseSearchResults($, baseUrl);
@@ -134,12 +134,12 @@ export class MangaBatExtension implements MangaBatImplementation {
       };
 
       const [response, data] = await Application.scheduleRequest(request);
-      
+
       if (response.status !== 200) {
         console.error(`[MangaBat] Discovery failed with status ${response.status}`);
         throw new Error(`Failed to fetch discovery section: HTTP ${response.status}`);
       }
-      
+
       const htmlStr = Application.arrayBufferToUTF8String(data);
       const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
       const items = parseSearchResults($, baseUrl);
