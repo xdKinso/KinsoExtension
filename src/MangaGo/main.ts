@@ -201,7 +201,13 @@ export class MangaGoExtension implements MangaGoImplementation {
         const $li = $(element);
         const $link = $li.find("div.box div.left a.thm-effect").first();
         const href = $link.attr("href") || "";
+
+        // Skip if no href found
+        if (!href) return;
+
         const mangaId = this.extractMangaId(href);
+
+        // Skip if mangaId extraction failed or already seen
         if (!mangaId || seenIds.has(mangaId)) return;
 
         const $img = $link.find("img").first();
