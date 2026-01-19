@@ -161,9 +161,16 @@ export class MangaGoExtension implements MangaGoImplementation {
 
       if (!mangaId || seenIds.has(mangaId)) return;
 
-      // Get the image - look for showdesc loaded class or any img
-      const $img = $link.find("img.showdesc, img").first();
+      // Get the image - prioritize img.showdesc.loaded, then showdesc, then any img
+      let $img = $link.find("img.showdesc.loaded").first();
+      if (!$img.length) $img = $link.find("img.showdesc").first();
+      if (!$img.length) $img = $link.find("img").first();
+
+      if (!$img.length) return;
+
+      // Try src first, then data-src
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
+
       // Get title from img alt/title attributes first, then fall back to link text
       let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
 
