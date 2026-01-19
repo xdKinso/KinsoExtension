@@ -223,7 +223,7 @@ export class MangaGoExtension implements MangaGoImplementation {
       const $img = $link.find("img.showdesc, img").first();
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
       let title = $link.attr("alt") || $img.attr("alt") || $link.text().trim();
-      
+
       // Clean up title
       title = title.replace(" manga", "").trim();
 
