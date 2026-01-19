@@ -564,16 +564,17 @@ export class MangaFireExtension implements MangaFireImplementation {
     const chapters: Chapter[] = [];
     for (const language of languages) {
       try {
-        const vrf = await genVrf(`${mangaId}@${language}`);
+        // MangaFire expects the vrf token to include the chapter marker and language
+        const vrf = await genVrf(`${mangaId}@chapter@${language}`);
         console.log(`[MangaFire] Generated VRF for ${language}: ${vrf.substring(0, 20)}...`);
 
         const chaptersRequest: Request = {
           url: new URLBuilder(baseUrl)
             .addPath("ajax")
-            .addPath("manga")
+            .addPath("read")
             .addPath(mangaId)
-            .addPath("chapters")
-            .addQuery("lang", language)
+            .addPath("chapter")
+            .addPath(language)
             .addQuery("vrf", vrf)
             .build(),
           method: "GET",
