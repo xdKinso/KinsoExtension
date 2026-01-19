@@ -551,83 +551,89 @@ export class MangaFireExtension implements MangaFireImplementation {
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const mangaId = sourceManga.mangaId.split(".")[1];
-    if (!mangaId) return [];
+    if (!mangaId) {
+      console.error("[MangaFire] Invalid manga ID format");
+      return [];
+    }
 
     const languages = getLanguages();
+    console.log(
+      `[MangaFire] Fetching chapters for ${mangaId} in languages: ${languages.join(", ")}`,
+    );
 
     const chapters: Chapter[] = [];
     for (const language of languages) {
-      const vrf = await genVrf(`${mangaId}@chapter@${language}`);
-
-      const readRequest: Request = {
-        url: new URLBuilder(baseUrl)
-          .addPath("ajax")
-          .addPath("read")
-          .addPath(mangaId)
-          .addPath("chapter")
-          .addPath(language)
-          .addQuery("vrf", vrf)
-          .build(),
-        method: "GET",
-      };
-
       try {
-        // Find chapterId mapping first
-        const [readResponse, readBuffer] = await Application.scheduleRequest(readRequest);
-        this.checkCloudflareStatus(readResponse.status);
-        const readJson = JSON.parse(Application.arrayBufferToUTF8String(readBuffer)) as Result;
-        const readHtml =
-          typeof readJson?.result === "string" ? readJson.result : readJson?.result?.html || "";
+        const vrf = await genVrf(`${mangaId}@${language}`);
+        console.log(`[MangaFire] Generated VRF for ${language}: ${vrf.substring(0, 20)}...`);
 
-        if (!readHtml) continue;
-        const $read = cheerio.load(readHtml);
-
-        // Map of chapter number to chapter ID
-        const chapterIdMap: Map<number, string> = new Map();
-
-        $read("li").each((_, el) => {
-          const li = $read(el);
-          const link = li.find("a");
-          const chapterNumber = link.attr("data-number");
-          const chapterId = link.attr("data-id");
-          if (!chapterNumber || !chapterId) return;
-          chapterIdMap.set(parseFloat(chapterNumber), chapterId);
-        });
-
-        const mangaRequest: Request = {
+        const chaptersRequest: Request = {
           url: new URLBuilder(baseUrl)
             .addPath("ajax")
             .addPath("manga")
             .addPath(mangaId)
-            .addPath("chapter")
-            .addPath(language)
+            .addPath("chapters")
+            .addQuery("lang", language)
+            .addQuery("vrf", vrf)
             .build(),
           method: "GET",
         };
 
-        const [mangaResponse, mangaBuffer] = await Application.scheduleRequest(mangaRequest);
-        this.checkCloudflareStatus(mangaResponse.status);
+        console.log(`[MangaFire] Requesting: ${chaptersRequest.url}`);
 
-        const mangaJson = JSON.parse(Application.arrayBufferToUTF8String(mangaBuffer)) as Result;
+        const [response, buffer] = await Application.scheduleRequest(chaptersRequest);
+        this.checkCloudflareStatus(response.status);
 
-        const mangaHtml =
-          typeof mangaJson?.result === "string" ? mangaJson.result : mangaJson?.result?.html || "";
+        if (response.status !== 200) {
+          console.error(
+            `[MangaFire] Failed to fetch chapters for ${language}: HTTP ${response.status}`,
+          );
+          continue;
+        }
 
-        if (!mangaHtml) continue;
+        const responseText = Application.arrayBufferToUTF8String(buffer);
+        console.log(`[MangaFire] Response length for ${language}: ${responseText.length} bytes`);
 
-        const $manga = cheerio.load(mangaHtml);
-        $manga("li").each((_, el) => {
-          const li = $manga(el);
+        const json = JSON.parse(responseText) as Result;
+
+        if (!json || !json.result) {
+          console.error(`[MangaFire] Invalid JSON response for ${language}`);
+          continue;
+        }
+
+        const html = typeof json.result === "string" ? json.result : json.result.html || "";
+
+        if (!html) {
+          console.error(`[MangaFire] Empty HTML response for ${language}`);
+          continue;
+        }
+
+        const $ = cheerio.load(html);
+        const items = $("li[data-number]");
+        console.log(`[MangaFire] Found ${items.length} chapter items for ${language}`);
+
+        items.each((_, el) => {
+          const li = $(el);
           const chapterNumber = li.attr("data-number");
-          if (!chapterNumber) return;
-          const chapterId = chapterIdMap.get(parseFloat(chapterNumber));
-          if (!chapterId) return;
+          const chapterId = li.attr("data-id");
+
+          if (!chapterNumber || !chapterId) {
+            console.warn(
+              `[MangaFire] Missing chapter data: number=${chapterNumber}, id=${chapterId}`,
+            );
+            return;
+          }
 
           const link = li.find("a");
+          const spans = link.find("span");
           const dateText = li.find("span").last().text().trim();
-          const title =
-            link.find("span").first().text().trim().split(`${chapterNumber}:`)[1]?.trim() ||
-            undefined;
+
+          let title: string | undefined;
+          if (spans.length > 0) {
+            const fullText = spans.first().text().trim();
+            const parts = fullText.split(`${chapterNumber}:`);
+            title = parts[1]?.trim() || undefined;
+          }
 
           chapters.push({
             chapterId: chapterId,
@@ -640,11 +646,18 @@ export class MangaFireExtension implements MangaFireImplementation {
             version: getLanguageVersion(language),
           });
         });
+
+        console.log(`[MangaFire] Successfully parsed ${items.length} chapters for ${language}`);
       } catch (error) {
-        console.error(`Failed to parse buffer for language ${language}:`, error);
+        console.error(`[MangaFire] Failed to fetch chapters for language ${language}:`, error);
+        if (error instanceof Error) {
+          console.error(`[MangaFire] Error details: ${error.message}`);
+          console.error(`[MangaFire] Stack: ${error.stack}`);
+        }
       }
     }
 
+    console.log(`[MangaFire] Total chapters found: ${chapters.length}`);
     return chapters;
   }
 
