@@ -114,8 +114,8 @@ export class MangaGoExtension implements MangaGoImplementation {
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
       {
-        id: "popular",
-        title: "Popular Manga",
+        id: "featured",
+        title: "Featured Manga",
         type: DiscoverSectionType.prominentCarousel,
       },
       {
@@ -164,7 +164,8 @@ export class MangaGoExtension implements MangaGoImplementation {
       // Get the image - look for showdesc loaded class or any img
       const $img = $link.find("img.showdesc, img").first();
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
-      let title = $link.attr("alt") || $img.attr("alt") || $link.text().trim();
+      // Get title from img alt/title attributes first, then fall back to link text
+      let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
 
       // Clean up title
       title = title.replace(" manga", "").trim();
@@ -172,7 +173,7 @@ export class MangaGoExtension implements MangaGoImplementation {
       if (!title || !imageUrl) return;
 
       seenIds.add(mangaId);
-      const type = section.id === "popular" ? "prominentCarouselItem" : "simpleCarouselItem";
+      const type = section.id === "featured" ? "prominentCarouselItem" : "simpleCarouselItem";
       items.push({
         type: type,
         mangaId: mangaId,
