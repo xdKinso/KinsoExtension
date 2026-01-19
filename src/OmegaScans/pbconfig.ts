@@ -1,8 +1,8 @@
 import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types";
 
 export default {
-  name: "MangaBats",
-  description: "Extension that pulls content from mangabats.com.",
+  name: "OmegaScans",
+  description: "Extension that pulls content from omegascans.org.",
   version: "0.0.01",
   icon: "icon.png",
   language: "en",

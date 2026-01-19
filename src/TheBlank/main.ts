@@ -26,15 +26,15 @@ import * as cheerio from "cheerio";
 import { type CheerioAPI } from "cheerio";
 import { Genres, type Metadata } from "./models";
 
-const DOMAIN = "https://www.mangabats.com";
+const DOMAIN = "https://theblank.net";
 
-type MangaBatsImplementation = Extension &
+type TheBlankImplementation = Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding;
 
-class MangaBatsInterceptor extends PaperbackInterceptor {
+class TheBlankInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
@@ -55,8 +55,8 @@ class MangaBatsInterceptor extends PaperbackInterceptor {
   }
 }
 
-export class MangaBatsExtension implements MangaBatsImplementation {
-  interceptor = new MangaBatsInterceptor("interceptor");
+export class TheBlankExtension implements TheBlankImplementation {
+  interceptor = new TheBlankInterceptor("interceptor");
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
@@ -75,7 +75,7 @@ export class MangaBatsExtension implements MangaBatsImplementation {
   }
 
   getMangaShareUrl(mangaId: string): string {
-    return `${DOMAIN}/manga/${mangaId}`;
+    return `${DOMAIN}/manga/${mangaId}/`;
   }
 
   async getSearchFilters(): Promise<SearchFilter[]> {
@@ -96,12 +96,12 @@ export class MangaBatsExtension implements MangaBatsImplementation {
     return [
       {
         id: "popular",
-        title: "Popular Manga",
+        title: "Popular",
         type: DiscoverSectionType.prominentCarousel,
       },
       {
         id: "latest",
-        title: "Latest Releases",
+        title: "Latest Updates",
         type: DiscoverSectionType.chapterUpdates,
       },
     ];
@@ -116,9 +116,9 @@ export class MangaBatsExtension implements MangaBatsImplementation {
 
     let url = "";
     if (section.id === "popular") {
-      url = `${DOMAIN}/manga-list/hot-manga?page=${page}`;
+      url = `${DOMAIN}/manga-list?page=${page}&sort=views`;
     } else if (section.id === "latest") {
-      url = `${DOMAIN}/manga-list/latest-manga?page=${page}`;
+      url = `${DOMAIN}/manga-list?page=${page}&sort=latest`;
     }
 
     const request = {
@@ -128,13 +128,13 @@ export class MangaBatsExtension implements MangaBatsImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    $("div.book_list_item, div.manga-item, div.item").each((_, elem) => {
+    $("div.book-item").each((_, elem) => {
       const $elem = $(elem);
-      const $link = $elem.find("a").first();
+      const $link = $elem.find("a.thumb-wrapper");
       const href = $link.attr("href");
-      const $img = $elem.find("img").first();
-      const title = $img.attr("alt")?.trim() || $link.text().trim();
-      const image = $img.attr("src") || $img.attr("data-src") || "";
+      const $img = $link.find("img");
+      const title = $img.attr("alt")?.trim() || $elem.find(".title").text().trim();
+      const image = $img.attr("src") || "";
 
       if (href && title) {
         const mangaId = this.extractMangaId(href);
@@ -187,13 +187,13 @@ export class MangaBatsExtension implements MangaBatsImplementation {
 
     const $ = await this.fetchCheerio(request);
 
-    $("div.book_list_item, div.manga-item, div.item").each((_, elem) => {
+    $("div.book-item").each((_, elem) => {
       const $elem = $(elem);
-      const $link = $elem.find("a").first();
+      const $link = $elem.find("a.thumb-wrapper");
       const href = $link.attr("href");
-      const $img = $elem.find("img").first();
-      const title = $img.attr("alt")?.trim() || $link.text().trim();
-      const image = $img.attr("src") || $img.attr("data-src") || "";
+      const $img = $link.find("img");
+      const title = $img.attr("alt")?.trim() || $elem.find(".title").text().trim();
+      const image = $img.attr("src") || "";
 
       if (href && title) {
         const mangaId = this.extractMangaId(href);
@@ -214,27 +214,25 @@ export class MangaBatsExtension implements MangaBatsImplementation {
   }
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
-    const url = `${DOMAIN}/manga/${mangaId}`;
+    const url = `${DOMAIN}/manga/${mangaId}/`;
     const request = {
       url: url,
       method: "GET",
     };
     const $ = await this.fetchCheerio(request);
 
-    const title = $("h1.name, h1.manga-title").text().trim();
-    const image = $("div.summary_image img, div.manga-image img").attr("src") || "";
-    const author = $("div.author-content a, div.author a").text().trim() || "Unknown";
-    const description = $("div.description-summary div.summary__content, div.summary")
-      .text()
-      .trim();
+    const title = $("h1.series-name").text().trim() || $("div.detail h1").text().trim();
+    const image = $("div.series-cover img").attr("src") || $("div.detail img").attr("src") || "";
+    const author = $("div.author a").text().trim() || "Unknown";
+    const description = $("div.summary").text().trim() || $("div.description").text().trim();
     let status = "ONGOING";
-    const statusText = $("div.post-status div.summary-content, div.status").text().toLowerCase();
+    const statusText = $("div.status").text().toLowerCase();
     if (statusText.includes("completed") || statusText.includes("complete")) {
       status = "COMPLETED";
     }
 
     const tags: Tag[] = [];
-    $("div.genres-content a, div.genre a").each((_, elem) => {
+    $("div.genres a, div.genre a").each((_, elem) => {
       const tag = $(elem).text().trim();
       if (tag) {
         tags.push({ id: tag.toLowerCase(), title: tag });
@@ -258,7 +256,7 @@ export class MangaBatsExtension implements MangaBatsImplementation {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
-    const url = `${DOMAIN}/manga/${sourceManga.mangaId}`;
+    const url = `${DOMAIN}/manga/${sourceManga.mangaId}/`;
     const request = {
       url: url,
       method: "GET",
@@ -267,36 +265,38 @@ export class MangaBatsExtension implements MangaBatsImplementation {
 
     const chapters: Chapter[] = [];
 
-    $("li.wp-manga-chapter, div.chapter-item, li.chapter-item").each((_, elem) => {
-      const $elem = $(elem);
-      const $link = $elem.find("a").first();
-      const href = $link.attr("href");
-      const chapterTitle = $link.text().trim();
-      const timeStr = $elem.find("span.chapter-release-date, span.chapter-time").text().trim();
+    $("div.chapter-item, li.chapter-item, div.episode-item, li.wp-manga-chapter").each(
+      (_, elem) => {
+        const $elem = $(elem);
+        const $link = $elem.find("a").first();
+        const href = $link.attr("href");
+        const chapterTitle = $link.text().trim();
+        const timeStr = $elem.find("span.chapter-time, span.chapter-release-date").text().trim();
 
-      if (href) {
-        const chapterId = this.extractChapterId(href);
-        if (chapterId) {
-          const chapterMatch = chapterTitle.match(/chapter[\s-]*(\d+(\.\d+)?)/i);
-          const chapterNum = chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : 0;
+        if (href) {
+          const chapterId = this.extractChapterId(href);
+          if (chapterId) {
+            const chapterMatch = chapterTitle.match(/chapter\s+(\d+(\.\d+)?)/i);
+            const chapterNum = chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : 0;
 
-          chapters.push({
-            chapterId: chapterId,
-            sourceManga: sourceManga,
-            langCode: "en",
-            chapNum: chapterNum,
-            title: chapterTitle,
-            publishDate: this.parseDate(timeStr),
-          });
+            chapters.push({
+              chapterId: chapterId,
+              sourceManga: sourceManga,
+              langCode: "en",
+              chapNum: chapterNum,
+              title: chapterTitle,
+              publishDate: this.parseDate(timeStr),
+            });
+          }
         }
-      }
-    });
+      },
+    );
 
     return chapters.reverse();
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    const url = `${DOMAIN}/manga/${chapter.sourceManga.mangaId}/${chapter.chapterId}`;
+    const url = `${DOMAIN}/manga/${chapter.sourceManga.mangaId}/${chapter.chapterId}/`;
     const request = {
       url: url,
       method: "GET",
@@ -305,7 +305,7 @@ export class MangaBatsExtension implements MangaBatsImplementation {
 
     const pages: string[] = [];
 
-    $("div.reading-content img, div.page-break img").each((_, elem) => {
+    $("div.chapter-content img, div.reading-content img, div.page-break img").each((_, elem) => {
       const src = $(elem).attr("src") || $(elem).attr("data-src");
       if (src) {
         pages.push(src);
@@ -320,17 +320,13 @@ export class MangaBatsExtension implements MangaBatsImplementation {
   }
 
   private extractMangaId(url: string): string | null {
-    const match = url.match(/\/manga\/([^\/\?#]+)/);
+    const match = url.match(/\/manga\/([^\/]+)/);
     return match && match[1] ? match[1] : null;
   }
 
   private extractChapterId(url: string): string | null {
-    const match = url.match(/\/chapter-(\d+(\.\d+)?)/);
-    if (match && match[1]) {
-      return `chapter-${match[1]}`;
-    }
-    const match2 = url.match(/\/([^\/]+)\/?$/);
-    return match2 && match2[1] ? match2[1] : null;
+    const match = url.match(/\/([^\/]+)\/?$/);
+    return match && match[1] ? match[1] : null;
   }
 
   private parseDate(dateStr: string): Date {
