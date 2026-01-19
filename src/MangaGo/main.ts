@@ -53,11 +53,11 @@ export class MangaGoExtension implements MangaGoImplementation {
   }
 
   getMangaShareUrl(mangaId: string): string {
-    return `${DOMAIN}/manga/${mangaId}`;
+    return `${DOMAIN}/read-manga/${mangaId}`;
   }
 
   private extractMangaId(href: string): string {
-    const match = href.match(/\/manga\/([^/?]+)/);
+    const match = href.match(/\/read-manga\/([^/?]+)/);
     return match?.[1] ?? "";
   }
 
@@ -153,16 +153,21 @@ export class MangaGoExtension implements MangaGoImplementation {
     const items: DiscoverSectionItem[] = [];
     const seenIds = new Set<string>();
 
-    $("a[href*='/manga/']").each((_, element) => {
+    // Look for links with manga hrefs
+    $("a[href*='/read-manga/']").each((_, element) => {
       const $link = $(element);
       const href = $link.attr("href") || "";
       const mangaId = this.extractMangaId(href);
 
       if (!mangaId || seenIds.has(mangaId)) return;
 
-      const $img = $link.find("img").first();
+      // Get the image - look for showdesc loaded class or any img
+      const $img = $link.find("img.showdesc, img").first();
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
-      let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+      let title = $link.attr("alt") || $img.attr("alt") || $link.text().trim();
+
+      // Clean up title
+      title = title.replace(" manga", "").trim();
 
       if (!title || !imageUrl) return;
 
@@ -208,16 +213,19 @@ export class MangaGoExtension implements MangaGoImplementation {
     const items: SearchResultItem[] = [];
     const seenIds = new Set<string>();
 
-    $("a[href*='/manga/']").each((_, element) => {
+    $("a[href*='/read-manga/']").each((_, element) => {
       const $link = $(element);
       const href = $link.attr("href") || "";
       const mangaId = this.extractMangaId(href);
 
       if (!mangaId || seenIds.has(mangaId)) return;
 
-      const $img = $link.find("img").first();
+      const $img = $link.find("img.showdesc, img").first();
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
-      let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+      let title = $link.attr("alt") || $img.attr("alt") || $link.text().trim();
+      
+      // Clean up title
+      title = title.replace(" manga", "").trim();
 
       if (!title || !imageUrl) return;
 
@@ -238,15 +246,15 @@ export class MangaGoExtension implements MangaGoImplementation {
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
     const request = {
-      url: `${DOMAIN}/manga/${mangaId}`,
+      url: `${DOMAIN}/read-manga/${mangaId}`,
       method: "GET",
     };
 
     const $ = await this.fetchCheerio(request);
 
-    const title = $("h1, .manga-title").first().text().trim() || mangaId;
-    const imageUrl = $("img.manga-cover, img[src*='cover']").attr("src") || "";
-    const description = $(".manga-description, .synopsis").first().text().trim() || "";
+    const title = $("h1, h2").first().text().trim() || mangaId;
+    const imageUrl = $("img[src*='cover'], img.manga_cover").first().attr("src") || "";
+    const description = $(".manga_summary, .description, p").first().text().trim() || "";
     const author = this.extractAuthor($);
     const status = this.extractStatus($);
     const tags = this.extractGenres($);
@@ -269,7 +277,7 @@ export class MangaGoExtension implements MangaGoImplementation {
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const request = {
-      url: `${DOMAIN}/manga/${sourceManga.mangaId}`,
+      url: `${DOMAIN}/read-manga/${sourceManga.mangaId}`,
       method: "GET",
     };
 
