@@ -202,9 +202,13 @@ export class MangaGoExtension implements MangaGoImplementation {
       });
     });
 
+    // For featured section, don't paginate since it's a static set from div#recommand
+    // For other sections, paginate normally
+    const hasMore = section.id !== "featured" && items.length > 0;
+
     return {
       items: items,
-      metadata: { page: page + 1 },
+      metadata: hasMore ? { page: page + 1 } : undefined,
     };
   }
 
