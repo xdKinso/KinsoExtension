@@ -55,28 +55,60 @@ export class MangaGoParser {
     const items: DiscoverSectionItem[] = [];
     const seenIds = new Set<string>();
 
-    // Look for div.flexl_listitem items
-    $("div.flexl_listitem").each((_, element) => {
+    // New chapters live under #new_chapter li.updatesli
+    $("#new_chapter li.updatesli").each((_, element) => {
       const $item = $(element);
-      // Prefer the link which points to a manga page; fall back to the first anchor
-      const $link =
-        $item.find("a[href*='/read-manga/']").first() ||
-        $item.find("div.updatesli div.left a.thm-effect").first();
+      const $link = $item.find("a[href*='/read-manga/']").first();
+      const href = $link.attr("href") || "";
 
-      const href = $link?.attr("href") || "";
-
-      // Skip if no href found
       if (!href) return;
 
       const mangaId = this.extractMangaId(href);
-
-      // Skip if mangaId extraction failed or already seen
       if (!mangaId || seenIds.has(mangaId)) return;
 
       const $img = $link.find("img").first();
       if (!$img.length) return;
 
-      let imageUrl = $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+      const imageUrl =
+        $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+      let title =
+        $img.attr("alt") || $img.attr("title") || $link.attr("title") || $item.find("h3 a").text();
+      title = title.replace(" manga", "").trim();
+
+      if (!title || !imageUrl) return;
+
+      seenIds.add(mangaId);
+      items.push({
+        type: "simpleCarouselItem",
+        mangaId,
+        title,
+        imageUrl,
+      });
+    });
+
+    return items;
+  }
+
+  parsePopularManga($: CheerioAPI, _sectionIndex: number): DiscoverSectionItem[] {
+    const items: DiscoverSectionItem[] = [];
+    const seenIds = new Set<string>();
+
+    // Popular list on homepage: #toplist_panel li.toplist
+    $("#toplist_panel li.toplist").each((_, element) => {
+      const $item = $(element);
+      const $link = $item.find("a[href*='/read-manga/']").first();
+      const href = $link.attr("href") || "";
+
+      if (!href) return;
+
+      const mangaId = this.extractMangaId(href);
+      if (!mangaId || seenIds.has(mangaId)) return;
+
+      const $img = $link.find("img").first();
+      if (!$img.length) return;
+
+      const imageUrl =
+        $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
       let title = $img.attr("alt") || $img.attr("title") || $link.attr("title") || "";
       title = title.replace(" manga", "").trim();
 
@@ -85,58 +117,9 @@ export class MangaGoParser {
       seenIds.add(mangaId);
       items.push({
         type: "simpleCarouselItem",
-        mangaId: mangaId,
-        title: title,
-        imageUrl: imageUrl,
-      });
-    });
-
-    return items;
-  }
-
-  parsePopularManga($: CheerioAPI, sectionIndex: number): DiscoverSectionItem[] {
-    const items: DiscoverSectionItem[] = [];
-    const seenIds = new Set<string>();
-
-    const $sections = $("div.left");
-
-    // Get the nth section
-    let currentSection = 0;
-    $sections.each((_, element) => {
-      currentSection++;
-      if (currentSection !== sectionIndex) return;
-
-      // Parse items in this section - look for div.flexl_listitem
-      const $container = $(element);
-      $container.find("div.flexl_listitem").each((_, itemElement) => {
-        const $item = $(itemElement);
-        const $link =
-          $item.find("a[href*='/read-manga/']").first() ||
-          $item.find("div.updatesli div.left a.thm-effect").first();
-        const href = $link?.attr("href") || "";
-
-        if (!href) return;
-
-        const mangaId = this.extractMangaId(href);
-        if (!mangaId || seenIds.has(mangaId)) return;
-
-        const $img = $link.find("img").first();
-        if (!$img.length) return;
-
-        let imageUrl =
-          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
-        let title = $img.attr("alt") || $img.attr("title") || $link.attr("title") || "";
-        title = title.replace(" manga", "").trim();
-
-        if (!title || !imageUrl) return;
-
-        seenIds.add(mangaId);
-        items.push({
-          type: "simpleCarouselItem",
-          mangaId: mangaId,
-          title: title,
-          imageUrl: imageUrl,
-        });
+        mangaId,
+        title,
+        imageUrl,
       });
     });
 

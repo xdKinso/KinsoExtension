@@ -105,9 +105,9 @@ export class MangaGoExtension implements MangaGoImplementation {
     let url = DOMAIN;
 
     if (section.id === "new-chapters") {
-      url = `${DOMAIN}/list/latest/all/1/`;
+      url = `${DOMAIN}/genre/all/1/?f=1&o=1&sortby=update_date&e=`;
     } else if (section.id.startsWith("popular-")) {
-      url = `${DOMAIN}/topmanga/`;
+      url = `${DOMAIN}/genre/all/1/?f=1&o=1&sortby=view&e=`;
     }
 
     const request = {
@@ -237,15 +237,16 @@ export class MangaGoExtension implements MangaGoImplementation {
     const $ = await this.fetchCheerio(request);
     const chapters: Chapter[] = [];
 
-    $("a[href*='/read/']").each((_, element) => {
-      const $link = $(element);
+    // Try table-based chapter list first (Tachiyomi pattern)
+    $("table#chapter_table > tbody > tr, table.uk-table > tbody > tr").each((_, element) => {
+      const $row = $(element);
+      const $link = $row.find("a.chico").first();
       const href = $link.attr("href") || "";
-      const chapterMatch = href.match(/\/read\/([^/?]+)/);
 
-      if (!chapterMatch || !chapterMatch[1]) return;
+      if (!href) return;
 
-      const chapterId = chapterMatch[1];
-      const chapterTitle = $link.text().trim() || `Chapter ${chapterId}`;
+      const chapterId = href;
+      const chapterTitle = $link.text().trim();
       const chapterNumber = parseFloat(chapterTitle.match(/\d+(\.\d+)?/)?.[0] || "0");
 
       chapters.push({
@@ -259,21 +260,51 @@ export class MangaGoExtension implements MangaGoImplementation {
       });
     });
 
+    // Fallback to any read links if table not found
+    if (chapters.length === 0) {
+      $("a[href*='/read/']").each((_, element) => {
+        const $link = $(element);
+        const href = $link.attr("href") || "";
+
+        if (!href) return;
+
+        const chapterId = href;
+        const chapterTitle = $link.text().trim() || "Chapter";
+        const chapterNumber = parseFloat(chapterTitle.match(/\d+(\.\d+)?/)?.[0] || "0");
+
+        chapters.push({
+          chapterId,
+          title: chapterTitle,
+          sourceManga,
+          chapNum: chapterNumber,
+          publishDate: new Date(),
+          langCode: "en",
+          volume: 0,
+        });
+      });
+    }
+
     return chapters.reverse();
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+    const url = chapter.chapterId.includes("http")
+      ? chapter.chapterId
+      : `${DOMAIN}${chapter.chapterId}`;
     const request = {
-      url: `${DOMAIN}/read/${chapter.chapNum}`,
+      url: url,
       method: "GET",
     };
 
     const $ = await this.fetchCheerio(request);
     const pages: string[] = [];
 
-    // Extract image URLs from the chapter page
-    $("img[src*='image'], img[src*='chapter']").each((_, element) => {
-      const imageUrl = $(element).attr("src") || $(element).attr("data-src");
+    // Extract image URLs from chapter page
+    // Note: MangaGo uses encrypted/scrambled images that require JS deobfuscation
+    // This is simplified and may not work for all images
+    $("img[src*='image'], img[src*='chapter'], img.m").each((_, element) => {
+      const $img = $(element);
+      const imageUrl = $img.attr("src") || $img.attr("data-src");
       if (imageUrl && !pages.includes(imageUrl)) {
         pages.push(imageUrl);
       }
