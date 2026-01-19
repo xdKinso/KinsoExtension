@@ -326,4 +326,4 @@ export class MangaGoExtension implements MangaGoImplementation {
   }
 }
 
-export default new MangaGoExtension();
+export const MangaGo = new MangaGoExtension();
