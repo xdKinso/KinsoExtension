@@ -119,6 +119,56 @@ export class MangaGoExtension implements MangaGoImplementation {
         type: DiscoverSectionType.prominentCarousel,
       },
       {
+        id: "new-chapters",
+        title: "New Chapters",
+        type: DiscoverSectionType.chapterUpdates,
+      },
+      {
+        id: "popular",
+        title: "Popular Manga",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "yaoi-top5",
+        title: "Yaoi Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "comedy-top5",
+        title: "Comedy Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "shounen-ai-top5",
+        title: "Shounen Ai Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "shoujo-top5",
+        title: "Shoujo Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "yuri-top5",
+        title: "Yuri Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "josei-top5",
+        title: "Josei Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "fantasy-top5",
+        title: "Fantasy Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "school-life-top5",
+        title: "School Life Manga Top 5",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
         id: "latest-update",
         title: "Latest Update",
         type: DiscoverSectionType.chapterUpdates,
@@ -153,58 +203,175 @@ export class MangaGoExtension implements MangaGoImplementation {
     const items: DiscoverSectionItem[] = [];
     const seenIds = new Set<string>();
 
-    // Select container based on section
-    let $container;
+    // Select container and parsing strategy based on section
     if (section.id === "featured") {
-      // Only look in the recommand div for featured manga
-      $container = $("div#recommand");
-    } else {
-      // For other sections, use the whole document
-      $container = $("body");
-    }
+      // Featured manga from div#recommand
+      const $container = $("div#recommand");
+      $container.find("a[href*='/read-manga/']").each((_, element) => {
+        const $link = $(element);
+        const href = $link.attr("href") || "";
+        const mangaId = this.extractMangaId(href);
+        if (!mangaId || seenIds.has(mangaId)) return;
 
-    // Look for links with manga hrefs within the container
-    $container.find("a[href*='/read-manga/']").each((_, element) => {
-      const $link = $(element);
-      const href = $link.attr("href") || "";
-      const mangaId = this.extractMangaId(href);
+        const $img = $link.find("img").first();
+        if (!$img.length) return;
 
-      if (!mangaId || seenIds.has(mangaId)) return;
+        let imageUrl =
+          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+        let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+        title = title.replace(" manga", "").trim();
 
-      // Get the image - look for img tag and try all possible source attributes
-      const $img = $link.find("img").first();
+        if (!title || !imageUrl) return;
 
-      if (!$img.length) return;
+        seenIds.add(mangaId);
+        items.push({
+          type: "prominentCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: imageUrl,
+        });
+      });
+    } else if (section.id === "new-chapters") {
+      // New chapters from div#toplist_panel
+      const $container = $("div#toplist_panel");
+      $container.find("li.toplist").each((_, element) => {
+        const $li = $(element);
+        const $link = $li.find("div.left_listimg a").first();
+        const href = $link.attr("href") || "";
+        const mangaId = this.extractMangaId(href);
+        if (!mangaId || seenIds.has(mangaId)) return;
 
-      // Try multiple attributes for image URL
-      let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
+        const $img = $link.find("img").first();
+        if (!$img.length) return;
 
-      // If still no image URL, try data-original
-      if (!imageUrl) {
-        imageUrl = $img.attr("data-original") || "";
+        let imageUrl =
+          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+        let title = $img.attr("alt") || $img.attr("title") || $link.attr("title") || "";
+        title = title.replace(" manga", "").trim();
+
+        if (!title || !imageUrl) return;
+
+        seenIds.add(mangaId);
+        items.push({
+          type: "simpleCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: imageUrl,
+        });
+      });
+    } else if (section.id === "popular" || section.id.endsWith("-top5")) {
+      // Popular manga and genre top 5s from div#top_genres
+      const $container = $("div#top_genres");
+
+      // Map section IDs to genre names for filtering
+      const genreMap: Record<string, string> = {
+        popular: "", // Popular doesn't need filtering
+        "yaoi-top5": "Yaoi",
+        "comedy-top5": "Comedy",
+        "shounen-ai-top5": "Shounen Ai",
+        "shoujo-top5": "Shoujo",
+        "yuri-top5": "Yuri",
+        "josei-top5": "Josei",
+        "fantasy-top5": "Fantasy",
+        "school-life-top5": "School Life",
+      };
+
+      const targetGenre = genreMap[section.id] || "";
+      let $items;
+
+      if (section.id === "popular") {
+        // For popular, get all items from the first section or all sections
+        $items = $container.find("div.flexl_listitem");
+      } else if (targetGenre) {
+        // For genre top 5s, find the section with matching genre title
+        const $genreSection = $container
+          .find("li.li_title")
+          .filter((_, el) => {
+            const text = $(el).text().trim();
+            return text.toLowerCase().includes(targetGenre.toLowerCase());
+          })
+          .parent()
+          .first();
+
+        $items = $genreSection.find("div.flexl_listitem");
+      } else {
+        // Fallback to empty selection
+        $items = $("").find("div.flexl_listitem");
       }
 
-      // Get title from img alt/title attributes first, then fall back to link text
-      let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+      $items.each((_, element) => {
+        const $item = $(element);
+        const $link = $item.find("a.thm-effect").first();
+        const href = $link.attr("href") || "";
+        const mangaId = this.extractMangaId(href);
+        if (!mangaId || seenIds.has(mangaId)) return;
 
-      // Clean up title
-      title = title.replace(" manga", "").trim();
+        const $img = $link.find("img").first();
+        if (!$img.length) return;
 
-      if (!title || !imageUrl) return;
+        let imageUrl =
+          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+        let title =
+          $item.find("span.title").text().trim() || $img.attr("alt") || $link.attr("title") || "";
+        title = title.replace(" manga", "").trim();
 
-      seenIds.add(mangaId);
-      const type = section.id === "featured" ? "prominentCarouselItem" : "simpleCarouselItem";
-      items.push({
-        type: type,
-        mangaId: mangaId,
-        title: title,
-        imageUrl: imageUrl,
+        if (!title || !imageUrl) return;
+
+        seenIds.add(mangaId);
+        items.push({
+          type: "simpleCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: imageUrl,
+        });
       });
-    });
+    } else {
+      // For latest-update and new-release, use the default parsing
+      const $container = $("body");
+      $container.find("a[href*='/read-manga/']").each((_, element) => {
+        const $link = $(element);
+        const href = $link.attr("href") || "";
+        const mangaId = this.extractMangaId(href);
+        if (!mangaId || seenIds.has(mangaId)) return;
 
-    // For featured section, don't paginate since it's a static set from div#recommand
-    // For other sections, paginate normally
-    const hasMore = section.id !== "featured" && items.length > 0;
+        const $img = $link.find("img").first();
+        if (!$img.length) return;
+
+        let imageUrl =
+          $img.attr("src") || $img.attr("data-src") || $img.attr("data-original") || "";
+        let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
+        title = title.replace(" manga", "").trim();
+
+        if (!title || !imageUrl) return;
+
+        seenIds.add(mangaId);
+        items.push({
+          type: "simpleCarouselItem",
+          mangaId: mangaId,
+          title: title,
+          imageUrl: imageUrl,
+        });
+      });
+    }
+
+    // Don't paginate for static sections (featured, new-chapters, popular, genre top 5s)
+    const staticSections = [
+      "featured",
+      "new-chapters",
+      "popular",
+      ...Object.keys({
+        "yaoi-top5": 1,
+        "comedy-top5": 1,
+        "shounen-ai-top5": 1,
+        "shoujo-top5": 1,
+        "yuri-top5": 1,
+        "josei-top5": 1,
+        "fantasy-top5": 1,
+        "school-life-top5": 1,
+      }),
+    ];
+
+    const hasMore = !staticSections.includes(section.id) && items.length > 0;
 
     return {
       items: items,
