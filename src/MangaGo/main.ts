@@ -153,23 +153,36 @@ export class MangaGoExtension implements MangaGoImplementation {
     const items: DiscoverSectionItem[] = [];
     const seenIds = new Set<string>();
 
-    // Look for links with manga hrefs
-    $("a[href*='/read-manga/']").each((_, element) => {
+    // Select container based on section
+    let $container;
+    if (section.id === "featured") {
+      // Only look in the recommand div for featured manga
+      $container = $("div#recommand");
+    } else {
+      // For other sections, use the whole document
+      $container = $("body");
+    }
+
+    // Look for links with manga hrefs within the container
+    $container.find("a[href*='/read-manga/']").each((_, element) => {
       const $link = $(element);
       const href = $link.attr("href") || "";
       const mangaId = this.extractMangaId(href);
 
       if (!mangaId || seenIds.has(mangaId)) return;
 
-      // Get the image - prioritize img.showdesc.loaded, then showdesc, then any img
-      let $img = $link.find("img.showdesc.loaded").first();
-      if (!$img.length) $img = $link.find("img.showdesc").first();
-      if (!$img.length) $img = $link.find("img").first();
+      // Get the image - look for img tag and try all possible source attributes
+      const $img = $link.find("img").first();
 
       if (!$img.length) return;
 
-      // Try src first, then data-src
+      // Try multiple attributes for image URL
       let imageUrl = $img.attr("src") || $img.attr("data-src") || "";
+
+      // If still no image URL, try data-original
+      if (!imageUrl) {
+        imageUrl = $img.attr("data-original") || "";
+      }
 
       // Get title from img alt/title attributes first, then fall back to link text
       let title = $img.attr("alt") || $img.attr("title") || $link.text().trim();
