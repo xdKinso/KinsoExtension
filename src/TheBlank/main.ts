@@ -323,13 +323,9 @@ export class TheBlankExtension implements TheBlankImplementation {
     };
   }
 
-  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Persist Cloudflare challenge cookies using the built-in interceptor
-    // Delete first to prevent stale cookie conflicts
-    for (const cookie of cookies) {
-      this.cookieStorageInterceptor.deleteCookie(cookie);
-      this.cookieStorageInterceptor.setCookie(cookie);
-    }
+  async saveCloudflareBypassCookies(_cookies: Cookie[]): Promise<void> {
+    // Cloudflare cookies are handled automatically by CookieStorageInterceptor
+    // The interceptor automatically saves cookies from the WebView response
   }
 
   private async checkCloudflareStatus(status: number, url: string = DOMAIN): Promise<void> {
