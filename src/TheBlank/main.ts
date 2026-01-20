@@ -2,8 +2,8 @@ import {
   BasicRateLimiter,
   CloudflareError,
   ContentRating,
+  CookieStorageInterceptor,
   DiscoverSectionType,
-  PaperbackInterceptor,
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
@@ -38,32 +38,10 @@ type TheBlankImplementation = Extension &
   ChapterProviding &
   CloudflareBypassRequestProviding;
 
-class TheBlankInterceptor extends PaperbackInterceptor {
-  cfCookies: Cookie[] = [];
-
-  override async interceptRequest(request: Request): Promise<Request> {
-    // Inject saved Cloudflare cookies into outgoing requests
-    if (this.cfCookies.length > 0) {
-      const cookieHeader = this.cfCookies.map((c) => `${c.name}=${c.value}`).join("; ");
-      request.headers = {
-        ...request.headers,
-        cookie: cookieHeader,
-      };
-    }
-    return request;
-  }
-
-  override async interceptResponse(
-    request: Request,
-    response: Response,
-    data: ArrayBuffer,
-  ): Promise<ArrayBuffer> {
-    return data;
-  }
-}
-
 export class TheBlankExtension implements TheBlankImplementation {
-  interceptor = new TheBlankInterceptor("interceptor");
+  private cookieStorageInterceptor = new CookieStorageInterceptor({
+    storage: "stateManager",
+  });
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
@@ -71,12 +49,8 @@ export class TheBlankExtension implements TheBlankImplementation {
     ignoreImages: false,
   });
 
-  private cfCookies: Cookie[] = [];
-
   async initialise(): Promise<void> {
-    // Share cookie reference with interceptor
-    this.interceptor.cfCookies = this.cfCookies;
-    this.interceptor.registerInterceptor();
+    this.cookieStorageInterceptor.registerInterceptor();
     this.rateLimiter.registerInterceptor();
   }
 
@@ -351,9 +325,10 @@ export class TheBlankExtension implements TheBlankImplementation {
   }
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-    // Persist Cloudflare challenge cookies so they're reused on future requests
-    this.cfCookies = cookies;
-    this.interceptor.cfCookies = cookies;
+    // Persist Cloudflare challenge cookies using the built-in interceptor
+    for (const cookie of cookies) {
+      this.cookieStorageInterceptor.setCookie(cookie);
+    }
   }
 
   private checkCloudflareStatus(status: number, url: string = DOMAIN): void {
