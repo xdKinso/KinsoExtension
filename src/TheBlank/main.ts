@@ -15,7 +15,6 @@ import {
   type MangaProviding,
   type PagedResults,
   type Request,
-  type Response,
   type SearchFilter,
   type SearchQuery,
   type SearchResultItem,
@@ -60,22 +59,10 @@ export class TheBlankExtension implements TheBlankImplementation {
     return cheerio.load(Application.arrayBufferToUTF8String(data));
   }
 
-  getMangaShareUrl(mangaId: string): string {
-    return `${DOMAIN}/serie/${mangaId}/`;
-  }
-
   async getSearchFilters(): Promise<SearchFilter[]> {
+    // Note: TheBlank's search is JavaScript-dependent and not supported via direct HTTP
+    // Users can browse via discover sections which include genre categorization
     return [];
-  }
-
-  async getSearchTags(): Promise<TagSection[]> {
-    return [
-      {
-        id: "genres",
-        title: "Genres",
-        tags: Genres.map((g) => ({ id: g.id, title: g.label })),
-      },
-    ];
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -103,6 +90,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
     const items: DiscoverSectionItem[] = [];
+    const page = metadata?.page ?? 1;
 
     const request = {
       url: DOMAIN,
@@ -195,9 +183,16 @@ export class TheBlankExtension implements TheBlankImplementation {
       });
     }
 
+    // Implement pagination: return 10 items per page, provide next page if more items available
+    const itemsPerPage = 10;
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedItems = items.slice(startIndex, endIndex);
+    const hasMorePages = items.length > endIndex;
+
     return {
-      items: items,
-      metadata: undefined,
+      items: paginatedItems,
+      metadata: hasMorePages ? { page: page + 1 } : undefined,
     };
   }
 
@@ -349,28 +344,6 @@ export class TheBlankExtension implements TheBlankImplementation {
     }
     const match2 = url.match(/\/([^/]+)\/?$/);
     return match2 && match2[1] ? match2[1] : null;
-  }
-
-  private parseDate(dateStr: string): Date {
-    const now = new Date();
-    const lowerStr = dateStr.toLowerCase();
-
-    if (lowerStr.includes("ago")) {
-      if (lowerStr.includes("minute")) {
-        const mins = parseInt(lowerStr.match(/(\d+)/)?.[1] || "0");
-        return new Date(now.getTime() - mins * 60000);
-      }
-      if (lowerStr.includes("hour")) {
-        const hours = parseInt(lowerStr.match(/(\d+)/)?.[1] || "0");
-        return new Date(now.getTime() - hours * 3600000);
-      }
-      if (lowerStr.includes("day")) {
-        const days = parseInt(lowerStr.match(/(\d+)/)?.[1] || "0");
-        return new Date(now.getTime() - days * 86400000);
-      }
-    }
-
-    return new Date(dateStr || now.toISOString());
   }
 }
 
