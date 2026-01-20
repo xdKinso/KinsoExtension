@@ -54,7 +54,7 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   async fetchCheerio(request: Request): Promise<CheerioAPI> {
     const [response, data] = await Application.scheduleRequest(request);
-    this.checkCloudflareStatus(response.status, request.url);
+    await this.checkCloudflareStatus(response.status, request.url);
     return cheerio.load(Application.arrayBufferToUTF8String(data));
   }
 
@@ -315,19 +315,34 @@ export class TheBlankExtension implements TheBlankImplementation {
     return {
       url: DOMAIN,
       method: "GET",
+      headers: {
+        referer: DOMAIN,
+        origin: DOMAIN,
+        "user-agent": await Application.getDefaultUserAgent(),
+      },
     };
   }
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
     // Persist Cloudflare challenge cookies using the built-in interceptor
+    // Delete first to prevent stale cookie conflicts
     for (const cookie of cookies) {
+      this.cookieStorageInterceptor.deleteCookie(cookie);
       this.cookieStorageInterceptor.setCookie(cookie);
     }
   }
 
-  private checkCloudflareStatus(status: number, url: string = DOMAIN): void {
+  private async checkCloudflareStatus(status: number, url: string = DOMAIN): Promise<void> {
     if (status === 503 || status === 403) {
-      throw new CloudflareError({ url: url, method: "GET" });
+      throw new CloudflareError({
+        url: url,
+        method: "GET",
+        headers: {
+          referer: DOMAIN,
+          origin: DOMAIN,
+          "user-agent": await Application.getDefaultUserAgent(),
+        },
+      });
     }
   }
 
