@@ -21,12 +21,11 @@ import {
   type SearchResultsProviding,
   type SourceManga,
   type Tag,
-  type TagSection,
   type Cookie,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import { type CheerioAPI } from "cheerio";
-import { Genres, type Metadata } from "./models";
+import { type Metadata } from "./models";
 
 const DOMAIN = "https://theblank.net";
 
@@ -167,7 +166,7 @@ export class TheBlankExtension implements TheBlankImplementation {
             const image = $img.attr("src") || "";
 
             if (href && title) {
-              const match = href.match(/\/serie\/([^\/]+)\/chapter\/([^\/]+)/);
+              const match = href.match(/\/serie\/([^/]+)\/chapter\/([^/]+)/);
               if (match && match[1] && match[2]) {
                 items.push({
                   type: "chapterUpdatesCarouselItem",
@@ -197,8 +196,8 @@ export class TheBlankExtension implements TheBlankImplementation {
   }
 
   async getSearchResults(
-    query: SearchQuery,
-    metadata: Metadata | undefined,
+    _query: SearchQuery,
+    _metadata: Metadata | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
     // TheBlank uses dynamic/AJAX search - the URL doesn't change
     // Search functionality requires JavaScript execution which isn't supported
