@@ -7,6 +7,7 @@ import {
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
+  type CloudflareBypassRequestProviding,
   type DiscoverSection,
   type DiscoverSectionItem,
   type DiscoverSectionProviding,
@@ -22,6 +23,7 @@ import {
   type SourceManga,
   type Tag,
   type TagSection,
+  type Cookie,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import { type CheerioAPI } from "cheerio";
@@ -33,7 +35,8 @@ type TheBlankImplementation = Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
   MangaProviding &
-  ChapterProviding;
+  ChapterProviding &
+  CloudflareBypassRequestProviding;
 
 class TheBlankInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
@@ -325,6 +328,19 @@ export class TheBlankExtension implements TheBlankImplementation {
       mangaId: chapter.sourceManga.mangaId,
       pages: pages,
     };
+  }
+
+  async getCloudflareBypassRequest(): Promise<Request> {
+    // Direct the user to the homepage to complete the Cloudflare challenge in WebView
+    return {
+      url: DOMAIN,
+      method: "GET",
+    };
+  }
+
+  async saveCloudflareBypassCookies(_cookies: Cookie[]): Promise<void> {
+    // Paperback handles cookie persistence; nothing extra needed here
+    return;
   }
 
   private checkCloudflareStatus(status: number): void {
