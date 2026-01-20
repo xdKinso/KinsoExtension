@@ -39,9 +39,17 @@ type TheBlankImplementation = Extension &
   CloudflareBypassRequestProviding;
 
 class TheBlankInterceptor extends PaperbackInterceptor {
+  cfCookies: Cookie[] = [];
+
   override async interceptRequest(request: Request): Promise<Request> {
-    // Let Paperback's built-in Cloudflare solver handle requests
-    // User will need to manually solve Cloudflare challenges in the app
+    // Inject saved Cloudflare cookies into outgoing requests
+    if (this.cfCookies.length > 0) {
+      const cookieHeader = this.cfCookies.map((c) => `${c.name}=${c.value}`).join("; ");
+      request.headers = {
+        ...request.headers,
+        cookie: cookieHeader,
+      };
+    }
     return request;
   }
 
@@ -63,14 +71,18 @@ export class TheBlankExtension implements TheBlankImplementation {
     ignoreImages: false,
   });
 
+  private cfCookies: Cookie[] = [];
+
   async initialise(): Promise<void> {
+    // Share cookie reference with interceptor
+    this.interceptor.cfCookies = this.cfCookies;
     this.interceptor.registerInterceptor();
     this.rateLimiter.registerInterceptor();
   }
 
   async fetchCheerio(request: Request): Promise<CheerioAPI> {
     const [response, data] = await Application.scheduleRequest(request);
-    this.checkCloudflareStatus(response.status);
+    this.checkCloudflareStatus(response.status, request.url);
     return cheerio.load(Application.arrayBufferToUTF8String(data));
   }
 
@@ -338,14 +350,15 @@ export class TheBlankExtension implements TheBlankImplementation {
     };
   }
 
-  async saveCloudflareBypassCookies(_cookies: Cookie[]): Promise<void> {
-    // Paperback handles cookie persistence; nothing extra needed here
-    return;
+  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
+    // Persist Cloudflare challenge cookies so they're reused on future requests
+    this.cfCookies = cookies;
+    this.interceptor.cfCookies = cookies;
   }
 
-  private checkCloudflareStatus(status: number): void {
+  private checkCloudflareStatus(status: number, url: string = DOMAIN): void {
     if (status === 503 || status === 403) {
-      throw new CloudflareError({ url: DOMAIN, method: "GET" });
+      throw new CloudflareError({ url: url, method: "GET" });
     }
   }
 
