@@ -185,13 +185,13 @@ export class TheBlankExtension implements TheBlankImplementation {
           $section.find("a.block.cursor-pointer").each((_, elem) => {
             const $elem = $(elem);
             const href = $elem.attr("href");
-            
+
             // Extract manga info from the link structure
             const $card = $elem.find("div.flex.items-center");
             const $img = $card.find("img").first();
             const title = $img.attr("alt")?.trim() || $elem.find("span.text-xs").text().trim();
             const image = $img.attr("src") || "";
-            
+
             if (href && title) {
               const match = href.match(/\/serie\/([^\/]+)\/chapter\/([^\/]+)/);
               if (match && match[1] && match[2]) {
