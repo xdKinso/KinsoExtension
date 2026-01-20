@@ -28,13 +28,13 @@ import { Genres, type Metadata } from "./models";
 
 const DOMAIN = "https://www.mangabats.com";
 
-type MangaBatsImplementation = Extension &
+type MangaBatImplementation = Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding;
 
-class MangaBatsInterceptor extends PaperbackInterceptor {
+class MangaBatInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
       ...request.headers,
@@ -55,8 +55,8 @@ class MangaBatsInterceptor extends PaperbackInterceptor {
   }
 }
 
-export class MangaBatsExtension implements MangaBatsImplementation {
-  interceptor = new MangaBatsInterceptor("interceptor");
+export class MangaBatExtension implements MangaBatImplementation {
+  interceptor = new MangaBatInterceptor("interceptor");
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
