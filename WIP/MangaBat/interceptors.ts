@@ -1,5 +1,5 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
-import { generateBrowserHeaders } from "../MangaPark/browserHeaders";
+import { generateBrowserHeaders } from "../../src/MangaPark/browserHeaders";
 
 export class Interceptor extends PaperbackInterceptor {
   constructor(id: string) {
