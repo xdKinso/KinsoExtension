@@ -356,3 +356,5 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     return new Date(dateStr || now.toISOString());
   }
 }
+
+export const OmegaScans = new OmegaScansExtension();

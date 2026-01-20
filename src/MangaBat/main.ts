@@ -355,3 +355,5 @@ export class MangaBatExtension implements MangaBatImplementation {
     return new Date(dateStr || now.toISOString());
   }
 }
+
+export const MangaBat = new MangaBatExtension();

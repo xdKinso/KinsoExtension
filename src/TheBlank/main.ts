@@ -351,3 +351,5 @@ export class TheBlankExtension implements TheBlankImplementation {
     return new Date(dateStr || now.toISOString());
   }
 }
+
+export const TheBlank = new TheBlankExtension();
