@@ -1,5 +1,6 @@
 import {
   BasicRateLimiter,
+  CloudflareError,
   ContentRating,
   DiscoverSectionType,
   PaperbackInterceptor,
@@ -65,7 +66,8 @@ export class TheBlankExtension implements TheBlankImplementation {
   }
 
   async fetchCheerio(request: Request): Promise<CheerioAPI> {
-    const [_response, data] = await Application.scheduleRequest(request);
+    const [response, data] = await Application.scheduleRequest(request);
+    this.checkCloudflareStatus(response.status);
     return cheerio.load(Application.arrayBufferToUTF8String(data));
   }
 
@@ -323,6 +325,12 @@ export class TheBlankExtension implements TheBlankImplementation {
       mangaId: chapter.sourceManga.mangaId,
       pages: pages,
     };
+  }
+
+  private checkCloudflareStatus(status: number): void {
+    if (status === 503 || status === 403) {
+      throw new CloudflareError({ url: DOMAIN, method: "GET" });
+    }
   }
 
   private extractMangaId(url: string): string | null {
