@@ -36,13 +36,8 @@ type TheBlankImplementation = Extension &
 
 class TheBlankInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
-    request.headers = {
-      ...request.headers,
-      referer: `${DOMAIN}/`,
-      origin: DOMAIN,
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    };
+    // Let Paperback's built-in Cloudflare solver handle requests
+    // User will need to manually solve Cloudflare challenges in the app
     return request;
   }
 
@@ -219,41 +214,12 @@ export class TheBlankExtension implements TheBlankImplementation {
     query: SearchQuery,
     metadata: Metadata | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
-    const page = metadata?.page ?? 1;
-    const items: SearchResultItem[] = [];
-
-    let url = `${DOMAIN}/search?q=${encodeURIComponent(query.title || "")}&page=${page}`;
-
-    const request = {
-      url: url,
-      method: "GET",
-    };
-
-    const $ = await this.fetchCheerio(request);
-
-    $("div.book-item").each((_, elem) => {
-      const $elem = $(elem);
-      const $link = $elem.find("a.thumb-wrapper");
-      const href = $link.attr("href");
-      const $img = $link.find("img");
-      const title = $img.attr("alt")?.trim() || $elem.find(".title").text().trim();
-      const image = $img.attr("src") || "";
-
-      if (href && title) {
-        const mangaId = this.extractMangaId(href);
-        if (mangaId) {
-          items.push({
-            mangaId: mangaId,
-            title: title,
-            imageUrl: image,
-          });
-        }
-      }
-    });
-
+    // TheBlank uses dynamic/AJAX search - the URL doesn't change
+    // Search functionality requires JavaScript execution which isn't supported
+    // Users should browse via discover sections instead
     return {
-      items: items,
-      metadata: { page: page + 1 },
+      items: [],
+      metadata: undefined,
     };
   }
 
