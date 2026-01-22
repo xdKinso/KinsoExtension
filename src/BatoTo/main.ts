@@ -191,24 +191,28 @@ export class BatoToExtension implements BatoToImplementation {
     const $: cheerio.CheerioAPI = await this.fetchCheerio(request);
 
     // New layout: grid of manga cards
-    $("div.grid.gap-0.grid-cols-3, div.grid.gap-0.grid-cols-4, div.grid.gap-0.grid-cols-6, div.grid.gap-0.grid-cols-12").find("a.block.w-full[href^='/title/']").each((_: any, element: any) => {
-      const anchor = $(element);
-      const href = anchor.attr("href") || "";
-      const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
-      const img = anchor.find("img").first();
-      const image = normalizeImageUrl(img.attr("src") || "");
-      const title = img.attr("alt") || anchor.text().trim();
-      if (mangaId && title && image && !collectedIds.includes(mangaId)) {
-        collectedIds.push(mangaId);
-        items.push({
-          type: "simpleCarouselItem",
-          mangaId: mangaId,
-          imageUrl: image,
-          title: title,
-          metadata: undefined,
-        });
-      }
-    });
+    $(
+      "div.grid.gap-0.grid-cols-3, div.grid.gap-0.grid-cols-4, div.grid.gap-0.grid-cols-6, div.grid.gap-0.grid-cols-12",
+    )
+      .find("a.block.w-full[href^='/title/']")
+      .each((_: any, element: any) => {
+        const anchor = $(element);
+        const href = anchor.attr("href") || "";
+        const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
+        const img = anchor.find("img").first();
+        const image = normalizeImageUrl(img.attr("src") || "");
+        const title = img.attr("alt") || anchor.text().trim();
+        if (mangaId && title && image && !collectedIds.includes(mangaId)) {
+          collectedIds.push(mangaId);
+          items.push({
+            type: "simpleCarouselItem",
+            mangaId: mangaId,
+            imageUrl: image,
+            title: title,
+            metadata: undefined,
+          });
+        }
+      });
 
     return {
       items: items,
