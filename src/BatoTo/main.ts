@@ -30,7 +30,7 @@ import { URLBuilder } from "../utils/url-builder/base";
 import { BatoToSettingsForm, getLanguages } from "./forms";
 import { AdultGenres, Genres, MatureGenres, type Metadata } from "./models";
 
-const DOMAIN_NAME = "https://ato.to";
+const DOMAIN_NAME = "https://xbat.si/";
 
 // Extracts a manga identifier from either the legacy /series/ path or the new /title/ slugged path
 const extractMangaIdFromHref = (href: string): string => {
@@ -100,7 +100,7 @@ class MainInterceptor extends PaperbackInterceptor {
       (response.status === 521 || response.status === 522 || response.status === 523)
     ) {
       // Log the error but don't throw - let the app show placeholder
-      console.log(`[BatoTo] CDN server error ${response.status} for image: ${request.url}`);
+      console.log(`[BatoCat] CDN server error ${response.status} for image: ${request.url}`);
       // Return empty buffer to avoid crash
       return new ArrayBuffer(0);
     }
