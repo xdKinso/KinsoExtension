@@ -1,9 +1,9 @@
 import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types";
 
 export default {
-  name: "Bato.Dev",
-  description: "Extension that pulls content from bato.is.",
-  version: "0.0.27",
+  name: "BatCat",
+  description: "Extension that pulls content from xbat.si.",
+  version: "0.0.28",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,

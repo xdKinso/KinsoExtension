@@ -188,20 +188,16 @@ export class BatoToExtension implements BatoToImplementation {
       method: "GET",
     };
 
-    const $ = await this.fetchCheerio(request);
+    const $: cheerio.CheerioAPI = await this.fetchCheerio(request);
 
-    // Extract from .home-popular - uses old layout with div.col.item
-    $("div.home-popular div.col.item").each((_, element) => {
-      const unit = $(element);
-
-      const anchor = unit.find("a.item-cover").first();
+    // New layout: grid of manga cards
+    $("div.grid.gap-0.grid-cols-3, div.grid.gap-0.grid-cols-4, div.grid.gap-0.grid-cols-6, div.grid.gap-0.grid-cols-12").find("a.block.w-full[href^='/title/']").each((_: any, element: any) => {
+      const anchor = $(element);
       const href = anchor.attr("href") || "";
       const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
-
       const img = anchor.find("img").first();
       const image = normalizeImageUrl(img.attr("src") || "");
-      const title = unit.find("a.item-title").text().trim();
-
+      const title = img.attr("alt") || anchor.text().trim();
       if (mangaId && title && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
         items.push({
@@ -229,41 +225,20 @@ export class BatoToExtension implements BatoToImplementation {
     const items: DiscoverSectionItem[] = [];
     const collectedIds = metadata?.collectedIds ?? [];
 
-    // Latest releases are only available on homepage (no separate endpoint)
+    // New layout: flex border-b for each manga row
     const request = {
       url: DOMAIN_NAME,
       method: "GET",
     };
-
-    const $ = await this.fetchCheerio(request);
-
-    // Extract manga items from homepage structure div.series-list > div.col.item
-    $("div.series-list div.col.item").each((_, element) => {
-      const unit = $(element);
-
-      // Get title and link
-      const titleLink = unit.find("a.item-title").first();
-      const href = titleLink.attr("href") || "";
-      let mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
-
-      // Get image from item-cover
-      const imgElement = unit.find("a.item-cover img").first();
-      let image =
-        imgElement.attr("src") ||
-        imgElement.attr("data-src") ||
-        imgElement.attr("data-lazy-src") ||
-        "";
-
-      // Fix broken k server URLs immediately for faster loading
-      image = normalizeImageUrl(image);
-
-      // Get title text
-      const title = titleLink.text().trim();
-
-      // Get latest chapter text - look for item-volch anchor
-      const chapterLink = unit.find("a.item-volch").first();
-      const subtitle = chapterLink.text().trim();
-
+    const $: cheerio.CheerioAPI = await this.fetchCheerio(request);
+    $("div.flex.border-b").each((_: any, element: any) => {
+      const row = $(element);
+      const anchor = row.find("a[href^='/title/']").first();
+      const href = anchor.attr("href") || "";
+      const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
+      const img = anchor.find("img").first();
+      const image = normalizeImageUrl(img.attr("src") || "");
+      const title = img.attr("alt") || anchor.text().trim();
       if (mangaId && title && image && !collectedIds.includes(mangaId)) {
         collectedIds.push(mangaId);
         items.push({
@@ -271,13 +246,11 @@ export class BatoToExtension implements BatoToImplementation {
           mangaId: mangaId,
           imageUrl: image,
           title: title,
-          subtitle: subtitle,
+          subtitle: "",
           metadata: undefined,
         });
       }
     });
-
-    // Latest releases on homepage don't have pagination
     return {
       items: items,
       metadata: undefined,
@@ -433,90 +406,30 @@ export class BatoToExtension implements BatoToImplementation {
     sortingOption?: SortingOption,
   ): Promise<PagedResults<SearchResultItem>> {
     const page = metadata?.page ?? 1;
-    const languages: string[] = getLanguages();
-
-    const urlBuilder = new URLBuilder(DOMAIN_NAME).addPath("v3x-search");
-
-    if (query.title && query.title.trim() !== "") {
-      urlBuilder.addQuery("word", query.title.trim());
-    }
-
-    // Add orig parameter (empty string filters by original language)
-    urlBuilder.addQuery("orig", "");
-
-    // Use singular 'lang' parameter for stricter language filtering
-    const lang = languages[0] ?? "en";
-    urlBuilder.addQuery("lang", lang);
-
-    // Use provided sorting option or default to 30-day views
-    const sort = sortingOption?.id || "views_d030";
-    urlBuilder.addQuery("sort", sort);
-
-    if (page > 1) {
-      urlBuilder.addQuery("page", page.toString());
-    }
-
-    const request = { url: urlBuilder.build(), method: "GET" };
-    const $ = await this.fetchCheerio(request);
+    const searchWord = query.title?.trim() || "";
+    if (!searchWord) return { items: [] };
+    const url = `${DOMAIN_NAME}search?type=comic&word=${encodeURIComponent(searchWord)}${page > 1 ? `&page=${page}` : ""}`;
+    const request = { url, method: "GET" };
+    const $: cheerio.CheerioAPI = await this.fetchCheerio(request);
     const searchResults: SearchResultItem[] = [];
-    const collectedIds = new Set<string>();
-
-    // Parse the search page results - items are rows in the v3x list
-    $("div.flex.border-b").each((_, element) => {
-      const row = $(element);
-
-      // Rows with actual entries have an h3 containing a /title/ anchor
-      const titleAnchor = row.find('h3 a[href*="/title/"]').first();
-      const href = titleAnchor.attr("href") || "";
+    // Find all headings with manga links
+    $("h3 > a[href^='/title/']").each((_: any, element: any) => {
+      const anchor = $(element);
+      const href = anchor.attr("href") || "";
       const mangaId = sanitizeMangaId(extractMangaIdFromHref(href));
-
-      if (!mangaId || collectedIds.has(mangaId)) return;
-
-      // Image sits in the thumb column
-      const img = row.find("img").first();
-      let image = img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || "";
-
-      // Title text is inside the h3 anchor, but split into highlight spans
-      const title = titleAnchor.text().replace(/\s+/g, " ").trim();
-
-      if (!title || !image) return;
-
-      image = normalizeImageUrl(image);
-
+      const title = anchor.text().trim();
+      // No image in search results, so leave blank or fetch from manga page if needed
       searchResults.push({
         mangaId: mangaId,
-        imageUrl: image,
+        imageUrl: "",
         title: title,
         subtitle: "",
       });
-
-      collectedIds.add(mangaId);
     });
-
-    // Handle pagination by inspecting page links
-    let maxPage = page;
-
-    $('a[href*="v3x-search"]').each((_, element) => {
-      const href = $(element).attr("href") || "";
-
-      const queryPage = href.match(/[?&]page=(\d+)/);
-      if (queryPage?.[1]) {
-        maxPage = Math.max(maxPage, parseInt(queryPage[1], 10));
-      }
-    });
-
-    $("a").each((_, element) => {
-      const numericText = parseInt($(element).text().trim(), 10);
-      if (!isNaN(numericText)) {
-        maxPage = Math.max(maxPage, numericText);
-      }
-    });
-
-    const hasNextPage = page < maxPage;
-
+    // TODO: Optionally, fetch each manga page for imageUrl (slower)
     return {
       items: searchResults,
-      metadata: hasNextPage ? { page: page + 1 } : undefined,
+      metadata: undefined, // TODO: Add pagination if needed
     };
   }
 
