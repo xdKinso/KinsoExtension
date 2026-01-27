@@ -35,7 +35,7 @@ const FORCE_CF_BYPASS = false; // Set to true to debug Cloudflare bypass
 class TheBlankImageInterceptor extends PaperbackInterceptor {
   constructor(
     interceptorId: string,
-    private getUserAgent: () => Promise<string>
+    private getUserAgent: () => Promise<string>,
   ) {
     super(interceptorId);
   }
@@ -70,7 +70,7 @@ class TheBlankRequestLoggerInterceptor extends PaperbackInterceptor {
       console.log(
         `[TheBlank] Outgoing cookies for ${request.url}: ${
           cookieNames.length ? cookieNames.join(", ") : "(none)"
-        }`
+        }`,
       );
       console.log(`[TheBlank] Outgoing cookie header for ${request.url}: ${headerCookie}`);
     }
@@ -80,7 +80,7 @@ class TheBlankRequestLoggerInterceptor extends PaperbackInterceptor {
   override async interceptResponse(
     _request: Request,
     _response: any,
-    data: ArrayBuffer
+    data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
     return data;
   }
@@ -98,11 +98,11 @@ export class TheBlankExtension implements TheBlankImplementation {
     storage: "stateManager",
   });
   private requestLoggerInterceptor = new TheBlankRequestLoggerInterceptor(
-    "theblank-request-logger"
+    "theblank-request-logger",
   );
   private imageInterceptor = new TheBlankImageInterceptor(
     "theblank-images",
-    this.getUserAgent.bind(this)
+    this.getUserAgent.bind(this),
   );
   private lastCloudflareUrl: string | undefined;
   private cachedUserAgent: string | undefined;
@@ -139,8 +139,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         "user-agent": ua,
         referer: DOMAIN,
         origin: DOMAIN,
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "accept-language": "en-US,en;q=0.9",
       },
     };
@@ -170,7 +169,7 @@ export class TheBlankExtension implements TheBlankImplementation {
   private hasCookie(name: string): boolean {
     const target = name.toLowerCase();
     return (this.cookieStorageInterceptor?.cookies ?? []).some(
-      (cookie) => (cookie.name || "").toLowerCase() === target
+      (cookie) => (cookie.name || "").toLowerCase() === target,
     );
   }
 
@@ -186,7 +185,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       console.log(
         `[TheBlank] Seed request for antibot cookies returned ${response.status}${
           responseCookieNames ? ` (set: ${responseCookieNames})` : ""
-        }`
+        }`,
       );
       if (this.hasCookie("asgfp2")) return;
     } catch (error) {
@@ -195,21 +194,16 @@ export class TheBlankExtension implements TheBlankImplementation {
 
     // If we still don't have the antibot cookie, trigger a WebView bypass.
     this.lastCloudflareUrl = targetUrl;
-    throw new CloudflareError(
-      { url: targetUrl, method: "GET" },
-      "Missing antibot cookie (asgfp2)"
-    );
+    throw new CloudflareError({ url: targetUrl, method: "GET" }, "Missing antibot cookie (asgfp2)");
   }
 
   private parseChapterInfo(
     rawTitle: string,
-    fallbackNumber: number | string | undefined
+    fallbackNumber: number | string | undefined,
   ): { chapNum: number; title: string } {
     const cleanedRaw = (rawTitle || "").replace(/\s+/g, " ").trim();
     const cleaned = cleanedRaw.replace(/^\s*vol\.?\s*[^,]+,\s*/i, "");
-    const chapterMatch = cleaned.match(
-      /chapter\s+(\d+(\.\d+)?)(?:\s*[-:]\s*(.*))?/i
-    );
+    const chapterMatch = cleaned.match(/chapter\s+(\d+(\.\d+)?)(?:\s*[-:]\s*(.*))?/i);
     const chMatch = cleaned.match(/ch\.?\s*(\d+(\.\d+)?)(?:\s*[-:]\s*(.*))?/i);
     const picked = chapterMatch ?? chMatch;
 
@@ -234,7 +228,6 @@ export class TheBlankExtension implements TheBlankImplementation {
 
     return { chapNum, title: `Chapter ${chapNum || "?"}` };
   }
-
 
   private decodeHtmlEntities(input: string): string {
     return input
@@ -274,16 +267,11 @@ export class TheBlankExtension implements TheBlankImplementation {
     return null;
   }
 
-  private async fetchPageData(
-    url: string
-  ): Promise<{ props: any | null; $: CheerioAPI | null }> {
+  private async fetchPageData(url: string): Promise<{ props: any | null; $: CheerioAPI | null }> {
     await this.ensureAntiBotCookies(url);
     if (FORCE_CF_BYPASS) {
       this.lastCloudflareUrl = url;
-      throw new CloudflareError(
-        { url, method: "GET" },
-        "Forced Cloudflare bypass (debug)"
-      );
+      throw new CloudflareError({ url, method: "GET" }, "Forced Cloudflare bypass (debug)");
     }
     const request = await this.makeRequest(url);
     const cookieNames = (this.cookieStorageInterceptor?.cookies ?? [])
@@ -291,7 +279,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       .filter(Boolean)
       .join(", ");
     console.log(
-      `[TheBlank] Requesting ${url} with cookies${cookieNames ? `: ${cookieNames}` : ""}`
+      `[TheBlank] Requesting ${url} with cookies${cookieNames ? `: ${cookieNames}` : ""}`,
     );
     const [response, data] = await Application.scheduleRequest(request);
     const raw = Application.arrayBufferToUTF8String(data).trim();
@@ -304,25 +292,21 @@ export class TheBlankExtension implements TheBlankImplementation {
     if (response.status === 403 || response.status === 503 || looksLikeChallenge) {
       this.lastCloudflareUrl = request.url;
       console.log(
-        `[TheBlank] Cloudflare challenge detected (${response.status}) for ${request.url}`
+        `[TheBlank] Cloudflare challenge detected (${response.status}) for ${request.url}`,
       );
       throw new CloudflareError(
         {
           url: request.url,
           method: "GET",
         },
-        `Cloudflare protection encountered (${response.status})`
+        `Cloudflare protection encountered (${response.status})`,
       );
     }
 
     if (raw.startsWith("{") || raw.startsWith("[")) {
       try {
         const parsed = JSON.parse(raw);
-        const props =
-          parsed?.props ??
-          parsed?.page?.props ??
-          parsed?.data?.props ??
-          parsed;
+        const props = parsed?.props ?? parsed?.page?.props ?? parsed?.data?.props ?? parsed;
         return { props, $: null };
       } catch {
         // Fall through to HTML parsing
@@ -343,7 +327,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       this.lastCloudflareUrl = request.url;
       throw new CloudflareError(
         { url: request.url, method: "GET" },
-        "Forced Cloudflare bypass (debug)"
+        "Forced Cloudflare bypass (debug)",
       );
     }
     const cookieNames = (this.cookieStorageInterceptor?.cookies ?? [])
@@ -351,7 +335,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       .filter(Boolean)
       .join(", ");
     console.log(
-      `[TheBlank] Requesting ${request.url} with cookies${cookieNames ? `: ${cookieNames}` : ""}`
+      `[TheBlank] Requesting ${request.url} with cookies${cookieNames ? `: ${cookieNames}` : ""}`,
     );
     const [response, data] = await Application.scheduleRequest(request);
     const html = Application.arrayBufferToUTF8String(data);
@@ -365,7 +349,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     if (response.status === 403 || response.status === 503 || looksLikeChallenge) {
       this.lastCloudflareUrl = request.url;
       console.log(
-        `[TheBlank] Cloudflare challenge detected (${response.status}) for ${request.url}`
+        `[TheBlank] Cloudflare challenge detected (${response.status}) for ${request.url}`,
       );
       // Throw with the same request headers (important for CF fingerprint consistency)
       throw new CloudflareError(
@@ -373,7 +357,7 @@ export class TheBlankExtension implements TheBlankImplementation {
           url: request.url,
           method: "GET",
         },
-        `Cloudflare protection encountered (${response.status})`
+        `Cloudflare protection encountered (${response.status})`,
       );
     }
 
@@ -409,7 +393,7 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   async getDiscoverSectionItems(
     section: DiscoverSection,
-    metadata: Metadata | undefined
+    metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
     const items: DiscoverSectionItem[] = [];
     const page = metadata?.page ?? 1;
@@ -462,11 +446,9 @@ export class TheBlankExtension implements TheBlankImplementation {
             const $elem = $(elem);
             const href = $elem.attr("href");
             const $img = $elem.find("img");
-            const title =
-              $img.attr("alt")?.trim() ||
-              $elem.find("span").last().text().trim();
+            const title = $img.attr("alt")?.trim() || $elem.find("span").last().text().trim();
             const imageUrl = this.normalizeImageUrl(
-              $img.attr("data-src") || $img.attr("src") || ""
+              $img.attr("data-src") || $img.attr("src") || "",
             );
 
             if (!href || !title) return;
@@ -492,11 +474,9 @@ export class TheBlankExtension implements TheBlankImplementation {
             const $elem = $(elem);
             const href = $elem.attr("href");
             const $img = $elem.find("img");
-            const title =
-              $img.attr("alt")?.trim() ||
-              $elem.find("span").last().text().trim();
+            const title = $img.attr("alt")?.trim() || $elem.find("span").last().text().trim();
             const imageUrl = this.normalizeImageUrl(
-              $img.attr("data-src") || $img.attr("src") || ""
+              $img.attr("data-src") || $img.attr("src") || "",
             );
 
             if (!href || !title) return;
@@ -524,11 +504,9 @@ export class TheBlankExtension implements TheBlankImplementation {
 
             const $card = $elem.find("div.flex.items-center");
             const $img = $card.find("img").first();
-            const title =
-              $img.attr("alt")?.trim() ||
-              $elem.find("span.text-xs").text().trim();
+            const title = $img.attr("alt")?.trim() || $elem.find("span.text-xs").text().trim();
             const imageUrl = this.normalizeImageUrl(
-              $img.attr("data-src") || $img.attr("src") || ""
+              $img.attr("data-src") || $img.attr("src") || "",
             );
 
             if (!href || !title) return;
@@ -562,7 +540,7 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   async getSearchResults(
     _query: SearchQuery,
-    _metadata: Metadata | undefined
+    _metadata: Metadata | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
     // Not supported (JS-driven on the site)
     return {
@@ -575,12 +553,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     const url = `${DOMAIN}/serie/${mangaId}/`;
     const { props, $ } = await this.fetchPageData(url);
 
-    const serie =
-      props?.serie ??
-      props?.series ??
-      props?.manga ??
-      props?.data?.serie ??
-      null;
+    const serie = props?.serie ?? props?.series ?? props?.manga ?? props?.data?.serie ?? null;
 
     const title =
       serie?.title ||
@@ -598,7 +571,7 @@ export class TheBlankExtension implements TheBlankImplementation {
           serie?.thumbnail ||
           $?.("meta[property='og:image']").attr("content") ||
           $?.("img").first().attr("src") ||
-          ""
+          "",
       ) || `${DOMAIN}/theblank.png`;
 
     const author =
@@ -608,7 +581,10 @@ export class TheBlankExtension implements TheBlankImplementation {
       serie?.artist?.name ||
       serie?.artist?.title ||
       serie?.artist ||
-      serie?.authors?.map((a: any) => a?.name || a?.title || a).filter(Boolean).join(", ") ||
+      serie?.authors
+        ?.map((a: any) => a?.name || a?.title || a)
+        .filter(Boolean)
+        .join(", ") ||
       $?.("div:contains('Author')").next().text().trim() ||
       "Unknown";
 
@@ -621,9 +597,7 @@ export class TheBlankExtension implements TheBlankImplementation {
 
     let status: "ONGOING" | "COMPLETED" = "ONGOING";
     const statusText =
-      (serie?.status || serie?.state || "")
-        .toString()
-        .toLowerCase() ||
+      (serie?.status || serie?.state || "").toString().toLowerCase() ||
       $?.("div:contains('Status')").next().text().toLowerCase() ||
       "";
     if (statusText.includes("completed") || statusText.includes("complete")) {
@@ -661,8 +635,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         synopsis: description,
         status,
         contentRating: ContentRating.EVERYONE,
-        tagGroups:
-          tags.length > 0 ? [{ id: "genres", title: "Genres", tags }] : [],
+        tagGroups: tags.length > 0 ? [{ id: "genres", title: "Genres", tags }] : [],
       },
     };
   }
@@ -691,11 +664,7 @@ export class TheBlankExtension implements TheBlankImplementation {
           (typeof entry?.chapter === "number" ? entry?.chapter : undefined) ||
           0;
         const rawTitle =
-          entry?.chapter_title ||
-          entry?.name ||
-          entry?.title ||
-          entry?.chapter ||
-          "";
+          entry?.chapter_title || entry?.name || entry?.title || entry?.chapter || "";
         const hasDistinctTitle =
           typeof entry?.title === "string" &&
           entry?.title.trim().length > 0 &&
@@ -703,9 +672,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         const { chapNum, title } = hasDistinctTitle
           ? {
               chapNum:
-                typeof numberValue === "number"
-                  ? numberValue
-                  : parseFloat(numberValue || "0"),
+                typeof numberValue === "number" ? numberValue : parseFloat(numberValue || "0"),
               title: `Chapter ${numberValue || "?"} - ${entry?.title.trim()}`,
             }
           : this.parseChapterInfo(rawTitle.toString(), numberValue);
@@ -731,8 +698,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         if (!chapterId) return;
 
         const chapterMatch = chapterTitle.match(/chapter\s+(\d+(\.\d+)?)/i);
-        const chapNum =
-          chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : 0;
+        const chapNum = chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : 0;
 
         chapters.push({
           chapterId,
@@ -795,9 +761,12 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
     // Persist all cookies set during the bypass, not just Cloudflare ones.
-    const cookieNames = cookies.map((cookie) => cookie.name).filter(Boolean).join(", ");
+    const cookieNames = cookies
+      .map((cookie) => cookie.name)
+      .filter(Boolean)
+      .join(", ");
     console.log(
-      `[TheBlank] Saving ${cookies.length} bypass cookies${cookieNames ? `: ${cookieNames}` : ""}`
+      `[TheBlank] Saving ${cookies.length} bypass cookies${cookieNames ? `: ${cookieNames}` : ""}`,
     );
     for (const cookie of cookies) {
       const name = cookie.name || "unknown";
@@ -813,18 +782,23 @@ export class TheBlankExtension implements TheBlankImplementation {
         const asString = String(expiresValue).trim();
         if (asString.length > 0) expires = asString;
       }
-      console.log(`[TheBlank] Cookie detail: ${name} domain=${domain} path=${path} expires=${expires}`);
+      console.log(
+        `[TheBlank] Cookie detail: ${name} domain=${domain} path=${path} expires=${expires}`,
+      );
     }
     for (const cookie of cookies) {
       this.cookieStorageInterceptor.deleteCookie(cookie);
       this.cookieStorageInterceptor.setCookie(cookie);
     }
     const storedCookies = this.cookieStorageInterceptor.cookies ?? [];
-    const storedNames = storedCookies.map((cookie) => cookie.name).filter(Boolean).join(", ");
+    const storedNames = storedCookies
+      .map((cookie) => cookie.name)
+      .filter(Boolean)
+      .join(", ");
     console.log(
       `[TheBlank] Stored cookies count: ${storedCookies.length}${
         storedNames ? ` (${storedNames})` : ""
-      }`
+      }`,
     );
   }
 

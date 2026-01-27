@@ -151,11 +151,7 @@ export class AllMangaExtension implements AllMangaImplementation {
     const queryTitle = (query.title ?? "").trim().toLowerCase();
     if (!queryTitle) {
       const listData = await this.getListData();
-      const { items, nextPage } = this.paginate(
-        listData.allItems,
-        page,
-        DEFAULT_PAGE_SIZE,
-      );
+      const { items, nextPage } = this.paginate(listData.allItems, page, DEFAULT_PAGE_SIZE);
       return {
         items: items.map((item) => this.toSearchResultItem(item)),
         metadata: nextPage,
@@ -300,8 +296,7 @@ export class AllMangaExtension implements AllMangaImplementation {
         "user-agent": userAgent,
         referer: BASE_URL,
         origin: BASE_URL,
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "accept-language": "en-US,en;q=0.9",
       },
     };
@@ -517,12 +512,10 @@ export class AllMangaExtension implements AllMangaImplementation {
     return {
       id: this.toTagId(id),
       title,
-      tags: tags
-        .filter(Boolean)
-        .map((tag) => ({
-          id: this.toTagId(tag),
-          title: tag,
-        })),
+      tags: tags.filter(Boolean).map((tag) => ({
+        id: this.toTagId(tag),
+        title: tag,
+      })),
     };
   }
 

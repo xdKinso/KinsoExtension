@@ -1,5 +1,5 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
-import { generateBrowserHeaders } from "../MangaPark/browserHeaders";
+import { generateBrowserHeaders } from "../../RIP/MangaPark/browserHeaders";
 
 const baseUrl = "https://demonicscans.org";
 

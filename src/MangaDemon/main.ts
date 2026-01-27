@@ -159,7 +159,7 @@ export class MangaDemonExtension implements MangaDemonImplementation {
   }
 
   async getCloudflareBypassRequest(): Promise<Request> {
-    const { generateBrowserHeaders } = await import("../MangaPark/browserHeaders");
+    const { generateBrowserHeaders } = await import("../../RIP/MangaPark/browserHeaders");
     const headers = generateBrowserHeaders(baseUrl);
 
     return {

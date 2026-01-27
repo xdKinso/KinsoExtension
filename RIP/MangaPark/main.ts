@@ -4,7 +4,7 @@ import {
   ContentRating,
   CookieStorageInterceptor,
   DiscoverSectionType,
-  Form,
+  type Form,
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
@@ -30,7 +30,7 @@ import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import * as htmlparser2 from "htmlparser2";
-import { URLBuilder } from "../utils/url-builder/base";
+import { URLBuilder } from "../../src/utils/url-builder/base";
 import {
   getBlacklistDemographics,
   getBlacklistGenres,
