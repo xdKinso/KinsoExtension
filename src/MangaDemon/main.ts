@@ -1,10 +1,13 @@
 import {
   BasicRateLimiter,
+  CloudflareError,
+  CookieStorageInterceptor,
   DiscoverSectionType,
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
   type CloudflareBypassRequestProviding,
+  type Cookie,
   type DiscoverSection,
   type DiscoverSectionItem,
   type DiscoverSectionProviding,
@@ -33,6 +36,9 @@ type MangaDemonImplementation = Extension &
 
 export class MangaDemonExtension implements MangaDemonImplementation {
   requestManager = new Interceptor("main");
+  cookieStorageInterceptor = new CookieStorageInterceptor({
+    storage: "stateManager",
+  });
 
   // Main rate limiter: 2 requests per second (matching Keiyoushi)
   globalRateLimiter = new BasicRateLimiter("rateLimiter", {
@@ -50,6 +56,7 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
   async initialise(): Promise<void> {
     this.requestManager.registerInterceptor();
+    this.cookieStorageInterceptor.registerInterceptor();
     this.globalRateLimiter.registerInterceptor();
     this.thumbnailRateLimiter.registerInterceptor();
   }
@@ -65,28 +72,33 @@ export class MangaDemonExtension implements MangaDemonImplementation {
       let searchUrl: string;
 
       if (query.title && query.title.trim() !== "") {
-        // MangaDemon uses a different search endpoint - check if there's an API
-        // The main search page has autocomplete, so we need to search the pages directly
-        searchUrl = `${baseUrl}/lastnvupdates.php`;
-      } else {
-        searchUrl = `${baseUrl}/advanced.php?list=${page}&status=all&orderby=VIEWS%20DESC`;
+        const searchUrls = [
+          `${baseUrl}/search.php?manga=${encodeURIComponent(query.title)}`,
+          `${baseUrl}/search.php?query=${encodeURIComponent(query.title)}`,
+          `${baseUrl}/search?query=${encodeURIComponent(query.title)}`,
+          `${baseUrl}/?s=${encodeURIComponent(query.title)}`,
+          `${baseUrl}/lastnvupdates.php`,
+        ];
+
+        let items: SearchResultItem[] = [];
+        for (const candidateUrl of searchUrls) {
+          console.log("[MangaDemon] Performing search request:", candidateUrl);
+          const request = { url: candidateUrl, method: "GET" };
+          const htmlStr = await this.fetchHtml(request);
+          const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
+          items = parseSearchResults($, baseUrl, query.title || "");
+          if (items.length > 0) break;
+        }
+
+        return { items };
       }
+
+      searchUrl = `${baseUrl}/advanced.php?list=${page}&status=all&orderby=VIEWS%20DESC`;
 
       console.log("[MangaDemon] Performing search request:", searchUrl);
 
-      const request = {
-        url: searchUrl,
-        method: "GET",
-      };
-
-      const [response, data] = await Application.scheduleRequest(request);
-
-      if (response.status !== 200) {
-        console.error(`[MangaDemon] Search failed with status ${response.status}`);
-        throw new Error(`Failed to fetch search results: HTTP ${response.status}`);
-      }
-
-      const htmlStr = Application.arrayBufferToUTF8String(data);
+      const request = { url: searchUrl, method: "GET" };
+      const htmlStr = await this.fetchHtml(request);
       const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
       const items = parseSearchResults($, baseUrl, query.title || "");
 
@@ -94,51 +106,51 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
       return { items, metadata: items.length > 0 ? { page: page + 1 } : undefined };
     } catch (error) {
+      if (error instanceof CloudflareError) {
+        throw error;
+      }
       console.error("[MangaDemon] Search error:", error);
       return { items: [] };
     }
   }
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
-    const url = decodeURIComponent(mangaId);
+    const url = this.decodeId(mangaId);
     const request = {
       url: url.startsWith("http") ? url : `${baseUrl}${url}`,
       method: "GET",
     };
 
-    const [_response, data] = await Application.scheduleRequest(request);
-    const htmlStr = Application.arrayBufferToUTF8String(data);
+    const htmlStr = await this.fetchHtml(request);
     const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
-    return parseMangaDetails($, mangaId);
+    return parseMangaDetails($, mangaId, baseUrl);
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const mangaId = sourceManga.mangaId;
-    const url = decodeURIComponent(mangaId);
+    const url = this.decodeId(mangaId);
 
     const request = {
       url: url.startsWith("http") ? url : `${baseUrl}${url}`,
       method: "GET",
     };
 
-    const [_response, data] = await Application.scheduleRequest(request);
-    const htmlStr = Application.arrayBufferToUTF8String(data);
+    const htmlStr = await this.fetchHtml(request);
     const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
     return parseChapters($, sourceManga);
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    const url = decodeURIComponent(chapter.chapterId);
+    const url = this.decodeId(chapter.chapterId);
 
     const request = {
       url: url.startsWith("http") ? url : `${baseUrl}${url}`,
       method: "GET",
     };
 
-    const [_response, data] = await Application.scheduleRequest(request);
-    const htmlStr = Application.arrayBufferToUTF8String(data);
+    const htmlStr = await this.fetchHtml(request);
     const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
     const pages = parseChapterPages($);
@@ -159,8 +171,8 @@ export class MangaDemonExtension implements MangaDemonImplementation {
   }
 
   async getCloudflareBypassRequest(): Promise<Request> {
-    const { generateBrowserHeaders } = await import("../../RIP/MangaPark/browserHeaders");
-    const headers = generateBrowserHeaders(baseUrl);
+    const { generateBrowserHeadersMangaDemon } = await import("./browserHeadersMangaDemon");
+    const headers = await generateBrowserHeadersMangaDemon(baseUrl);
 
     return {
       url: baseUrl,
@@ -170,7 +182,15 @@ export class MangaDemonExtension implements MangaDemonImplementation {
   }
 
   async saveCloudflareBypassCookies(_cookies: any[]): Promise<void> {
-    // Cloudflare cookies are handled automatically by the interceptor
+    for (const cookie of _cookies as Cookie[]) {
+      if (
+        cookie.name.startsWith("cf") ||
+        cookie.name.startsWith("_cf") ||
+        cookie.name.startsWith("__cf")
+      ) {
+        this.cookieStorageInterceptor.setCookie(cookie);
+      }
+    }
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
@@ -203,8 +223,7 @@ export class MangaDemonExtension implements MangaDemonImplementation {
         method: "GET",
       };
 
-      const [_response, data] = await Application.scheduleRequest(request);
-      const htmlStr = Application.arrayBufferToUTF8String(data);
+      const htmlStr = await this.fetchHtml(request);
       const $ = cheerio.load(htmlparser2.parseDocument(htmlStr));
 
       let items: DiscoverSectionItem[] = [];
@@ -222,8 +241,48 @@ export class MangaDemonExtension implements MangaDemonImplementation {
 
       return { items };
     } catch (error) {
+      if (error instanceof CloudflareError) {
+        throw error;
+      }
       console.error(`[MangaDemon] Error loading section ${section.id}:`, error);
       return { items: [] };
+    }
+  }
+
+  private async fetchHtml(request: Request): Promise<string> {
+    const [response, data] = await Application.scheduleRequest(request);
+    const htmlStr = Application.arrayBufferToUTF8String(data);
+    if (this.isCloudflare(response.status, htmlStr)) {
+      throw new CloudflareError(request);
+    }
+    return htmlStr;
+  }
+
+  private isCloudflare(status: number, htmlStr: string): boolean {
+    if (status === 403 || status === 503) return true;
+    return (
+      htmlStr.includes("Just a moment") ||
+      htmlStr.includes("cf-chl") ||
+      htmlStr.includes("challenge-platform")
+    );
+  }
+
+  private decodeId(encoded: string): string {
+    if (encoded.startsWith("b64:")) {
+      return this.fromBase64(encoded.slice(4));
+    }
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      return encoded;
+    }
+  }
+
+  private fromBase64(value: string): string {
+    try {
+      return decodeURIComponent(escape(atob(value)));
+    } catch {
+      return atob(value);
     }
   }
 }

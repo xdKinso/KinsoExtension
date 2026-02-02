@@ -7,6 +7,65 @@ import {
 } from "@paperback/types";
 import type { CheerioAPI } from "cheerio";
 
+const INVALID_ID_RE = /[^a-zA-Z0-9._\-@()[\]&?#+=/,:]/g;
+
+function sanitizeId(raw: string): string {
+  return (raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(INVALID_ID_RE, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function toBase64(value: string): string {
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+function encodeId(raw: string): string {
+  return `b64:${toBase64(raw)}`;
+}
+
+function normalizeImageUrl(raw: string, baseUrl: string): string {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return `${baseUrl}/favicon.ico`;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (trimmed.startsWith("/")) return `${baseUrl}${trimmed.slice(1)}`;
+  return `${baseUrl}${trimmed}`;
+}
+
+function cleanTitle(raw: string): string {
+  let normalized = raw || "";
+  for (let i = 0; i < 2; i += 1) {
+    if (!normalized.includes("%")) break;
+    try {
+      normalized = decodeURIComponent(normalized);
+    } catch {
+      break;
+    }
+  }
+  const parts = normalized
+    .split(/\r?\n/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && !/^[.·…]+$/.test(part));
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function decodeSlug(value: string): string {
+  let decoded = value || "";
+  for (let i = 0; i < 2; i += 1) {
+    if (!decoded.includes("%")) break;
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch {
+      break;
+    }
+  }
+  return decoded;
+}
+
 export function parseSearchResults(
   $: CheerioAPI,
   baseUrl: string,
@@ -20,13 +79,22 @@ export function parseSearchResults(
   const searchTermLower = searchTerm.toLowerCase();
 
   // Parse all manga links in the page
-  $('a[href^="/manga/"]').each((_, element) => {
+  $('a[href*="/manga/"]').each((_, element) => {
     const $elem = $(element);
     const href = $elem.attr("href") || "";
-    const text = $elem.text().trim();
+    const hrefSlug = href.split("/").filter(Boolean).pop() || "";
+    const slugTitle = decodeSlug(hrefSlug).replace(/[-_]+/g, " ").trim();
+    const rawText =
+      $elem.attr("title") ||
+      $elem.find("img").attr("alt") ||
+      $elem.find("img").attr("title") ||
+      slugTitle ||
+      $elem.text() ||
+      "";
+    const text = cleanTitle(rawText) || slugTitle;
 
-    // Skip if no text or href
-    if (!text || !href) return;
+    // Skip if no href
+    if (!href) return;
 
     // If we have a search term, filter by it (case-insensitive)
     if (searchTerm && !text.toLowerCase().includes(searchTermLower)) {
@@ -54,20 +122,27 @@ export function parseSearchResults(
     }
 
     results.push({
-      mangaId: encodeURIComponent(href),
-      imageUrl: imageUrl,
-      title: text,
+      mangaId: encodeId(href),
+      imageUrl: normalizeImageUrl(imageUrl, baseUrl),
+      title: text || "Unknown",
     });
   });
 
   return results;
 }
 
-export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
+export function parseMangaDetails(
+  $: CheerioAPI,
+  mangaId: string,
+  baseUrl: string,
+): SourceManga {
   const $container = $("div#manga-info-container");
 
   const title = $container.find("h1.big-fat-titles").first().text().trim() || "Unknown";
-  const thumbnailUrl = $container.find("div#manga-page img").attr("src") || "";
+  const thumbnailUrl = normalizeImageUrl(
+    $container.find("div#manga-page img").attr("src") || "",
+    baseUrl,
+  );
   const synopsis = $container
     .find("div#manga-info-rightColumn > div > div.white-font")
     .text()
@@ -86,7 +161,7 @@ export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
   $container.find("div.genres-list > li").each((_, elem) => {
     const genreText = $(elem).text().trim();
     if (genreText) {
-      tags.push({ id: genreText.toLowerCase(), title: genreText });
+      tags.push({ id: sanitizeId(genreText), title: genreText });
     }
   });
 
@@ -124,7 +199,7 @@ export function parseChapters($: CheerioAPI, sourceManga: SourceManga): Chapter[
       }
 
       chapters.push({
-        chapterId: encodeURIComponent(url),
+        chapterId: encodeId(url),
         sourceManga,
         title,
         langCode: "🇬🇧",
@@ -162,8 +237,8 @@ export function parseMostViewedToday($: CheerioAPI, baseUrl: string): DiscoverSe
 
       if (url && title && imageUrl) {
         results.push({
-          mangaId: encodeURIComponent(url),
-          imageUrl,
+          mangaId: encodeId(url),
+          imageUrl: normalizeImageUrl(imageUrl, baseUrl),
           title,
         } as DiscoverSectionItem);
       }
@@ -188,8 +263,8 @@ export function parseLatestTranslations($: CheerioAPI, baseUrl: string): Discove
 
       if (url && title && imageUrl) {
         results.push({
-          mangaId: encodeURIComponent(url),
-          imageUrl,
+          mangaId: encodeId(url),
+          imageUrl: normalizeImageUrl(imageUrl, baseUrl),
           title,
         } as DiscoverSectionItem);
       }
@@ -212,12 +287,12 @@ export function parseLatestUpdates($: CheerioAPI, baseUrl: string): DiscoverSect
     const imageUrl = $link.find("img[src]").first().attr("src");
 
     if (url && title && imageUrl) {
-      const encodedUrl = encodeURIComponent(url);
+      const encodedUrl = encodeId(url);
       // Check for duplicates
       if (!results.some((r) => "mangaId" in r && r.mangaId === encodedUrl)) {
         results.push({
           mangaId: encodedUrl,
-          imageUrl,
+          imageUrl: normalizeImageUrl(imageUrl, baseUrl),
           title,
         } as DiscoverSectionItem);
       }

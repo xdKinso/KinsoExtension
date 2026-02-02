@@ -1,5 +1,5 @@
 import { PaperbackInterceptor, type Request, type Response } from "@paperback/types";
-import { generateBrowserHeaders } from "../../RIP/MangaPark/browserHeaders";
+import { generateBrowserHeadersMangaDemon } from "./browserHeadersMangaDemon";
 
 const baseUrl = "https://demonicscans.org";
 
@@ -9,7 +9,7 @@ export class Interceptor extends PaperbackInterceptor {
   }
 
   override async interceptRequest(request: Request): Promise<Request> {
-    const headers = generateBrowserHeaders(request.url);
+    const headers = await generateBrowserHeadersMangaDemon(request.url);
     request.headers = {
       ...headers,
       Referer: `${baseUrl}/`,
