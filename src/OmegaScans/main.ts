@@ -362,8 +362,8 @@ export class OmegaScansExtension implements OmegaScansImplementation {
           langCode: "en",
           chapNum: chapterNum,
           volume: 0,
-        title: title,
-        publishDate: chapter.created_at ? new Date(chapter.created_at) : new Date(),
+          title: title,
+          publishDate: chapter.created_at ? new Date(chapter.created_at) : new Date(),
           sortingIndex,
         },
       });
@@ -482,8 +482,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   }
 
   private extractPageUrls(html: string, seriesSlug: string): string[] {
-    const direct: string[] =
-      html.match(/https:\/\/media\.omegascans\.org\/[^\s"\\]+/g) || [];
+    const direct: string[] = html.match(/https:\/\/media\.omegascans\.org\/[^\s"\\]+/g) || [];
     const escaped: string[] =
       html.match(/https:\\\/\\\/media\.omegascans\.org\\\/[^\s"\\]+/g) || [];
     const partial: string[] = html.match(/media\.omegascans\.org\/[^\s"\\]+/g) || [];
