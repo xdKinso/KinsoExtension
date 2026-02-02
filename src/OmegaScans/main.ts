@@ -338,36 +338,112 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     };
     const chapterData = await this.fetchJson<ApiChapter[]>(request);
 
-    const chapters: Chapter[] = chapterData
-      .filter((chapter) => chapter.price === 0 || chapter.price == null)
-      .map((chapter) => {
-        const chapterNum = this.parseChapterNumber(chapter.chapter_name, chapter.chapter_slug);
-        const title = chapter.chapter_name;
+    const chapters: Chapter[] = [];
+    const pending: { chapter: Chapter; isNumbered: boolean }[] = [];
+    let sortingIndex = chapterData.length;
 
-        return {
+    for (const chapter of chapterData) {
+      if (chapter.price != null && chapter.price > 0) {
+        continue;
+      }
+
+      const chapterNum = this.parseChapterNumber(chapter.chapter_name, chapter.chapter_slug);
+      const isNumbered = /^chapter\s*\d+/i.test(chapter.chapter_name);
+      const title =
+        !isNumbered && chapter.chapter_title
+          ? `${chapter.chapter_name} - ${chapter.chapter_title}`
+          : chapter.chapter_name;
+
+      pending.push({
+        isNumbered,
+        chapter: {
           chapterId: chapter.chapter_slug,
           sourceManga: sourceManga,
           langCode: "en",
           chapNum: chapterNum,
           volume: 0,
-          title: title,
-          publishDate: chapter.created_at ? new Date(chapter.created_at) : new Date(),
-        };
-      })
-      .sort((a, b) => (a.chapNum ?? 0) - (b.chapNum ?? 0));
+        title: title,
+        publishDate: chapter.created_at ? new Date(chapter.created_at) : new Date(),
+          sortingIndex,
+        },
+      });
+      sortingIndex--;
+    }
+
+    // Assign chapter numbers to non-numbered entries based on neighbors in display order.
+    // Rule: For multiple specials between two numbered chapters, use sequential decimals.
+    for (let i = 0; i < pending.length; i++) {
+      const entry = pending[i]!;
+      if (entry.isNumbered) {
+        chapters.push(entry.chapter);
+        continue;
+      }
+
+      let prevNum: number | null = null;
+      let nextNum: number | null = null;
+      let specialsSincePrev = 0;
+
+      for (let p = i - 1; p >= 0; p--) {
+        const prev = pending[p]!;
+        if (prev.isNumbered && prev.chapter.chapNum != null) {
+          prevNum = prev.chapter.chapNum ?? null;
+          break;
+        }
+        if (!prev.isNumbered) {
+          specialsSincePrev++;
+        }
+      }
+
+      for (let n = i + 1; n < pending.length; n++) {
+        const next = pending[n]!;
+        if (next.isNumbered && next.chapter.chapNum != null) {
+          nextNum = next.chapter.chapNum ?? null;
+          break;
+        }
+      }
+
+      if (prevNum != null && nextNum != null) {
+        // e.g., between 73 and 74: 73.1, 73.2, 73.3...
+        entry.chapter.chapNum = prevNum + (specialsSincePrev + 1) / 10;
+      } else if (prevNum != null) {
+        entry.chapter.chapNum = prevNum + (specialsSincePrev + 1) / 10;
+      } else if (nextNum != null) {
+        // If no previous numbered chapter, place before the next one.
+        entry.chapter.chapNum = nextNum - (specialsSincePrev + 1) / 10;
+      } else {
+        entry.chapter.chapNum = 0;
+      }
+
+      chapters.push(entry.chapter);
+    }
 
     return chapters;
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    const request = {
+    const request: Request = {
       url: `${DOMAIN}/series/${chapter.sourceManga.mangaId}/${chapter.chapterId}`,
       method: "GET",
+      headers: {},
     };
 
     const [_response, data] = await Application.scheduleRequest(request);
-    const html = Application.arrayBufferToUTF8String(data);
-    const pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
+    let html = Application.arrayBufferToUTF8String(data);
+    let pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
+
+    if (pageUrls.length === 0) {
+      const rscRequest = {
+        ...request,
+        headers: {
+          ...(request.headers ?? {}),
+          RSC: "1",
+          Accept: "text/x-component",
+        },
+      };
+      const [_rscResponse, rscData] = await Application.scheduleRequest(rscRequest);
+      const rscHtml = Application.arrayBufferToUTF8String(rscData);
+      pageUrls = this.extractPageUrls(rscHtml, chapter.sourceManga.mangaId);
+    }
 
     return {
       id: chapter.chapterId,
@@ -406,12 +482,47 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   }
 
   private extractPageUrls(html: string, seriesSlug: string): string[] {
-    const matches = html.match(/https:\/\/media\.omegascans\.org\/[^\"\\s]+/g) ?? [];
-    const filtered = matches
-      .map((url) => url.replace(/\\+$/, ""))
-      .filter((url) => url.includes(`/uploads/series/${seriesSlug}/`));
+    const direct: string[] =
+      html.match(/https:\/\/media\.omegascans\.org\/[^\s"\\]+/g) || [];
+    const escaped: string[] =
+      html.match(/https:\\\/\\\/media\.omegascans\.org\\\/[^\s"\\]+/g) || [];
+    const partial: string[] = html.match(/media\.omegascans\.org\/[^\s"\\]+/g) || [];
+    const uploadsOnly: string[] = html.match(/uploads\/series\/[^\s"\\]+/g) || [];
 
-    const unique = Array.from(new Set(filtered));
+    const matches: string[] = direct.concat(escaped, partial, uploadsOnly);
+    const normalized = matches.map((url) => url.replace(/\\\//g, "/").replace(/\\+/g, ""));
+
+    const baseMatch = normalized
+      .find((url) => url.includes("media.omegascans.org/file/"))
+      ?.match(/https:\/\/media\.omegascans\.org\/file\/[^/]+\//);
+    const mediaBase = baseMatch?.[0] ?? "https://media.omegascans.org/file/zFSsXt/";
+
+    const expanded = normalized.map((url) => {
+      let cleaned = url;
+      if (cleaned.startsWith("https://uploads/")) {
+        cleaned = cleaned.replace("https://uploads/", "uploads/");
+      }
+
+      if (cleaned.startsWith("uploads/series/")) {
+        return `${mediaBase}${cleaned}`;
+      }
+
+      if (cleaned.startsWith("media.omegascans.org/")) {
+        return `https://${cleaned}`;
+      }
+
+      return cleaned;
+    });
+
+    const uploads = expanded.filter((url) => url.includes("/uploads/"));
+    const slugged = uploads.filter((url) => url.includes(`/uploads/series/${seriesSlug}/`));
+    const filtered = slugged.length > 0 ? slugged : uploads.length > 0 ? uploads : expanded;
+
+    const withExtensions = filtered.filter((url) =>
+      /\.(jpe?g|png|webp)$/i.test(url.split("?")[0] ?? ""),
+    );
+
+    const unique = Array.from(new Set(withExtensions));
     unique.sort((a, b) => {
       const aNum = this.extractPageNumber(a);
       const bNum = this.extractPageNumber(b);
