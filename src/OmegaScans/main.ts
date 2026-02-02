@@ -431,7 +431,11 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     if (!match) {
       return null;
     }
-    return parseInt(match[1], 10);
+    const pageStr = match[1];
+    if (!pageStr) {
+      return null;
+    }
+    return parseInt(pageStr, 10);
   }
 
   private parseChapterNumber(name: string, slug: string): number {
