@@ -131,11 +131,7 @@ export function parseSearchResults(
   return results;
 }
 
-export function parseMangaDetails(
-  $: CheerioAPI,
-  mangaId: string,
-  baseUrl: string,
-): SourceManga {
+export function parseMangaDetails($: CheerioAPI, mangaId: string, baseUrl: string): SourceManga {
   const $container = $("div#manga-info-container");
 
   const title = $container.find("h1.big-fat-titles").first().text().trim() || "Unknown";

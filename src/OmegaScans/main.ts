@@ -296,9 +296,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const description = series.description?.trim() ?? "";
     const statusText = series.status?.toLowerCase() ?? "";
     const status =
-      statusText.includes("completed") || statusText.includes("complete")
-        ? "COMPLETED"
-        : "ONGOING";
+      statusText.includes("completed") || statusText.includes("complete") ? "COMPLETED" : "ONGOING";
 
     const tags: Tag[] = [];
     for (const tag of series.tags ?? []) {
