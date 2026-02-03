@@ -146,11 +146,7 @@ class TheBlankRequestLoggerInterceptor extends PaperbackInterceptor {
     if (request.url.includes("theblank.net")) {
       const cookieNames = request.cookies ? Object.keys(request.cookies) : [];
       const headerCookie = request.headers?.cookie ?? "(none)";
-      if (
-        headerCookie === "(none)" &&
-        request.cookies &&
-        Object.keys(request.cookies).length > 0
-      ) {
+      if (headerCookie === "(none)" && request.cookies && Object.keys(request.cookies).length > 0) {
         const cookieHeader = Object.entries(request.cookies)
           .map(([name, value]) => `${name}=${value}`)
           .join("; ");
@@ -230,9 +226,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         this.cookieStorageInterceptor.setCookie(normalized);
       }
     },
-    () =>
-      (Application.getState("theblank_last_chapter_url") as string | undefined) ??
-      `${DOMAIN}/`,
+    () => (Application.getState("theblank_last_chapter_url") as string | undefined) ?? `${DOMAIN}/`,
   );
   private lastCloudflareUrl: string | undefined;
   private cachedUserAgent: string | undefined;
@@ -316,9 +310,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       const cookiePath = cookie.path || "/";
 
       const domainOk =
-        !domain ||
-        host === domain.replace(/^\./, "") ||
-        host.endsWith(domain.replace(/^\./, ""));
+        !domain || host === domain.replace(/^\./, "") || host.endsWith(domain.replace(/^\./, ""));
       const pathOk = path.startsWith(cookiePath || "/");
 
       return domainOk && pathOk;
@@ -380,10 +372,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     // If we still don't have the antibot cookie, trigger a WebView bypass.
     const bypassUrl = this.getBypassUrl(targetUrl);
     this.lastCloudflareUrl = bypassUrl;
-    throw new CloudflareError(
-      { url: bypassUrl, method: "GET" },
-      "Missing antibot cookie (asgfp2)",
-    );
+    throw new CloudflareError({ url: bypassUrl, method: "GET" }, "Missing antibot cookie (asgfp2)");
   }
 
   private parseChapterInfo(
@@ -475,9 +464,7 @@ export class TheBlankExtension implements TheBlankImplementation {
 
     if (response.status >= 400) {
       this.lastCloudflareUrl = request.url;
-      console.log(
-        `[TheBlank] HTTP ${response.status} for ${request.url}, forcing WebView bypass`,
-      );
+      console.log(`[TheBlank] HTTP ${response.status} for ${request.url}, forcing WebView bypass`);
       throw new CloudflareError(
         {
           url: request.url,
@@ -521,11 +508,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     return { props: dataPage?.props ?? null, $ };
   }
 
-  private enforceWebviewOnBlockedPage(
-    url: string,
-    props: any | null,
-    $: CheerioAPI | null,
-  ): void {
+  private enforceWebviewOnBlockedPage(url: string, props: any | null, $: CheerioAPI | null): void {
     if (props) return;
     const hasAppData = $?.("#app").attr("data-page") != null;
     if (!hasAppData) {
@@ -771,9 +754,9 @@ export class TheBlankExtension implements TheBlankImplementation {
       Application.setState(pick, "theblank_last_manga_id");
     }
 
-    const chapterItem = items.find(
-      (item) => item.type === "chapterUpdatesCarouselItem",
-    ) as DiscoverSectionItem | undefined;
+    const chapterItem = items.find((item) => item.type === "chapterUpdatesCarouselItem") as
+      | DiscoverSectionItem
+      | undefined;
     if (chapterItem && "mangaId" in chapterItem && "chapterId" in chapterItem) {
       const chapterUrl = `${DOMAIN}/serie/${chapterItem.mangaId}/chapter/${chapterItem.chapterId}/`;
       Application.setState(chapterUrl, "theblank_last_chapter_url");
@@ -1103,16 +1086,10 @@ export class TheBlankExtension implements TheBlankImplementation {
     }
 
     const unique = Array.from(new Set(pages));
-    const withoutBranding = unique.filter(
-      (page) => !/theblank\.png|logo|favicon|icon/i.test(page),
-    );
-    const contentPages = withoutBranding.filter((page) =>
-      /\/(storage|uploads)\//i.test(page),
-    );
+    const withoutBranding = unique.filter((page) => !/theblank\.png|logo|favicon|icon/i.test(page));
+    const contentPages = withoutBranding.filter((page) => /\/(storage|uploads)\//i.test(page));
     const nonServeImage = withoutBranding.filter((page) => !page.includes("/serve-image"));
-    const preferredFormats = nonServeImage.filter((page) =>
-      /\.(jpe?g|png)(\?.*)?$/i.test(page),
-    );
+    const preferredFormats = nonServeImage.filter((page) => /\.(jpe?g|png)(\?.*)?$/i.test(page));
     const webpFormats = nonServeImage.filter((page) => /\.webp(\?.*)?$/i.test(page));
     const serveImage = withoutBranding.filter((page) => page.includes("/serve-image"));
 
@@ -1220,11 +1197,8 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   private getBypassUrl(inputUrl: string | undefined): string {
     const url = inputUrl || "";
-    const isHome =
-      url === "" || url === DOMAIN || url === `${DOMAIN}/` || url === `${DOMAIN}/home`;
-    const storedChapter = Application.getState("theblank_last_chapter_url") as
-      | string
-      | undefined;
+    const isHome = url === "" || url === DOMAIN || url === `${DOMAIN}/` || url === `${DOMAIN}/home`;
+    const storedChapter = Application.getState("theblank_last_chapter_url") as string | undefined;
     if (storedChapter) {
       return storedChapter;
     }
