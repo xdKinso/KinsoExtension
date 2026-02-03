@@ -4,6 +4,7 @@ import {
   ContentRating,
   CookieStorageInterceptor,
   DiscoverSectionType,
+  Form,
   PaperbackInterceptor,
   type Chapter,
   type ChapterDetails,
@@ -20,6 +21,7 @@ import {
   type SearchQuery,
   type SearchResultItem,
   type SearchResultsProviding,
+  type SettingsFormProviding,
   type SourceManga,
   type Tag,
   type Cookie,
@@ -27,37 +29,114 @@ import {
 import * as cheerio from "cheerio";
 import { type CheerioAPI } from "cheerio";
 import { type Metadata } from "./models";
+import { TheBlankSettingsForm } from "./forms";
 
 const DOMAIN = "https://theblank.net";
 const ITEMS_PER_PAGE = 10;
 const FORCE_CF_BYPASS = false; // Set to true to debug Cloudflare bypass
+const FALLBACK_BYPASS_MANGA_SLUG = "someone-stop-her";
+const FALLBACK_BYPASS_CHAPTER_URL =
+  "https://theblank.net/serie/6iCOdorYUC-someone-stop-her/chapter/dioxt8jNo898-chapter-0-prologue/";
 
 class TheBlankImageInterceptor extends PaperbackInterceptor {
   constructor(
     interceptorId: string,
     private getUserAgent: () => Promise<string>,
+    private getCookieHeader: (url: string) => string,
+    private getCookieMap: (url: string) => Record<string, string>,
+    private saveCookies: (cookies: Cookie[]) => void,
   ) {
     super(interceptorId);
   }
 
   override async interceptRequest(request: Request): Promise<Request> {
-    const isImageRequest = /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(request.url);
+    const isImageRequest =
+      /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(request.url) ||
+      request.url.includes("/serve-image?");
     if (!isImageRequest) return request;
+    const cookieHeader = this.getCookieHeader(request.url);
+    const cookieMap = this.getCookieMap(request.url);
     request.headers = {
       ...request.headers,
       referer: `${DOMAIN}/`,
       origin: DOMAIN,
       "user-agent": await this.getUserAgent(),
       accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
     };
+    if (Object.keys(cookieMap).length > 0) {
+      request.cookies = {
+        ...(request.cookies ?? {}),
+        ...cookieMap,
+      };
+    }
     return request;
   }
 
   override async interceptResponse(
     _request: Request,
-    _response: any,
+    response: any,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
+    try {
+      const cookies = (response?.cookies ?? []) as Cookie[];
+      if (cookies.length > 0) {
+        this.saveCookies(cookies);
+      }
+    } catch {
+      // Ignore cookie save errors
+    }
+    return data;
+  }
+}
+
+class TheBlankServeImageInterceptor extends PaperbackInterceptor {
+  constructor(
+    interceptorId: string,
+    private getUserAgent: () => Promise<string>,
+    private getCookieHeader: (url: string) => string,
+    private getCookieMap: (url: string) => Record<string, string>,
+    private saveCookies: (cookies: Cookie[]) => void,
+    private getChapterReferer: () => string,
+  ) {
+    super(interceptorId);
+  }
+
+  override async interceptRequest(request: Request): Promise<Request> {
+    if (!request.url.includes("/serve-image?")) return request;
+    const cookieHeader = this.getCookieHeader(request.url);
+    const cookieMap = this.getCookieMap(request.url);
+    const referer = this.getChapterReferer();
+    request.headers = {
+      ...request.headers,
+      referer,
+      origin: DOMAIN,
+      "user-agent": await this.getUserAgent(),
+      accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+    };
+    if (Object.keys(cookieMap).length > 0) {
+      request.cookies = {
+        ...(request.cookies ?? {}),
+        ...cookieMap,
+      };
+    }
+    return request;
+  }
+
+  override async interceptResponse(
+    _request: Request,
+    response: any,
+    data: ArrayBuffer,
+  ): Promise<ArrayBuffer> {
+    try {
+      const cookies = (response?.cookies ?? []) as Cookie[];
+      if (cookies.length > 0) {
+        this.saveCookies(cookies);
+      }
+    } catch {
+      // Ignore cookie save errors
+    }
     return data;
   }
 }
@@ -67,12 +146,29 @@ class TheBlankRequestLoggerInterceptor extends PaperbackInterceptor {
     if (request.url.includes("theblank.net")) {
       const cookieNames = request.cookies ? Object.keys(request.cookies) : [];
       const headerCookie = request.headers?.cookie ?? "(none)";
+      if (
+        headerCookie === "(none)" &&
+        request.cookies &&
+        Object.keys(request.cookies).length > 0
+      ) {
+        const cookieHeader = Object.entries(request.cookies)
+          .map(([name, value]) => `${name}=${value}`)
+          .join("; ");
+        request.headers = {
+          ...request.headers,
+          cookie: cookieHeader,
+        };
+      }
       console.log(
         `[TheBlank] Outgoing cookies for ${request.url}: ${
           cookieNames.length ? cookieNames.join(", ") : "(none)"
         }`,
       );
-      console.log(`[TheBlank] Outgoing cookie header for ${request.url}: ${headerCookie}`);
+      console.log(
+        `[TheBlank] Outgoing cookie header for ${request.url}: ${
+          request.headers?.cookie ?? "(none)"
+        }`,
+      );
     }
     return request;
   }
@@ -91,7 +187,8 @@ type TheBlankImplementation = Extension &
   SearchResultsProviding &
   MangaProviding &
   ChapterProviding &
-  CloudflareBypassRequestProviding;
+  CloudflareBypassRequestProviding &
+  SettingsFormProviding;
 
 export class TheBlankExtension implements TheBlankImplementation {
   private cookieStorageInterceptor = new CookieStorageInterceptor({
@@ -103,6 +200,39 @@ export class TheBlankExtension implements TheBlankImplementation {
   private imageInterceptor = new TheBlankImageInterceptor(
     "theblank-images",
     this.getUserAgent.bind(this),
+    this.buildCookieHeader.bind(this),
+    this.buildCookieMap.bind(this),
+    (cookies: Cookie[]) => {
+      for (const cookie of cookies) {
+        const normalized: Cookie = {
+          ...cookie,
+          domain: cookie.domain || ".theblank.net",
+          path: cookie.path || "/",
+        };
+        this.cookieStorageInterceptor.deleteCookie(normalized);
+        this.cookieStorageInterceptor.setCookie(normalized);
+      }
+    },
+  );
+  private serveImageInterceptor = new TheBlankServeImageInterceptor(
+    "theblank-serve-image",
+    this.getUserAgent.bind(this),
+    this.buildCookieHeader.bind(this),
+    this.buildCookieMap.bind(this),
+    (cookies: Cookie[]) => {
+      for (const cookie of cookies) {
+        const normalized: Cookie = {
+          ...cookie,
+          domain: cookie.domain || ".theblank.net",
+          path: cookie.path || "/",
+        };
+        this.cookieStorageInterceptor.deleteCookie(normalized);
+        this.cookieStorageInterceptor.setCookie(normalized);
+      }
+    },
+    () =>
+      (Application.getState("theblank_last_chapter_url") as string | undefined) ??
+      `${DOMAIN}/`,
   );
   private lastCloudflareUrl: string | undefined;
   private cachedUserAgent: string | undefined;
@@ -117,6 +247,7 @@ export class TheBlankExtension implements TheBlankImplementation {
     this.cookieStorageInterceptor.registerInterceptor();
     this.requestLoggerInterceptor.registerInterceptor();
     this.imageInterceptor.registerInterceptor();
+    this.serveImageInterceptor.registerInterceptor();
     this.rateLimiter.registerInterceptor();
   }
 
@@ -132,15 +263,19 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   private async makeRequest(url: string): Promise<Request> {
     const ua = await this.getUserAgent();
+    const cookieHeader = this.buildCookieHeader(url);
+    const cookieMap = this.buildCookieMap(url);
     return {
       url,
       method: "GET",
+      cookies: cookieMap,
       headers: {
         "user-agent": ua,
         referer: DOMAIN,
         origin: DOMAIN,
         accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "accept-language": "en-US,en;q=0.9",
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
       },
     };
   }
@@ -154,9 +289,49 @@ export class TheBlankExtension implements TheBlankImplementation {
     return absolute || "";
   }
 
+  private buildCookieHeader(url: string): string {
+    const cookies = this.getCookiesForUrl(url);
+    return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
+  }
+
+  private buildCookieMap(url: string): Record<string, string> {
+    const cookies = this.getCookiesForUrl(url);
+    return cookies.reduce<Record<string, string>>((acc, cookie) => {
+      if (cookie.name) acc[cookie.name] = cookie.value || "";
+      return acc;
+    }, {});
+  }
+
+  private getCookiesForUrl(url: string): Cookie[] {
+    const cookies: readonly Cookie[] = this.cookieStorageInterceptor?.cookies ?? [];
+    const hostMatch = url.match(/^https?:\/\/([^/]+)/i);
+    const host = hostMatch?.[1]?.toLowerCase() ?? "";
+    const path = url.replace(/^https?:\/\/[^/]+/i, "") || "/";
+
+    return cookies.filter((cookie) => {
+      const name = (cookie.name || "").trim();
+      if (!name) return false;
+
+      const domain = (cookie.domain || "").toLowerCase();
+      const cookiePath = cookie.path || "/";
+
+      const domainOk =
+        !domain ||
+        host === domain.replace(/^\./, "") ||
+        host.endsWith(domain.replace(/^\./, ""));
+      const pathOk = path.startsWith(cookiePath || "/");
+
+      return domainOk && pathOk;
+    });
+  }
+
   private hasClearanceCookie(): boolean {
     const cookies: readonly Cookie[] = this.cookieStorageInterceptor?.cookies ?? [];
     return cookies.some((cookie) => (cookie.name || "").toLowerCase() === "cf_clearance");
+  }
+
+  private hasAnyAuthCookie(): boolean {
+    return this.hasCookie("asgfp2") || this.hasClearanceCookie();
   }
 
   private async getUserAgent(): Promise<string> {
@@ -174,10 +349,20 @@ export class TheBlankExtension implements TheBlankImplementation {
   }
 
   private async ensureAntiBotCookies(targetUrl: string): Promise<void> {
-    if (this.hasCookie("asgfp2")) return;
+    if (this.hasAnyAuthCookie()) return;
     try {
       const seedRequest = await this.makeRequest(DOMAIN);
       const [response] = await Application.scheduleRequest(seedRequest);
+      // Ensure any cookies from the seed request are persisted.
+      for (const cookie of response.cookies ?? []) {
+        const normalized: Cookie = {
+          ...cookie,
+          domain: cookie.domain || ".theblank.net",
+          path: cookie.path || "/",
+        };
+        this.cookieStorageInterceptor.deleteCookie(normalized);
+        this.cookieStorageInterceptor.setCookie(normalized);
+      }
       const responseCookieNames = response.cookies
         .map((cookie) => cookie.name)
         .filter(Boolean)
@@ -187,14 +372,18 @@ export class TheBlankExtension implements TheBlankImplementation {
           responseCookieNames ? ` (set: ${responseCookieNames})` : ""
         }`,
       );
-      if (this.hasCookie("asgfp2")) return;
+      if (this.hasAnyAuthCookie()) return;
     } catch (error) {
       console.log(`[TheBlank] Seed request failed: ${String(error)}`);
     }
 
     // If we still don't have the antibot cookie, trigger a WebView bypass.
-    this.lastCloudflareUrl = targetUrl;
-    throw new CloudflareError({ url: targetUrl, method: "GET" }, "Missing antibot cookie (asgfp2)");
+    const bypassUrl = this.getBypassUrl(targetUrl);
+    this.lastCloudflareUrl = bypassUrl;
+    throw new CloudflareError(
+      { url: bypassUrl, method: "GET" },
+      "Missing antibot cookie (asgfp2)",
+    );
   }
 
   private parseChapterInfo(
@@ -284,6 +473,20 @@ export class TheBlankExtension implements TheBlankImplementation {
     const [response, data] = await Application.scheduleRequest(request);
     const raw = Application.arrayBufferToUTF8String(data).trim();
 
+    if (response.status >= 400) {
+      this.lastCloudflareUrl = request.url;
+      console.log(
+        `[TheBlank] HTTP ${response.status} for ${request.url}, forcing WebView bypass`,
+      );
+      throw new CloudflareError(
+        {
+          url: request.url,
+          method: "GET",
+        },
+        `HTTP ${response.status}`,
+      );
+    }
+
     const looksLikeChallenge =
       raw.includes("cf-browser-verification") ||
       raw.includes("challenge-platform") ||
@@ -316,6 +519,19 @@ export class TheBlankExtension implements TheBlankImplementation {
     const $ = cheerio.load(raw);
     const dataPage = this.extractDataPage($);
     return { props: dataPage?.props ?? null, $ };
+  }
+
+  private enforceWebviewOnBlockedPage(
+    url: string,
+    props: any | null,
+    $: CheerioAPI | null,
+  ): void {
+    if (props) return;
+    const hasAppData = $?.("#app").attr("data-page") != null;
+    if (!hasAppData) {
+      this.lastCloudflareUrl = url;
+      throw new CloudflareError({ url, method: "GET" }, "Missing page data, forcing WebView");
+    }
   }
 
   private async fetchCheerio(urlOrRequest: string | Request): Promise<CheerioAPI> {
@@ -371,6 +587,10 @@ export class TheBlankExtension implements TheBlankImplementation {
     return [];
   }
 
+  async getSettingsForm(): Promise<Form> {
+    return new TheBlankSettingsForm(this);
+  }
+
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
       {
@@ -399,6 +619,16 @@ export class TheBlankExtension implements TheBlankImplementation {
     const page = metadata?.page ?? 1;
 
     const { props, $ } = await this.fetchPageData(DOMAIN);
+    if (props?.latestChapters?.data && section.id !== "last-chapters") {
+      const entry = props.latestChapters.data.find((item: any) => item?.chapters?.[0]?.slug);
+      const mangaId = this.resolveMangaIdFromEntry(entry);
+      const chapter = entry?.chapters?.[0];
+      if (mangaId && chapter?.slug) {
+        const chapterUrl = `${DOMAIN}/serie/${mangaId}/chapter/${chapter.slug}/`;
+        Application.setState(chapterUrl, "theblank_last_chapter_url");
+      }
+    }
+
     if (props?.trendingSerie && section.id === "trending") {
       for (const entry of props.trendingSerie) {
         const mangaId = this.resolveMangaIdFromEntry(entry);
@@ -532,6 +762,23 @@ export class TheBlankExtension implements TheBlankImplementation {
     const paginatedItems = items.slice(startIndex, endIndex);
     const hasMorePages = items.length > endIndex;
 
+    // Cache a random manga id from discover for future bypasses
+    const mangaIds = items
+      .map((item) => ("mangaId" in item ? item.mangaId : undefined))
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+    if (mangaIds.length > 0) {
+      const pick = mangaIds[Math.floor(Math.random() * mangaIds.length)];
+      Application.setState(pick, "theblank_last_manga_id");
+    }
+
+    const chapterItem = items.find(
+      (item) => item.type === "chapterUpdatesCarouselItem",
+    ) as DiscoverSectionItem | undefined;
+    if (chapterItem && "mangaId" in chapterItem && "chapterId" in chapterItem) {
+      const chapterUrl = `${DOMAIN}/serie/${chapterItem.mangaId}/chapter/${chapterItem.chapterId}/`;
+      Application.setState(chapterUrl, "theblank_last_chapter_url");
+    }
+
     return {
       items: paginatedItems,
       metadata: hasMorePages ? { page: page + 1 } : undefined,
@@ -552,6 +799,7 @@ export class TheBlankExtension implements TheBlankImplementation {
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
     const url = `${DOMAIN}/serie/${mangaId}/`;
     const { props, $ } = await this.fetchPageData(url);
+    this.enforceWebviewOnBlockedPage(url, props, $);
 
     const serie = props?.serie ?? props?.series ?? props?.manga ?? props?.data?.serie ?? null;
 
@@ -643,6 +891,7 @@ export class TheBlankExtension implements TheBlankImplementation {
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const url = `${DOMAIN}/serie/${sourceManga.mangaId}/`;
     const { props, $ } = await this.fetchPageData(url);
+    this.enforceWebviewOnBlockedPage(url, props, $);
 
     const chapterEntries =
       props?.chapters?.data ||
@@ -731,32 +980,182 @@ export class TheBlankExtension implements TheBlankImplementation {
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     const url = `${DOMAIN}/serie/${chapter.sourceManga.mangaId}/chapter/${chapter.chapterId}/`;
-    const $ = await this.fetchCheerio(url);
+    Application.setState(url, "theblank_last_chapter_url");
+    if (!Application.getState("theblank_chapter_bypass_done")) {
+      Application.setState(true, "theblank_chapter_bypass_done");
+      this.lastCloudflareUrl = url;
+      throw new CloudflareError({ url, method: "GET" }, "Force chapter WebView bypass");
+    }
+    const { props, $ } = await this.fetchPageData(url);
 
     const pages: string[] = [];
 
-    // More robust: collect all relevant images
-    $("img").each((_, elem) => {
-      const src = $(elem).attr("src") || $(elem).attr("data-src");
-      if (!src) return;
+    const addImageUrl = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
 
-      // Keep your original filter, but loosen it a bit in case CDN changes
-      // If you know the exact CDN path, adjust this.
-      if (src.includes("mangaid") || src.includes("/storage/") || src.includes("/uploads/")) {
-        pages.push(this.normalizeImageUrl(src));
+      // Prefer direct file URLs over serve-image to avoid CF auth on images.
+      if (trimmed.includes("/serve-image?") && trimmed.includes("path=")) {
+        const match = trimmed.match(/[?&]path=([^&]+)/);
+        if (match?.[1]) {
+          try {
+            const decoded = decodeURIComponent(match[1]);
+            if (decoded.startsWith("/")) {
+              const directUrl = `${DOMAIN}${decoded}`;
+              if (/\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(directUrl)) {
+                pages.push(this.normalizeImageUrl(directUrl));
+                return;
+              }
+            }
+          } catch {
+            // Ignore decoding errors
+          }
+        }
       }
-    });
+
+      const isLikelyImage =
+        /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(trimmed) ||
+        trimmed.includes("/storage/") ||
+        trimmed.includes("/uploads/") ||
+        (trimmed.startsWith("http") && trimmed.includes("theblank.net"));
+      if (!isLikelyImage) return;
+      pages.push(this.normalizeImageUrl(trimmed));
+    };
+
+    const collectFromProps = (value: any) => {
+      if (!value) return;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (typeof item === "string") {
+            addImageUrl(item);
+          }
+        }
+        return;
+      }
+      if (typeof value === "object") {
+        for (const item of Object.values(value)) {
+          if (typeof item === "string") {
+            addImageUrl(item);
+          }
+        }
+      }
+    };
+
+    collectFromProps(props?.chapter?.pages);
+    collectFromProps(props?.chapter?.images);
+    collectFromProps(props?.pages);
+    collectFromProps(props?.images);
+    collectFromProps(props?.data?.pages);
+    collectFromProps(props?.data?.images);
+    collectFromProps(props?.chapter?.data?.pages);
+    collectFromProps(props?.chapter?.data?.images);
+    collectFromProps(props?.signed_urls);
+    collectFromProps(props?.data?.signed_urls);
+    collectFromProps(props?.chapter?.signed_urls);
+    collectFromProps(props?.chapter?.data?.signed_urls);
+
+    const collectDeep = (value: any, depth: number) => {
+      if (!value || depth <= 0) return;
+      if (typeof value === "string") {
+        if (value.includes(",")) {
+          for (const part of value.split(",")) {
+            const cleaned = part.trim().split(" ")[0] || part.trim();
+            if (cleaned) addImageUrl(cleaned);
+          }
+        } else {
+          addImageUrl(value);
+        }
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          collectDeep(item, depth - 1);
+        }
+        return;
+      }
+      if (typeof value === "object") {
+        for (const key of Object.keys(value)) {
+          collectDeep(value[key], depth - 1);
+        }
+      }
+    };
+
+    if (pages.length === 0) {
+      // More robust: collect all relevant images
+      $?.("img").each((_, elem) => {
+        const src = $(elem).attr("src") || $(elem).attr("data-src");
+        if (!src) return;
+        addImageUrl(src);
+      });
+
+      // Fallback for lazy-loaded pages that only provide data-src URLs.
+      if (pages.length === 0) {
+        $?.("img").each((_, elem) => {
+          const src = $(elem).attr("data-original") || $(elem).attr("data-lazy-src");
+          if (!src) return;
+          addImageUrl(src);
+        });
+      }
+    }
+
+    if (pages.length === 0 && props) {
+      collectDeep(props, 6);
+    }
+
+    const unique = Array.from(new Set(pages));
+    const withoutBranding = unique.filter(
+      (page) => !/theblank\.png|logo|favicon|icon/i.test(page),
+    );
+    const contentPages = withoutBranding.filter((page) =>
+      /\/(storage|uploads)\//i.test(page),
+    );
+    const nonServeImage = withoutBranding.filter((page) => !page.includes("/serve-image"));
+    const preferredFormats = nonServeImage.filter((page) =>
+      /\.(jpe?g|png)(\?.*)?$/i.test(page),
+    );
+    const webpFormats = nonServeImage.filter((page) => /\.webp(\?.*)?$/i.test(page));
+    const serveImage = withoutBranding.filter((page) => page.includes("/serve-image"));
+
+    const filteredPages =
+      preferredFormats.length > 0
+        ? preferredFormats
+        : contentPages.length > 0
+          ? contentPages
+          : webpFormats.length > 0
+            ? webpFormats
+            : nonServeImage.length > 0
+              ? nonServeImage
+              : serveImage;
+
+    if (filteredPages.length === 0 && !this.hasAnyAuthCookie()) {
+      this.lastCloudflareUrl = url;
+      throw new CloudflareError({ url, method: "GET" }, "Missing bypass cookies");
+    }
+
+    if (filteredPages.length === 0) {
+      const propKeys = props && typeof props === "object" ? Object.keys(props) : [];
+      const chapterKeys =
+        props?.chapter && typeof props.chapter === "object" ? Object.keys(props.chapter) : [];
+      console.log(
+        `[TheBlank] No chapter pages found for ${url}. props keys: ${
+          propKeys.length ? propKeys.join(", ") : "(none)"
+        } chapter keys: ${chapterKeys.length ? chapterKeys.join(", ") : "(none)"}`,
+      );
+      if ($) {
+        const imgCount = $("img").length;
+        console.log(`[TheBlank] HTML img count for ${url}: ${imgCount}`);
+      }
+    }
 
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages,
+      pages: filteredPages,
     };
   }
 
   async getCloudflareBypassRequest(): Promise<Request> {
-    const url = this.lastCloudflareUrl ?? DOMAIN;
-    return await this.makeRequest(url);
+    return await this.makeRequest(this.getBypassUrl(this.lastCloudflareUrl));
   }
 
   async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
@@ -787,8 +1186,13 @@ export class TheBlankExtension implements TheBlankImplementation {
       );
     }
     for (const cookie of cookies) {
-      this.cookieStorageInterceptor.deleteCookie(cookie);
-      this.cookieStorageInterceptor.setCookie(cookie);
+      const normalized: Cookie = {
+        ...cookie,
+        domain: cookie.domain || ".theblank.net",
+        path: cookie.path || "/",
+      };
+      this.cookieStorageInterceptor.deleteCookie(normalized);
+      this.cookieStorageInterceptor.setCookie(normalized);
     }
     const storedCookies = this.cookieStorageInterceptor.cookies ?? [];
     const storedNames = storedCookies
@@ -800,6 +1204,44 @@ export class TheBlankExtension implements TheBlankImplementation {
         storedNames ? ` (${storedNames})` : ""
       }`,
     );
+  }
+
+  async resetBypassCookies(): Promise<void> {
+    const stored = this.cookieStorageInterceptor.cookies ?? [];
+    for (const cookie of stored) {
+      this.cookieStorageInterceptor.deleteCookie(cookie);
+    }
+    Application.setState(undefined, "theblank_last_manga_id");
+    Application.setState(undefined, "theblank_last_chapter_url");
+    Application.setState(undefined, "theblank_chapter_bypass_done");
+    this.lastCloudflareUrl = undefined;
+    console.log(`[TheBlank] Reset bypass cookies (${stored.length} cleared)`);
+  }
+
+  private getBypassUrl(inputUrl: string | undefined): string {
+    const url = inputUrl || "";
+    const isHome =
+      url === "" || url === DOMAIN || url === `${DOMAIN}/` || url === `${DOMAIN}/home`;
+    const storedChapter = Application.getState("theblank_last_chapter_url") as
+      | string
+      | undefined;
+    if (storedChapter) {
+      return storedChapter;
+    }
+
+    // If the input URL is a manga page and we have a stored chapter, prefer chapter.
+    if (!isHome && /\/serie\/[^/]+\/?$/.test(url)) {
+      return url;
+    }
+
+    if (!isHome) return url;
+
+    const stored = Application.getState("theblank_last_manga_id") as string | undefined;
+    if (stored) {
+      return `${DOMAIN}/serie/${stored}/`;
+    }
+
+    return FALLBACK_BYPASS_CHAPTER_URL || `${DOMAIN}/serie/${FALLBACK_BYPASS_MANGA_SLUG}/`;
   }
 
   // --- URL helpers ---

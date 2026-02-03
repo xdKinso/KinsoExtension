@@ -1,4 +1,4 @@
-import { ContentRating, SourceIntents, type SourceInfo } from "@paperback/types";
+import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/types";
 
 export default {
   name: "TheBlank",
@@ -8,12 +8,12 @@ export default {
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,
-  capabilities: [
-    SourceIntents.DISCOVER_SECIONS_PROVIDING,
-    SourceIntents.SEARCH_RESULTS_PROVIDING,
-    SourceIntents.CHAPTER_PROVIDING,
+  capabilities:
+    SourceIntents.SETTINGS_FORM_PROVIDING |
+    SourceIntents.DISCOVER_SECIONS_PROVIDING |
+    SourceIntents.SEARCH_RESULTS_PROVIDING |
+    SourceIntents.CHAPTER_PROVIDING |
     SourceIntents.CLOUDFLARE_BYPASS_PROVIDING,
-  ],
   badges: [],
   developers: [
     {
@@ -21,4 +21,4 @@ export default {
       github: "https://github.com/xdKinso",
     },
   ],
-} satisfies SourceInfo;
+} satisfies ExtensionInfo;
