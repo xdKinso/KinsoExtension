@@ -110,8 +110,35 @@ class OmegaScansInterceptor extends PaperbackInterceptor {
   }
 }
 
+class OmegaScansImageInterceptor extends PaperbackInterceptor {
+  override async interceptRequest(request: Request): Promise<Request> {
+    const isImageRequest = /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(request.url);
+    if (!isImageRequest) return request;
+    const referer =
+      (Application.getState("omega_last_chapter_url") as string | undefined) ?? `${DOMAIN}/`;
+    request.headers = {
+      ...request.headers,
+      referer,
+      origin: DOMAIN,
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+    };
+    return request;
+  }
+
+  override async interceptResponse(
+    _request: Request,
+    _response: Response,
+    data: ArrayBuffer,
+  ): Promise<ArrayBuffer> {
+    return data;
+  }
+}
+
 export class OmegaScansExtension implements OmegaScansImplementation {
   interceptor = new OmegaScansInterceptor("interceptor");
+  imageInterceptor = new OmegaScansImageInterceptor("omega-images");
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 8,
@@ -121,6 +148,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
 
   async initialise(): Promise<void> {
     this.interceptor.registerInterceptor();
+    this.imageInterceptor.registerInterceptor();
     this.rateLimiter.registerInterceptor();
   }
 
@@ -421,28 +449,41 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+    const chapterUrl = `${DOMAIN}/series/${chapter.sourceManga.mangaId}/${chapter.chapterId}`;
+    Application.setState(chapterUrl, "omega_last_chapter_url");
     const request: Request = {
-      url: `${DOMAIN}/series/${chapter.sourceManga.mangaId}/${chapter.chapterId}`,
+      url: chapterUrl,
       method: "GET",
       headers: {},
     };
 
-    const [_response, data] = await Application.scheduleRequest(request);
-    let html = Application.arrayBufferToUTF8String(data);
-    let pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
+    const rscRequest = {
+      ...request,
+      headers: {
+        ...(request.headers ?? {}),
+        RSC: "1",
+        Accept: "text/x-component",
+      },
+    };
+    const [_rscResponse, rscData] = await Application.scheduleRequest(rscRequest);
+    let rscHtml = Application.arrayBufferToUTF8String(rscData);
+    let pageUrls = this.extractPageUrls(rscHtml, chapter.sourceManga.mangaId);
+
+    const uploadPaths = this.extractUploadPaths(rscHtml);
+    if (uploadPaths.length > 0) {
+      const uploadBase = await this.resolveUploadBase(uploadPaths[0]!, chapterUrl);
+      pageUrls = this.buildUploadUrls(uploadPaths, uploadBase);
+    }
 
     if (pageUrls.length === 0) {
-      const rscRequest = {
-        ...request,
-        headers: {
-          ...(request.headers ?? {}),
-          RSC: "1",
-          Accept: "text/x-component",
-        },
-      };
-      const [_rscResponse, rscData] = await Application.scheduleRequest(rscRequest);
-      const rscHtml = Application.arrayBufferToUTF8String(rscData);
-      pageUrls = this.extractPageUrls(rscHtml, chapter.sourceManga.mangaId);
+      const [_response, data] = await Application.scheduleRequest(request);
+      const html = Application.arrayBufferToUTF8String(data);
+      pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
+      const htmlUploadPaths = this.extractUploadPaths(html);
+      if (htmlUploadPaths.length > 0) {
+        const uploadBase = await this.resolveUploadBase(htmlUploadPaths[0]!, chapterUrl);
+        pageUrls = this.buildUploadUrls(htmlUploadPaths, uploadBase);
+      }
     }
 
     return {
@@ -532,6 +573,49 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     });
 
     return unique;
+  }
+
+  private extractUploadPaths(html: string): string[] {
+    const uploads = html.match(/uploads\/series\/[^\s"\\]+/g) || [];
+    return Array.from(new Set(uploads));
+  }
+
+  private buildUploadUrls(paths: string[], base: string): string[] {
+    const urls = paths.map((p) => `${base}${p}`);
+    const unique = Array.from(new Set(urls));
+    unique.sort((a, b) => {
+      const aNum = this.extractPageNumber(a);
+      const bNum = this.extractPageNumber(b);
+      if (aNum == null || bNum == null) return 0;
+      return aNum - bNum;
+    });
+    return unique;
+  }
+
+  private async resolveUploadBase(path: string, referer: string): Promise<string> {
+    const candidates = [
+      `${API_DOMAIN}/`,
+      "https://media.omegascans.org/file/zFSsXt/",
+      "https://media.omegascans.org/",
+    ];
+    for (const base of candidates) {
+      const url = `${base}${path}`;
+      const request: Request = {
+        url,
+        method: "GET",
+        headers: {
+          referer,
+          origin: DOMAIN,
+          "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      };
+      const [response] = await Application.scheduleRequest(request);
+      if (response.status >= 200 && response.status < 300) {
+        return base;
+      }
+    }
+    return `${API_DOMAIN}/`;
   }
 
   private extractPageNumber(url: string): number | null {
