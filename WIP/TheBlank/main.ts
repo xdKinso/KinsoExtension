@@ -30,6 +30,15 @@ import * as cheerio from "cheerio";
 import { type CheerioAPI } from "cheerio";
 import { type Metadata } from "./models";
 import { TheBlankSettingsForm } from "./forms";
+import {
+  ABYTES,
+  SecretStream,
+  SecretStreamState,
+  TAG_FINAL,
+  decodeBase64Url,
+  rsaDecryptOaep,
+  sha256Bytes,
+} from "./decryption";
 
 const DOMAIN = "https://theblank.net";
 const ITEMS_PER_PAGE = 10;
@@ -37,6 +46,13 @@ const FORCE_CF_BYPASS = false; // Set to true to debug Cloudflare bypass
 const FALLBACK_BYPASS_MANGA_SLUG = "someone-stop-her";
 const FALLBACK_BYPASS_CHAPTER_URL =
   "https://theblank.net/serie/6iCOdorYUC-someone-stop-her/chapter/dioxt8jNo898-chapter-0-prologue/";
+const RSA_PRIVATE_KEY_DER_BASE64 =
+  "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCfJkRxTUY9KHqsOlQx0pw3PwWlCYByfGV8WtRaYbq0psSFUcdoltjKtWjN3zxP7ecqGG8FiR92IPjUMP3JvTSb8KOGHIN6orhUG2kCvJR6mlqoSwolvdRBM+yp0k+GUkvd5Y9IvnM3nMf5iggzdFksuzAJD+WVKm2gq7z5JJaCqLQ9tjTItKiiCdEBMvPs5vPv8JxAT1hYLG0aLT81RAI3im647sVJt1MDOHgpNfa7ERC/Mkusdf8kEFalU14h++YZidz33b1FdVQHXA0HakvJd2LszIvKcsPvdKmjKOs8pJCEQcAQ6jzKcQPQ5t9+fD25b2A+aCQxMzQuGU1CjSjdAgMBAAECggEACDFwebGluX5LNuLXn3JWILGIAE5JecYHrbLkQVGTWPRkeWHo9V46PHuIzV+MXzXs821Hs64IDZtaDOp5MrU9NnGD/vC22PhmALEh4ynYn+JNRvB6eLOZqPr/dNONsEzmv6IEkgbrEuRpejeYm9H3rNgul+OBSTkpnaXLgteP6kY2qTVGw9g9AWAKixQzpIzMOoBLtvtegY5otvCZEF3inUD0jDiMLvhZhvuboQ52EcSHdpN8s5id3wAWLReXJ4fyo4ZjAOV+LB2A8QDs/DKf2iJqLDm7QEocp9Igkg1qAKEe6E8kTBlJyhKsRp9/7FeO8rcBC+B2ngzfjxzPWGCgbQKBgQDgvmVJ3pih1WRP6vF7vU3nXW1tyfvb2Chr9vqC/97J+fCuwjrgRLtX6PK1LgH8sWKpNy9WDOjmLr6QWPwHOB9Tv5MGulUKMA8htsQtREoZGoj7coJaw56kmeE3QRTAA/msxB+uhUiiBLkhJ1IohG6LsGHANePVQrZ/dD0s6BwiAwKBgQC1SIEItUG9g80cFfRofWWuMUy6SmMWnrfuFTI+9Jm2BoNQVeMeSuCCapcsVzN4QROW+LwNdYiNNJH4SZf1nQQS4nb2D9XYHa1wylfvoMIFynzvxXc55xWkWfn4B97uz8m47GHk2kM/YXvQqDtvCEGqej+Lfx2kqKKBYj6lsDoDnwKBgH+3UyIucDiPZskPr5ltE6dmbXhVr13Ysefg2620MGxBMChv0jt+c6RaigqyEYkDWRjmdm0FOxkL+VlYaCjGGO9jz+6j1w3KD99N2KAMzbsEXFHgWfmwbygFFnpq7prL54fpkEOCFKuV2YrgqIzD7XpOis5LEaUwmztE2Dr70Hj3AoGAMU8RWe8DfKr3BWarXiiNmb3rItjM7wApA2dcjWc20B4hZZ6W8kxnmNGpYPQvGcyJqYzqibaod9AOzDwoSzR0QTa8KN3RysD3xjAjjxho7e5P4WASt/s1Fckrht2NM+Ps+JHDZt4/YGQBq5W25NKYGei6lBT1WS5NVWgFpkey3/0CgYBULWvgnNAI5o4EE5hjWvFpW4+LSQ9yaMp+XgxP0SB/7McA68Q/QcZXlgklTO2OVYHBZZjWbfV6QkiRRFRA+yj/Hv5mBdZP1TsZxmkQqrramlqrSD+9VsXNjAnDI7tcN5iBuQciJwFy7OrtqrqI5LVItP+bEUgho1o0Hh52noJzHA==";
+const RSA_PUBLIC_KEY_DER_BASE64 =
+  "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnyZEcU1GPSh6rDpUMdKcNz8FpQmAcnxlfFrUWmG6tKbEhVHHaJbYyrVozd88T+3nKhhvBYkfdiD41DD9yb00m/CjhhyDeqK4VBtpAryUeppaqEsKJb3UQTPsqdJPhlJL3eWPSL5zN5zH+YoIM3RZLLswCQ/llSptoKu8+SSWgqi0PbY0yLSoognRATLz7Obz7/CcQE9YWCxtGi0/NUQCN4puuO7FSbdTAzh4KTX2uxEQvzJLrHX/JBBWpVNeIfvmGYnc9929RXVUB1wNB2pLyXdi7MyLynLD73SpoyjrPKSQhEHAEOo8ynED0Obffnw9uW9gPmgkMTM0LhlNQo0o3QIDAQAB";
+const CHUNK_SIZE = 65536 + ABYTES;
+const PREFIX_LENGTH = 128;
+const IMAGE_HEADER_LENGTH = 24;
 
 class TheBlankImageInterceptor extends PaperbackInterceptor {
   constructor(
@@ -45,6 +61,7 @@ class TheBlankImageInterceptor extends PaperbackInterceptor {
     private getCookieHeader: (url: string) => string,
     private getCookieMap: (url: string) => Record<string, string>,
     private saveCookies: (cookies: Cookie[]) => void,
+    private decryptResponse: (request: Request, data: ArrayBuffer) => ArrayBuffer,
   ) {
     super(interceptorId);
   }
@@ -66,7 +83,7 @@ class TheBlankImageInterceptor extends PaperbackInterceptor {
     };
     if (Object.keys(cookieMap).length > 0) {
       request.cookies = {
-        ...(request.cookies ?? {}),
+        ...request.cookies,
         ...cookieMap,
       };
     }
@@ -74,7 +91,7 @@ class TheBlankImageInterceptor extends PaperbackInterceptor {
   }
 
   override async interceptResponse(
-    _request: Request,
+    request: Request,
     response: any,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
@@ -86,7 +103,7 @@ class TheBlankImageInterceptor extends PaperbackInterceptor {
     } catch {
       // Ignore cookie save errors
     }
-    return data;
+    return this.decryptResponse(request, data);
   }
 }
 
@@ -98,6 +115,7 @@ class TheBlankServeImageInterceptor extends PaperbackInterceptor {
     private getCookieMap: (url: string) => Record<string, string>,
     private saveCookies: (cookies: Cookie[]) => void,
     private getChapterReferer: () => string,
+    private decryptResponse: (request: Request, data: ArrayBuffer) => ArrayBuffer,
   ) {
     super(interceptorId);
   }
@@ -117,7 +135,7 @@ class TheBlankServeImageInterceptor extends PaperbackInterceptor {
     };
     if (Object.keys(cookieMap).length > 0) {
       request.cookies = {
-        ...(request.cookies ?? {}),
+        ...request.cookies,
         ...cookieMap,
       };
     }
@@ -125,7 +143,7 @@ class TheBlankServeImageInterceptor extends PaperbackInterceptor {
   }
 
   override async interceptResponse(
-    _request: Request,
+    request: Request,
     response: any,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
@@ -137,7 +155,7 @@ class TheBlankServeImageInterceptor extends PaperbackInterceptor {
     } catch {
       // Ignore cookie save errors
     }
-    return data;
+    return this.decryptResponse(request, data);
   }
 }
 
@@ -209,6 +227,7 @@ export class TheBlankExtension implements TheBlankImplementation {
         this.cookieStorageInterceptor.setCookie(normalized);
       }
     },
+    this.decryptImagePayload.bind(this),
   );
   private serveImageInterceptor = new TheBlankServeImageInterceptor(
     "theblank-serve-image",
@@ -227,9 +246,14 @@ export class TheBlankExtension implements TheBlankImplementation {
       }
     },
     () => (Application.getState("theblank_last_chapter_url") as string | undefined) ?? `${DOMAIN}/`,
+    this.decryptImagePayload.bind(this),
   );
   private lastCloudflareUrl: string | undefined;
   private cachedUserAgent: string | undefined;
+  private inertiaVersion: string | undefined;
+  private csrfToken: string | undefined;
+  private sessionKey: string | undefined;
+  private sessionKeyTimestamp: number | undefined;
 
   rateLimiter = new BasicRateLimiter("rateLimiter", {
     numberOfRequests: 3,
@@ -375,6 +399,268 @@ export class TheBlankExtension implements TheBlankImplementation {
     throw new CloudflareError({ url: bypassUrl, method: "GET" }, "Missing antibot cookie (asgfp2)");
   }
 
+  private getCookieValue(name: string): string | undefined {
+    const target = name.toLowerCase();
+    const cookies = this.cookieStorageInterceptor?.cookies ?? [];
+    return cookies.find((cookie) => (cookie.name || "").toLowerCase() === target)?.value;
+  }
+
+  private async ensureInertiaTokens(): Promise<{
+    version: string;
+    csrfToken: string;
+    xsrfToken: string;
+  }> {
+    await this.ensureAntiBotCookies(DOMAIN);
+    const xsrf = this.getCookieValue("XSRF-TOKEN");
+    if (this.inertiaVersion && this.csrfToken && xsrf) {
+      return { version: this.inertiaVersion, csrfToken: this.csrfToken, xsrfToken: xsrf };
+    }
+
+    const request = await this.makeRequest(DOMAIN);
+    const [response, data] = await Application.scheduleRequest(request);
+    if (response.status === 403 || response.status === 503) {
+      this.lastCloudflareUrl = request.url;
+      throw new CloudflareError({ url: request.url, method: "GET" });
+    }
+    for (const cookie of response.cookies ?? []) {
+      const normalized: Cookie = {
+        ...cookie,
+        domain: cookie.domain || ".theblank.net",
+        path: cookie.path || "/",
+      };
+      this.cookieStorageInterceptor.deleteCookie(normalized);
+      this.cookieStorageInterceptor.setCookie(normalized);
+    }
+
+    const html = Application.arrayBufferToUTF8String(data);
+    const $ = cheerio.load(html);
+    const dataPage = this.extractDataPage($);
+    const version = dataPage?.version;
+    const csrf = $("meta[name=csrf-token]").attr("content");
+    const xsrfToken = this.getCookieValue("XSRF-TOKEN");
+
+    if (!version || !csrf || !xsrfToken) {
+      this.lastCloudflareUrl = request.url;
+      throw new CloudflareError(
+        { url: request.url, method: "GET" },
+        "Failed to acquire Inertia tokens",
+      );
+    }
+
+    this.inertiaVersion = version;
+    this.csrfToken = csrf;
+    return { version, csrfToken: csrf, xsrfToken };
+  }
+
+  private async apiRequest(options: {
+    url: string;
+    method?: "GET" | "POST";
+    body?: string;
+    includeXSRF: boolean;
+    includeCSRF: boolean;
+    includeVersion: boolean;
+    contentType?: string;
+  }): Promise<Request> {
+    const ua = await this.getUserAgent();
+    const { version, csrfToken, xsrfToken } = await this.ensureInertiaTokens();
+    const cookieHeader = this.buildCookieHeader(options.url);
+    const cookieMap = this.buildCookieMap(options.url);
+    const headers: Record<string, string> = {
+      "user-agent": ua,
+      referer: `${DOMAIN}/`,
+      origin: DOMAIN,
+      accept: "application/json",
+      "x-requested-with": "XMLHttpRequest",
+    };
+    if (options.includeVersion) {
+      headers["x-inertia"] = "true";
+      headers["x-inertia-version"] = version;
+    }
+    if (options.includeXSRF) {
+      headers["x-xsrf-token"] = xsrfToken;
+    }
+    if (options.includeCSRF) {
+      headers["x-csrf-token"] = csrfToken;
+    }
+    if (options.contentType) {
+      headers["content-type"] = options.contentType;
+    }
+    if (cookieHeader) {
+      headers.cookie = cookieHeader;
+    }
+
+    return {
+      url: options.url,
+      method: options.method ?? "GET",
+      headers,
+      cookies: cookieMap,
+      body: options.body,
+    };
+  }
+
+  private generateNonce(): string {
+    const timestampHex = Math.floor(Date.now() / 1000)
+      .toString(16)
+      .padStart(16, "0");
+    const random = new Uint8Array(24);
+    for (let i = 0; i < random.length; i++) {
+      random[i] = Math.floor(Math.random() * 256);
+    }
+    const randomHex = Array.from(random, (b) => b.toString(16).padStart(2, "0")).join("");
+    return timestampHex + randomHex;
+  }
+
+  private async getSessionKey(): Promise<string> {
+    const now = Date.now();
+    if (
+      this.sessionKey &&
+      this.sessionKeyTimestamp &&
+      now - this.sessionKeyTimestamp < 60 * 60 * 1000
+    ) {
+      return this.sessionKey;
+    }
+
+    const fetchSid = async (): Promise<string> => {
+      const payload = JSON.stringify({
+        checksum: RSA_PUBLIC_KEY_DER_BASE64,
+        timestamp: this.generateNonce(),
+      });
+
+      const request = await this.apiRequest({
+        url: `${DOMAIN}/checksum`,
+        method: "POST",
+        body: payload,
+        includeXSRF: false,
+        includeCSRF: true,
+        includeVersion: false,
+        contentType: "application/json",
+      });
+
+      const [response, data] = await Application.scheduleRequest(request);
+      if (
+        response.status === 401 ||
+        response.status === 403 ||
+        response.status === 419 ||
+        response.status === 503
+      ) {
+        this.lastCloudflareUrl = request.url;
+        throw new CloudflareError({ url: request.url, method: "GET" });
+      }
+      const raw = Application.arrayBufferToUTF8String(data).trim();
+      let json: any;
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        throw new Error("Invalid checksum response");
+      }
+      const sid = json?.sid;
+      if (!sid || typeof sid !== "string") {
+        throw new Error("Invalid checksum response");
+      }
+      return sid;
+    };
+
+    let sid: string;
+    try {
+      sid = await fetchSid();
+    } catch (error) {
+      // Refresh tokens and retry once
+      this.inertiaVersion = undefined;
+      this.csrfToken = undefined;
+      try {
+        sid = await fetchSid();
+      } catch {
+        this.lastCloudflareUrl = `${DOMAIN}/`;
+        throw new CloudflareError(
+          { url: `${DOMAIN}/`, method: "GET" },
+          "Invalid checksum response",
+        );
+      }
+    }
+
+    const decrypted = rsaDecryptOaep(RSA_PRIVATE_KEY_DER_BASE64, decodeBase64Url(sid));
+    const key = this.bytesToString(decrypted);
+    this.sessionKey = key;
+    this.sessionKeyTimestamp = now;
+    return key;
+  }
+
+  private decryptImagePayload(request: Request, data: ArrayBuffer): ArrayBuffer {
+    const hashIndex = request.url.indexOf("#");
+    if (hashIndex === -1) return data;
+    const fragment = request.url.slice(hashIndex + 1);
+    if (!fragment || fragment === "thumbnail") return data;
+
+    // If we don't have a session key yet, don't attempt to decrypt.
+    if (!this.sessionKey) return data;
+
+    const bytes = new Uint8Array(data);
+    if (bytes.length <= PREFIX_LENGTH + IMAGE_HEADER_LENGTH + ABYTES) return data;
+
+    const nonce = bytes.subarray(PREFIX_LENGTH, PREFIX_LENGTH + IMAGE_HEADER_LENGTH);
+    const encrypted = bytes.subarray(PREFIX_LENGTH + IMAGE_HEADER_LENGTH);
+
+    // Fragment is "<sessionKey><filename>". Remove the filename before hashing.
+    const fileName = (() => {
+      const base = request.url.split("?")[0] ?? "";
+      const lastSlash = base.lastIndexOf("/");
+      return lastSlash >= 0 ? base.slice(lastSlash + 1) : "";
+    })();
+    const sessionPart =
+      fileName && fragment.endsWith(fileName)
+        ? fragment.slice(0, Math.max(0, fragment.length - fileName.length))
+        : fragment;
+
+    const key = sha256Bytes(sessionPart);
+    const stream = new SecretStream();
+    const state = new SecretStreamState();
+    stream.initPull(state, nonce, key);
+
+    const parts: Uint8Array[] = [];
+    let offset = 0;
+    while (offset < encrypted.length) {
+      const end = Math.min(encrypted.length, offset + CHUNK_SIZE);
+      const chunk = encrypted.subarray(offset, end);
+      const result = stream.pull(state, chunk);
+      if (!result) {
+        return data;
+      }
+      parts.push(result.message);
+      offset = end;
+      if (result.tag === TAG_FINAL) break;
+    }
+
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    const out = new Uint8Array(total);
+    let cursor = 0;
+    for (const part of parts) {
+      out.set(part, cursor);
+      cursor += part.length;
+    }
+    return out.buffer;
+  }
+
+  private checkCloudflareStatus(status: number, url: string): void {
+    if (status === 403 || status === 503) {
+      this.lastCloudflareUrl = url;
+      throw new CloudflareError({ url, method: "GET" });
+    }
+  }
+
+  private bytesToString(bytes: Uint8Array): string {
+    const Decoder = (globalThis as { TextDecoder?: typeof TextDecoder }).TextDecoder;
+    if (Decoder) {
+      return new Decoder().decode(bytes);
+    }
+    let out = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      out += String.fromCharCode(...Array.from(chunk));
+    }
+    return out;
+  }
+
   private parseChapterInfo(
     rawTitle: string,
     fallbackNumber: number | string | undefined,
@@ -451,7 +737,12 @@ export class TheBlankExtension implements TheBlankImplementation {
       this.lastCloudflareUrl = url;
       throw new CloudflareError({ url, method: "GET" }, "Forced Cloudflare bypass (debug)");
     }
-    const request = await this.makeRequest(url);
+    const request = await this.apiRequest({
+      url,
+      includeXSRF: true,
+      includeCSRF: false,
+      includeVersion: true,
+    });
     const cookieNames = (this.cookieStorageInterceptor?.cookies ?? [])
       .map((cookie) => cookie.name)
       .filter(Boolean)
@@ -598,6 +889,11 @@ export class TheBlankExtension implements TheBlankImplementation {
     section: DiscoverSection,
     metadata: Metadata | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
+    if (!this.hasAnyAuthCookie()) {
+      const bypassUrl = this.getBypassUrl(DOMAIN);
+      this.lastCloudflareUrl = bypassUrl;
+      throw new CloudflareError({ url: bypassUrl, method: "GET" }, "Missing bypass cookies");
+    }
     const items: DiscoverSectionItem[] = [];
     const page = metadata?.page ?? 1;
 
@@ -848,7 +1144,7 @@ export class TheBlankExtension implements TheBlankImplementation {
       value
         .toLowerCase()
         .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9._\-@()\[\]%?#+=/&:]/g, "");
+        .replace(/[^a-z0-9._\-@()[\]%?#+=/&:]/g, "");
 
     for (const rawTag of rawTags as any[]) {
       const tag = typeof rawTag === "string" ? rawTag : rawTag?.name || rawTag?.title;
@@ -970,6 +1266,19 @@ export class TheBlankExtension implements TheBlankImplementation {
       throw new CloudflareError({ url, method: "GET" }, "Force chapter WebView bypass");
     }
     const { props, $ } = await this.fetchPageData(url);
+
+    const signedUrls = this.collectSignedUrls(props);
+    if (signedUrls.length > 0) {
+      const key = await this.getSessionKey();
+      const pages = signedUrls
+        .map((signedUrl) => this.decorateSignedUrl(signedUrl, key))
+        .filter((page): page is string => Boolean(page));
+      return {
+        id: chapter.chapterId,
+        mangaId: chapter.sourceManga.mangaId,
+        pages,
+      };
+    }
 
     const pages: string[] = [];
 
@@ -1131,6 +1440,44 @@ export class TheBlankExtension implements TheBlankImplementation {
     };
   }
 
+  private collectSignedUrls(props: any): string[] {
+    const urls: string[] = [];
+    const collect = (value: any) => {
+      if (!value) return;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (typeof item === "string") urls.push(item);
+        }
+        return;
+      }
+      if (typeof value === "object") {
+        for (const entry of Object.values(value)) {
+          if (typeof entry === "string") urls.push(entry);
+        }
+      }
+    };
+    collect(props?.signed_urls);
+    collect(props?.data?.signed_urls);
+    collect(props?.chapter?.signed_urls);
+    collect(props?.chapter?.data?.signed_urls);
+    return Array.from(new Set(urls));
+  }
+
+  private decorateSignedUrl(rawUrl: string, key: string): string | null {
+    const absolute = this.absolutizeUrl(rawUrl);
+    if (!absolute) return null;
+    try {
+      const url = new URL(absolute);
+      const path = url.searchParams.get("path");
+      if (!path) return url.toString();
+      const filename = path.substring(path.lastIndexOf("/") + 1);
+      url.hash = `${key}${filename}`;
+      return url.toString();
+    } catch {
+      return absolute;
+    }
+  }
+
   async getCloudflareBypassRequest(): Promise<Request> {
     return await this.makeRequest(this.getBypassUrl(this.lastCloudflareUrl));
   }
@@ -1192,6 +1539,10 @@ export class TheBlankExtension implements TheBlankImplementation {
     Application.setState(undefined, "theblank_last_chapter_url");
     Application.setState(undefined, "theblank_chapter_bypass_done");
     this.lastCloudflareUrl = undefined;
+    this.inertiaVersion = undefined;
+    this.csrfToken = undefined;
+    this.sessionKey = undefined;
+    this.sessionKeyTimestamp = undefined;
     console.log(`[TheBlank] Reset bypass cookies (${stored.length} cleared)`);
   }
 

@@ -61,18 +61,38 @@ export class AtsumaruExtension implements AtsumaruImplementation {
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
       {
-        id: "popular_updates_section",
-        title: "Popular Updates",
-        type: DiscoverSectionType.featured,
-      },
-      {
         id: "trending_section",
         title: "Trending",
         type: DiscoverSectionType.prominentCarousel,
       },
       {
+        id: "most_bookmarked_section",
+        title: "Most Bookmarked",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "popular_updates_section",
+        title: "Hot Updates",
+        type: DiscoverSectionType.featured,
+      },
+      {
         id: "recently_updated_section",
         title: "Recently Updated",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "top_rated_section",
+        title: "Top Rated",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "popular_section",
+        title: "Popular",
+        type: DiscoverSectionType.simpleCarousel,
+      },
+      {
+        id: "recently_added_section",
+        title: "Recently Added",
         type: DiscoverSectionType.simpleCarousel,
       },
     ];
@@ -87,8 +107,16 @@ export class AtsumaruExtension implements AtsumaruImplementation {
         return this.getPopularSectionItems(section, metadata);
       case "trending_section":
         return this.getTrendingSectionItems(section, metadata);
+      case "most_bookmarked_section":
+        return this.getMostBookmarkedSectionItems(section, metadata);
       case "recently_updated_section":
         return this.getRecentlyUpdatedSectionItems(section, metadata);
+      case "top_rated_section":
+        return this.getTopRatedSectionItems(section, metadata);
+      case "popular_section":
+        return this.getPopularSection(section, metadata);
+      case "recently_added_section":
+        return this.getRecentlyAddedSectionItems(section, metadata);
       default:
         return { items: [] };
     }
@@ -361,6 +389,46 @@ export class AtsumaruExtension implements AtsumaruImplementation {
     return { items };
   }
 
+  async getMostBookmarkedSectionItems(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    section: DiscoverSection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    metadata: metadata | undefined,
+  ): Promise<PagedResults<DiscoverSectionItem>> {
+    const items = await this.getHomeCarouselItems("most-bookmarked", "simpleCarouselItem");
+    return { items };
+  }
+
+  async getTopRatedSectionItems(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    section: DiscoverSection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    metadata: metadata | undefined,
+  ): Promise<PagedResults<DiscoverSectionItem>> {
+    const items = await this.getHomeCarouselItems("top-rated", "simpleCarouselItem");
+    return { items };
+  }
+
+  async getPopularSection(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    section: DiscoverSection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    metadata: metadata | undefined,
+  ): Promise<PagedResults<DiscoverSectionItem>> {
+    const items = await this.getHomeCarouselItems("popular", "simpleCarouselItem");
+    return { items };
+  }
+
+  async getRecentlyAddedSectionItems(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    section: DiscoverSection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    metadata: metadata | undefined,
+  ): Promise<PagedResults<DiscoverSectionItem>> {
+    const items = await this.getHomeCarouselItems("recently-added", "simpleCarouselItem");
+    return { items };
+  }
+
   private async getHomeCarouselItems(
     sectionKey: string,
     itemType: "featuredCarouselItem" | "simpleCarouselItem" | "prominentCarouselItem",
@@ -369,9 +437,11 @@ export class AtsumaruExtension implements AtsumaruImplementation {
     const request = { url: apiUrl, method: "GET" };
     const data = await this.fetchJson<HomePageApiResponse>(request);
     const homePage = data.homePage;
-    const carouselSection = homePage.sections.find(
-      (s) => s.type === "carousel" && s.key === sectionKey,
-    );
+    const carouselSection = homePage.sections.find((s) => {
+      const section = s as { layout?: string; type?: string; key?: string };
+      const isCarousel = section.layout === "carousel" || section.type === "carousel";
+      return isCarousel && section.key === sectionKey;
+    });
     const items: DiscoverSectionItem[] = [];
 
     for (const item of carouselSection?.items || []) {

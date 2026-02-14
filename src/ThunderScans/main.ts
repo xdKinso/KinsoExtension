@@ -420,13 +420,13 @@ export class ThunderScansExtension implements ThunderScansImplementation {
 
   private extractMangaId(url: string): string | null {
     // Extract manga ID from URL like /comics/manga-slug/ or /comics/manga-slug
-    const match = url.match(/\/comics\/([^\/]+)/);
+    const match = url.match(/\/comics\/([^/]+)/);
     return match && match[1] ? match[1] : null;
   }
 
   private extractChapterId(url: string): string | null {
     // Extract chapter ID from URL like /manga-slug-chapter-123/
-    const match = url.match(/\/([^\/]+chapter[^\/]+)/);
+    const match = url.match(/\/([^/]+chapter[^/]+)/);
     if (match && match[1]) {
       return match[1];
     }

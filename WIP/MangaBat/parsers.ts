@@ -141,7 +141,7 @@ export function parseMangaDetails($: CheerioAPI, mangaId: string): SourceManga {
         const slugId = text
           .toLowerCase()
           .replace(/\s+/g, "-")
-          .replace(/[^\w\-]/g, "");
+          .replace(/[^\w-]/g, "");
         tags.push({ id: slugId, title: text });
       }
     }

@@ -460,7 +460,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const rscRequest = {
       ...request,
       headers: {
-        ...(request.headers ?? {}),
+        ...request.headers,
         RSC: "1",
         Accept: "text/x-component",
       },
@@ -621,7 +621,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const getKey = (url: string): string => {
       const pageNum = this.extractPageNumber(url);
       if (pageNum != null) return `num-${pageNum}`;
-      const match = url.match(/\/([^\/?#]+)$/);
+      const match = url.match(/\/([^/?#]+)$/);
       return (match?.[1] ?? url).toLowerCase();
     };
 
@@ -661,7 +661,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   }
 
   private extractPageNumber(url: string): number | null {
-    const filenameMatch = url.match(/\/([^\/?#]+)$/);
+    const filenameMatch = url.match(/\/([^/?#]+)$/);
     const filename = filenameMatch?.[1];
     if (!filename) return null;
     const stem = filename.split("?")[0] ?? filename;

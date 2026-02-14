@@ -26,7 +26,7 @@ export class MangaGoInterceptor extends PaperbackInterceptor {
 
   override async interceptRequest(request: Request): Promise<Request> {
     request.headers = {
-      ...(request.headers ?? {}),
+      ...request.headers,
       referer: DOMAIN,
       origin: DOMAIN,
       "user-agent":

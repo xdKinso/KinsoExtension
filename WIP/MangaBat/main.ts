@@ -320,7 +320,7 @@ export class MangaBatExtension implements MangaBatImplementation {
   }
 
   private extractMangaId(url: string): string | null {
-    const match = url.match(/\/manga\/([^\/\?#]+)/);
+    const match = url.match(/\/manga\/([^/?#]+)/);
     return match && match[1] ? match[1] : null;
   }
 
@@ -329,7 +329,7 @@ export class MangaBatExtension implements MangaBatImplementation {
     if (match && match[1]) {
       return `chapter-${match[1]}`;
     }
-    const match2 = url.match(/\/([^\/]+)\/?$/);
+    const match2 = url.match(/\/([^/]+)\/?$/);
     return match2 && match2[1] ? match2[1] : null;
   }
 

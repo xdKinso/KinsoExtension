@@ -137,7 +137,7 @@ export class VyMangaExtension implements VyMangaImplementation {
           const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
           if (genreMatch && genreMatch[1] && tag) {
             const id = genreMatch[1].toLowerCase();
-            if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+            if (id && /^[a-zA-Z0-9._\-@()[\]%?#+=/&:]+$/.test(id)) {
               tags.push({ id: id, title: tag });
             }
           }
@@ -155,7 +155,7 @@ export class VyMangaExtension implements VyMangaImplementation {
         const genreMatch = href.match(/\/genre\/([a-zA-Z0-9-]+)/);
         if (genreMatch && genreMatch[1] && tag) {
           const id = genreMatch[1].toLowerCase();
-          if (id && /^[a-zA-Z0-9._\-@()\[\]%?#+=/&:]+$/.test(id)) {
+          if (id && /^[a-zA-Z0-9._\-@()[\]%?#+=/&:]+$/.test(id)) {
             tags.push({ id: id, title: tag });
           }
         }
@@ -628,7 +628,7 @@ export class VyMangaExtension implements VyMangaImplementation {
 
   private extractMangaId(url: string): string | null {
     // Extract manga ID from URL like /manga/manga-slug or https://vymanga.com/manga/manga-slug
-    const match = url.match(/\/manga\/([a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])(?:\/|\?|$|#)/);
+    const match = url.match(/\/manga\/([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\/|\?|$|#)/);
     if (!match || !match[1]) {
       // Try simpler match for short slugs or numeric IDs
       const simpleMatch = url.match(/\/manga\/([a-zA-Z0-9-]+)/);

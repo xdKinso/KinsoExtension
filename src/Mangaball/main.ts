@@ -459,7 +459,7 @@ export class MangaballExtension implements MangaballImplementation {
       const searchResults: SearchResultItem[] = [];
       for (const raw of response.data ?? []) {
         let mangaId = raw.url;
-        const idMatch = raw.url.match(/\/title-detail\/([^\/?#]+)/);
+        const idMatch = raw.url.match(/\/title-detail\/([^/?#]+)/);
         if (idMatch && idMatch[1]) {
           mangaId = idMatch[1];
         } else {

@@ -26,7 +26,7 @@ export function parseApiItemsToDiscoverItems(
     // Extract mangaId using the centralized logic
     // Robust mangaId extraction handling http/https and trailing slashes
     let mangaId = raw.url;
-    const idMatch = raw.url.match(/\/title-detail\/([^\/?#]+)/);
+    const idMatch = raw.url.match(/\/title-detail\/([^/?#]+)/);
     if (idMatch && idMatch[1]) {
       mangaId = idMatch[1];
     } else {

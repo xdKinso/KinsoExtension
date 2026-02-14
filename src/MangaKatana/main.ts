@@ -624,7 +624,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
       let pages: string[] = [];
 
       const imageArrayNameRegex = /data-src['"],\s*(\w+)/;
-      const imageUrlRegex = /\'([^\']*)\'/;
+      const imageUrlRegex = /'([^']*)'/;
 
       const imageScript = $("script:contains(data-src)").first().html() || "";
 
@@ -636,7 +636,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
           const imageArrayMatch = imageScript.match(imageArrayRegex);
 
           if (imageArrayMatch && imageArrayMatch[1]) {
-            const imageUrlMatches = imageArrayMatch[1].matchAll(/\'([^\']*)\'/g);
+            const imageUrlMatches = imageArrayMatch[1].matchAll(/'([^']*)'/g);
             for (const match of imageUrlMatches) {
               if (match[1]) {
                 pages.push(match[1]);
@@ -742,7 +742,7 @@ export class MangaKatanaExtension implements MangaKatanaImplementation {
           id: genre
             .toLowerCase()
             .replace(/\s+/g, "-")
-            .replace(/[^\w\-]/g, ""),
+            .replace(/[^\w-]/g, ""),
           title: genre,
         })),
       });
