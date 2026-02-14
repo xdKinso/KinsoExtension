@@ -470,9 +470,11 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     let pageUrls = this.extractPageUrls(rscHtml, chapter.sourceManga.mangaId);
 
     const uploadPaths = this.extractUploadPaths(rscHtml);
-    if (uploadPaths.length > 0) {
-      const uploadBase = await this.resolveUploadBase(uploadPaths[0]!, chapterUrl);
-      pageUrls = this.buildUploadUrls(uploadPaths, uploadBase);
+    const firstUploadPath = uploadPaths[0];
+    if (firstUploadPath) {
+      const uploadBase = await this.resolveUploadBase(firstUploadPath, chapterUrl);
+      const uploadUrls = this.buildUploadUrls(uploadPaths, uploadBase);
+      pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
     }
 
     if (pageUrls.length === 0) {
@@ -480,9 +482,11 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       const html = Application.arrayBufferToUTF8String(data);
       pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
       const htmlUploadPaths = this.extractUploadPaths(html);
-      if (htmlUploadPaths.length > 0) {
-        const uploadBase = await this.resolveUploadBase(htmlUploadPaths[0]!, chapterUrl);
-        pageUrls = this.buildUploadUrls(htmlUploadPaths, uploadBase);
+      const firstHtmlUploadPath = htmlUploadPaths[0];
+      if (firstHtmlUploadPath) {
+        const uploadBase = await this.resolveUploadBase(firstHtmlUploadPath, chapterUrl);
+        const uploadUrls = this.buildUploadUrls(htmlUploadPaths, uploadBase);
+        pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
       }
     }
 
@@ -524,12 +528,19 @@ export class OmegaScansExtension implements OmegaScansImplementation {
 
   private extractPageUrls(html: string, seriesSlug: string): string[] {
     const direct: string[] = html.match(/https:\/\/media\.omegascans\.org\/[^\s"\\]+/g) || [];
-    const escaped: string[] =
-      html.match(/https:\\\/\\\/media\.omegascans\.org\\\/[^\s"\\]+/g) || [];
+    const directQuoted: string[] = html.match(/https:\/\/media\.omegascans\.org\/[^"\\]+/g) || [];
+    const escaped: string[] = html.match(/https:\\\/\\\/media\.omegascans\.org\\\/[^"\\]+/g) || [];
     const partial: string[] = html.match(/media\.omegascans\.org\/[^\s"\\]+/g) || [];
     const uploadsOnly: string[] = html.match(/uploads\/series\/[^\s"\\]+/g) || [];
+    const uploadsQuoted: string[] = html.match(/uploads\/series\/[^"\\]+/g) || [];
 
-    const matches: string[] = direct.concat(escaped, partial, uploadsOnly);
+    const matches: string[] = direct.concat(
+      directQuoted,
+      escaped,
+      partial,
+      uploadsOnly,
+      uploadsQuoted,
+    );
     const normalized = matches.map((url) => url.replace(/\\\//g, "/").replace(/\\+/g, ""));
 
     const baseMatch = normalized
@@ -562,7 +573,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       /\.(jpe?g|png|webp)$/i.test(url.split("?")[0] ?? ""),
     );
 
-    const unique = Array.from(new Set(withExtensions));
+    const unique = Array.from(new Set(withExtensions.map((url) => encodeURI(url))));
     unique.sort((a, b) => {
       const aNum = this.extractPageNumber(a);
       const bNum = this.extractPageNumber(b);
@@ -576,12 +587,23 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   }
 
   private extractUploadPaths(html: string): string[] {
-    const uploads = html.match(/uploads\/series\/[^\s"\\]+/g) || [];
-    return Array.from(new Set(uploads));
+    const uploads: string[] = html.match(/uploads\/series\/[^\s"\\]+/g) ?? [];
+    const uploadsQuoted: string[] = html.match(/uploads\/series\/[^"\\]+/g) ?? [];
+    return Array.from(new Set(uploads.concat(uploadsQuoted)));
   }
 
   private buildUploadUrls(paths: string[], base: string): string[] {
-    const urls = paths.map((p) => `${base}${p}`);
+    const urls = paths.flatMap((p) => {
+      const encoded = encodeURI(p);
+      if (/\.(jpe?g|png|webp)$/i.test(p)) {
+        return [`${base}${encoded}`];
+      }
+      return [
+        `${base}${encodeURI(`${p}.jpg`)}`,
+        `${base}${encodeURI(`${p}.png`)}`,
+        `${base}${encodeURI(`${p}.webp`)}`,
+      ];
+    });
     const unique = Array.from(new Set(urls));
     unique.sort((a, b) => {
       const aNum = this.extractPageNumber(a);
@@ -592,42 +614,68 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     return unique;
   }
 
-  private async resolveUploadBase(path: string, referer: string): Promise<string> {
-    const candidates = [
-      `${API_DOMAIN}/`,
-      "https://media.omegascans.org/file/zFSsXt/",
-      "https://media.omegascans.org/",
-    ];
-    for (const base of candidates) {
-      const url = `${base}${path}`;
-      const request: Request = {
-        url,
-        method: "GET",
-        headers: {
-          referer,
-          origin: DOMAIN,
-          "user-agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      };
-      const [response] = await Application.scheduleRequest(request);
-      if (response.status >= 200 && response.status < 300) {
-        return base;
+  private mergePageUrls(primary: string[], secondary: string[], preferredBase?: string): string[] {
+    const all = [...primary, ...secondary].map((url) => encodeURI(url));
+    const chosen = new Map<string, string>();
+
+    const getKey = (url: string): string => {
+      const pageNum = this.extractPageNumber(url);
+      if (pageNum != null) return `num-${pageNum}`;
+      const match = url.match(/\/([^\/?#]+)$/);
+      return (match?.[1] ?? url).toLowerCase();
+    };
+
+    const score = (url: string): number => {
+      if (preferredBase && url.startsWith(preferredBase)) return 4;
+      let s = 0;
+      if (url.startsWith("https://media.omegascans.org/")) s += 3;
+      if (url.startsWith(API_DOMAIN)) s -= 1;
+      const lowered = url.toLowerCase();
+      if (lowered.includes(" copy.") || lowered.includes("%20copy.")) s += 2;
+      s += Math.min(url.length, 200) / 200; // tiny preference for longer (more specific) names
+      return s;
+    };
+
+    for (const url of all) {
+      const key = getKey(url);
+      const current = chosen.get(key);
+      if (!current || score(url) > score(current)) {
+        chosen.set(key, url);
       }
     }
-    return `${API_DOMAIN}/`;
+
+    const unique = Array.from(chosen.values());
+    unique.sort((a, b) => {
+      const aNum = this.extractPageNumber(a);
+      const bNum = this.extractPageNumber(b);
+      if (aNum == null || bNum == null) return 0;
+      return aNum - bNum;
+    });
+    return unique;
+  }
+
+  private async resolveUploadBase(path: string, referer: string): Promise<string> {
+    // The site serves chapter pages from the media host; prefer that consistently.
+    // This avoids API host 404s seen for some series.
+    return "https://media.omegascans.org/file/zFSsXt/";
   }
 
   private extractPageNumber(url: string): number | null {
-    const match = url.match(/\/(\d+)(?:\.[a-zA-Z0-9]+)?$/);
-    if (!match) {
-      return null;
+    const filenameMatch = url.match(/\/([^\/?#]+)$/);
+    const filename = filenameMatch?.[1];
+    if (!filename) return null;
+    const stem = filename.split("?")[0] ?? filename;
+    // Prefer a number right before the extension, even with extra words (e.g. "01 copy.jpg")
+    const extMatch = stem.match(/(\d+)(?=[^0-9]*\.(?:jpe?g|png|webp|gif)$)/i);
+    if (extMatch?.[1]) {
+      return parseInt(extMatch[1], 10);
     }
-    const pageStr = match[1];
-    if (!pageStr) {
-      return null;
+    // Fallback: last number anywhere in the filename
+    const anyMatch = stem.match(/(\d+)(?!.*\d)/);
+    if (anyMatch?.[1]) {
+      return parseInt(anyMatch[1], 10);
     }
-    return parseInt(pageStr, 10);
+    return null;
   }
 
   private parseChapterNumber(name: string, slug: string): number {
