@@ -470,10 +470,11 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       const apiDetails = await this.fetchJson<ApiChapterDetailsResponse>(apiDetailsRequest);
       const apiPages = this.normalizeApiPageUrls(apiDetails.chapter?.chapter_data?.images);
       if (apiPages.length > 0) {
+        const validApiPages = await this.filterValidImageUrls(apiPages);
         return {
           id: chapter.chapterId,
           mangaId: chapter.sourceManga.mangaId,
-          pages: apiPages,
+          pages: validApiPages.length > 0 ? validApiPages : apiPages,
         };
       }
     } catch {
@@ -504,7 +505,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
 
     const uploadPaths = this.extractUploadPaths(rscHtml);
     const firstUploadPath = uploadPaths[0];
-    if (firstUploadPath) {
+    if (firstUploadPath && pageUrls.length === 0) {
       const uploadBase = await this.resolveUploadBase(firstUploadPath, chapterUrl);
       const uploadUrls = this.buildUploadUrls(uploadPaths, uploadBase);
       pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
@@ -520,17 +521,18 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       );
       const htmlUploadPaths = this.extractUploadPaths(html);
       const firstHtmlUploadPath = htmlUploadPaths[0];
-      if (firstHtmlUploadPath) {
+      if (firstHtmlUploadPath && pageUrls.length === 0) {
         const uploadBase = await this.resolveUploadBase(firstHtmlUploadPath, chapterUrl);
         const uploadUrls = this.buildUploadUrls(htmlUploadPaths, uploadBase);
         pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
       }
     }
 
+    const validPages = await this.filterValidImageUrls(pageUrls);
     return {
       id: chapter.chapterId,
       mangaId: chapter.sourceManga.mangaId,
-      pages: pageUrls,
+      pages: validPages.length > 0 ? validPages : pageUrls,
     };
   }
 
@@ -785,6 +787,56 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       return aNum - bNum;
     });
     return unique;
+  }
+
+  private async filterValidImageUrls(urls: string[]): Promise<string[]> {
+    const checks = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          const [response] = await Application.scheduleRequest({
+            url,
+            method: "HEAD",
+            headers: {
+              accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+              referer: `${DOMAIN}/`,
+              origin: DOMAIN,
+            },
+          });
+          const statusOk = response.status >= 200 && response.status < 300;
+          const contentType =
+            this.getHeaderValue(response.headers, "content-type")?.toLowerCase() ?? "";
+          const contentLengthRaw = this.getHeaderValue(response.headers, "content-length");
+          const contentLength = contentLengthRaw ? parseInt(contentLengthRaw, 10) : Number.NaN;
+          const isImage = contentType.startsWith("image/");
+          // 120-byte JSON-like payloads can slip through as "pages"; keep only real image-sized files.
+          const hasReasonableSize = Number.isNaN(contentLength) || contentLength >= 1024;
+          return statusOk && isImage && hasReasonableSize ? url : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    return checks.filter((url): url is string => Boolean(url));
+  }
+
+  private getHeaderValue(
+    headers: Record<string, string | string[] | number | undefined> | undefined,
+    name: string,
+  ): string | undefined {
+    if (!headers) {
+      return undefined;
+    }
+    const target = name.toLowerCase();
+    for (const [k, v] of Object.entries(headers)) {
+      if (k.toLowerCase() !== target || v == null) {
+        continue;
+      }
+      if (Array.isArray(v)) {
+        return v[0];
+      }
+      return String(v);
+    }
+    return undefined;
   }
 
   private extractPageNumber(url: string): number | null {
