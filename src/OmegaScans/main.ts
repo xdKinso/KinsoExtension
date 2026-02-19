@@ -83,6 +83,14 @@ interface ApiChapter {
   price?: number | null;
 }
 
+interface ApiChapterDetailsResponse {
+  chapter?: {
+    chapter_data?: {
+      images?: string[];
+    };
+  };
+}
+
 type OmegaScansImplementation = Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
@@ -451,6 +459,27 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     const chapterUrl = `${DOMAIN}/series/${chapter.sourceManga.mangaId}/${chapter.chapterId}`;
     Application.setState(chapterUrl, "omega_last_chapter_url");
+
+    // Prefer API-provided image list to avoid guessing file names.
+    const apiDetailsRequest: Request = {
+      url: `${API_DOMAIN}/chapter/${chapter.sourceManga.mangaId}/${chapter.chapterId}`,
+      method: "GET",
+      headers: {},
+    };
+    try {
+      const apiDetails = await this.fetchJson<ApiChapterDetailsResponse>(apiDetailsRequest);
+      const apiPages = this.normalizeApiPageUrls(apiDetails.chapter?.chapter_data?.images);
+      if (apiPages.length > 0) {
+        return {
+          id: chapter.chapterId,
+          mangaId: chapter.sourceManga.mangaId,
+          pages: apiPages,
+        };
+      }
+    } catch {
+      // Fall back to page HTML parsing if the API route fails.
+    }
+
     const request: Request = {
       url: chapterUrl,
       method: "GET",
@@ -468,6 +497,10 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const [_rscResponse, rscData] = await Application.scheduleRequest(rscRequest);
     let rscHtml = Application.arrayBufferToUTF8String(rscData);
     let pageUrls = this.extractPageUrls(rscHtml, chapter.sourceManga.mangaId);
+    pageUrls = this.mergePageUrls(
+      pageUrls,
+      this.extractImageTagUrls(rscHtml, chapter.sourceManga.mangaId),
+    );
 
     const uploadPaths = this.extractUploadPaths(rscHtml);
     const firstUploadPath = uploadPaths[0];
@@ -481,6 +514,10 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       const [_response, data] = await Application.scheduleRequest(request);
       const html = Application.arrayBufferToUTF8String(data);
       pageUrls = this.extractPageUrls(html, chapter.sourceManga.mangaId);
+      pageUrls = this.mergePageUrls(
+        pageUrls,
+        this.extractImageTagUrls(html, chapter.sourceManga.mangaId),
+      );
       const htmlUploadPaths = this.extractUploadPaths(html);
       const firstHtmlUploadPath = htmlUploadPaths[0];
       if (firstHtmlUploadPath) {
@@ -533,6 +570,7 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const partial: string[] = html.match(/media\.omegascans\.org\/[^\s"\\]+/g) || [];
     const uploadsOnly: string[] = html.match(/uploads\/series\/[^\s"\\]+/g) || [];
     const uploadsQuoted: string[] = html.match(/uploads\/series\/[^"\\]+/g) || [];
+    const escapedUploads: string[] = html.match(/uploads\\\/series\\\/[^"\\]+/g) || [];
 
     const matches: string[] = direct.concat(
       directQuoted,
@@ -540,8 +578,11 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       partial,
       uploadsOnly,
       uploadsQuoted,
+      escapedUploads,
     );
-    const normalized = matches.map((url) => url.replace(/\\\//g, "/").replace(/\\+/g, ""));
+    const normalized = matches
+      .map((url) => this.normalizeMatchedUrl(url))
+      .filter((url) => url.length > 0);
 
     const baseMatch = normalized
       .find((url) => url.includes("media.omegascans.org/file/"))
@@ -555,6 +596,9 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       }
 
       if (cleaned.startsWith("uploads/series/")) {
+        if (this.isInvalidUploadPath(cleaned)) {
+          return "";
+        }
         return `${mediaBase}${cleaned}`;
       }
 
@@ -565,7 +609,9 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       return cleaned;
     });
 
-    const uploads = expanded.filter((url) => url.includes("/uploads/"));
+    const uploads = expanded.filter(
+      (url) => url.includes("/uploads/") && !this.isInvalidUploadPath(url),
+    );
     const slugged = uploads.filter((url) => url.includes(`/uploads/series/${seriesSlug}/`));
     const filtered = slugged.length > 0 ? slugged : uploads.length > 0 ? uploads : expanded;
 
@@ -589,7 +635,12 @@ export class OmegaScansExtension implements OmegaScansImplementation {
   private extractUploadPaths(html: string): string[] {
     const uploads: string[] = html.match(/uploads\/series\/[^\s"\\]+/g) ?? [];
     const uploadsQuoted: string[] = html.match(/uploads\/series\/[^"\\]+/g) ?? [];
-    return Array.from(new Set(uploads.concat(uploadsQuoted)));
+    const escapedUploads: string[] = html.match(/uploads\\\/series\\\/[^"\\]+/g) ?? [];
+    const normalized = uploads
+      .concat(uploadsQuoted, escapedUploads)
+      .map((path) => this.normalizeMatchedUrl(path))
+      .filter((path) => path.startsWith("uploads/series/") && !this.isInvalidUploadPath(path));
+    return Array.from(new Set(normalized));
   }
 
   private buildUploadUrls(paths: string[], base: string): string[] {
@@ -598,11 +649,20 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       if (/\.(jpe?g|png|webp)$/i.test(p)) {
         return [`${base}${encoded}`];
       }
-      return [
-        `${base}${encodeURI(`${p}.jpg`)}`,
-        `${base}${encodeURI(`${p}.png`)}`,
-        `${base}${encodeURI(`${p}.webp`)}`,
-      ];
+      const numberedStem = p.match(/^(.*\/)(\d+)$/);
+      if (numberedStem?.[1] && numberedStem[2]) {
+        const prefix = numberedStem[1];
+        const num = numberedStem[2];
+        return [
+          `${base}${encodeURI(`${prefix}${num} copy.jpg`)}`,
+          `${base}${encodeURI(`${prefix}${num} copy.png`)}`,
+          `${base}${encodeURI(`${prefix}${num} copy.webp`)}`,
+          `${base}${encodeURI(`${prefix}${num}.jpg`)}`,
+          `${base}${encodeURI(`${prefix}${num}.png`)}`,
+          `${base}${encodeURI(`${prefix}${num}.webp`)}`,
+        ];
+      }
+      return [];
     });
     const unique = Array.from(new Set(urls));
     unique.sort((a, b) => {
@@ -658,6 +718,73 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     // The site serves chapter pages from the media host; prefer that consistently.
     // This avoids API host 404s seen for some series.
     return "https://media.omegascans.org/file/zFSsXt/";
+  }
+
+  private normalizeMatchedUrl(value: string): string {
+    return value
+      .replace(/\\\//g, "/")
+      .replace(/\\u002F/gi, "/")
+      .replace(/\\u003A/gi, ":")
+      .replace(/\\u0020/gi, " ")
+      .replace(/\\+/g, "")
+      .trim()
+      .replace(/^['"`([{<]+/, "")
+      .replace(/[,'"`)>\]}]+$/g, "");
+  }
+
+  private isInvalidUploadPath(path: string): boolean {
+    return /\/series\/undefined\//i.test(path);
+  }
+
+  private extractImageTagUrls(html: string, seriesSlug: string): string[] {
+    const srcMatches = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/gi), (m) => m[1] ?? "");
+    const dataSrcMatches = Array.from(
+      html.matchAll(/<img[^>]+data-src="([^"]+)"/gi),
+      (m) => m[1] ?? "",
+    );
+    const raw = srcMatches.concat(dataSrcMatches);
+    const normalized = raw
+      .map((url) => this.normalizeMatchedUrl(url))
+      .map((url) => {
+        if (url.startsWith("media.omegascans.org/")) return `https://${url}`;
+        return url;
+      })
+      .filter((url) => url.includes("media.omegascans.org/"))
+      .filter((url) => /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url));
+
+    const uploads = normalized.filter((url) => url.includes("/uploads/"));
+    const slugged = uploads.filter((url) => url.includes(`/uploads/series/${seriesSlug}/`));
+    const filtered = slugged.length > 0 ? slugged : uploads.length > 0 ? uploads : normalized;
+
+    const unique = Array.from(new Set(filtered.map((url) => encodeURI(url))));
+    unique.sort((a, b) => {
+      const aNum = this.extractPageNumber(a);
+      const bNum = this.extractPageNumber(b);
+      if (aNum == null || bNum == null) return 0;
+      return aNum - bNum;
+    });
+    return unique;
+  }
+
+  private normalizeApiPageUrls(urls?: string[]): string[] {
+    if (!urls?.length) {
+      return [];
+    }
+
+    const normalized = urls
+      .map((url) => this.normalizeMatchedUrl(url))
+      .filter((url) => url.startsWith("https://media.omegascans.org/"))
+      .filter((url) => !this.isInvalidUploadPath(url))
+      .filter((url) => /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url));
+
+    const unique = Array.from(new Set(normalized.map((url) => encodeURI(url))));
+    unique.sort((a, b) => {
+      const aNum = this.extractPageNumber(a);
+      const bNum = this.extractPageNumber(b);
+      if (aNum == null || bNum == null) return 0;
+      return aNum - bNum;
+    });
+    return unique;
   }
 
   private extractPageNumber(url: string): number | null {
