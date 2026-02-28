@@ -27,6 +27,7 @@ import { type Metadata } from "./models";
 
 const DOMAIN = "https://omegascans.org";
 const API_DOMAIN = "https://api.omegascans.org";
+const MEDIA_UPLOAD_BASE = "https://media.omegascans.org/file/zFSsXt/";
 
 interface ApiQueryMeta {
   current_page: number;
@@ -471,11 +472,13 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       const apiPages = this.normalizeApiPageUrls(apiDetails.chapter?.chapter_data?.images);
       if (apiPages.length > 0) {
         const validApiPages = await this.filterValidImageUrls(apiPages);
-        return {
-          id: chapter.chapterId,
-          mangaId: chapter.sourceManga.mangaId,
-          pages: validApiPages.length > 0 ? validApiPages : apiPages,
-        };
+        if (validApiPages.length > 0) {
+          return {
+            id: chapter.chapterId,
+            mangaId: chapter.sourceManga.mangaId,
+            pages: validApiPages,
+          };
+        }
       }
     } catch {
       // Fall back to page HTML parsing if the API route fails.
@@ -506,9 +509,9 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const uploadPaths = this.extractUploadPaths(rscHtml);
     const firstUploadPath = uploadPaths[0];
     if (firstUploadPath && pageUrls.length === 0) {
-      const uploadBase = await this.resolveUploadBase(firstUploadPath, chapterUrl);
-      const uploadUrls = this.buildUploadUrls(uploadPaths, uploadBase);
-      pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
+      const uploadBases = await this.resolveUploadBases(firstUploadPath, chapterUrl);
+      const uploadUrls = this.buildUploadUrls(uploadPaths, uploadBases);
+      pageUrls = this.mergePageUrls(pageUrls, uploadUrls);
     }
 
     if (pageUrls.length === 0) {
@@ -522,9 +525,9 @@ export class OmegaScansExtension implements OmegaScansImplementation {
       const htmlUploadPaths = this.extractUploadPaths(html);
       const firstHtmlUploadPath = htmlUploadPaths[0];
       if (firstHtmlUploadPath && pageUrls.length === 0) {
-        const uploadBase = await this.resolveUploadBase(firstHtmlUploadPath, chapterUrl);
-        const uploadUrls = this.buildUploadUrls(htmlUploadPaths, uploadBase);
-        pageUrls = this.mergePageUrls(pageUrls, uploadUrls, uploadBase);
+        const uploadBases = await this.resolveUploadBases(firstHtmlUploadPath, chapterUrl);
+        const uploadUrls = this.buildUploadUrls(htmlUploadPaths, uploadBases);
+        pageUrls = this.mergePageUrls(pageUrls, uploadUrls);
       }
     }
 
@@ -589,26 +592,34 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     const baseMatch = normalized
       .find((url) => url.includes("media.omegascans.org/file/"))
       ?.match(/https:\/\/media\.omegascans\.org\/file\/[^/]+\//);
-    const mediaBase = baseMatch?.[0] ?? "https://media.omegascans.org/file/zFSsXt/";
+    const mediaBase = baseMatch?.[0] ?? MEDIA_UPLOAD_BASE;
 
-    const expanded = normalized.map((url) => {
+    const expanded = normalized.flatMap((url) => {
       let cleaned = url;
       if (cleaned.startsWith("https://uploads/")) {
         cleaned = cleaned.replace("https://uploads/", "uploads/");
       }
 
+      if (cleaned.startsWith("/uploads/series/")) {
+        cleaned = cleaned.slice(1);
+      }
+
       if (cleaned.startsWith("uploads/series/")) {
         if (this.isInvalidUploadPath(cleaned)) {
-          return "";
+          return [];
         }
-        return `${mediaBase}${cleaned}`;
+        return [`${API_DOMAIN}/${cleaned}`, `${mediaBase}${cleaned}`];
       }
 
       if (cleaned.startsWith("media.omegascans.org/")) {
-        return `https://${cleaned}`;
+        return [`https://${cleaned}`];
       }
 
-      return cleaned;
+      if (cleaned.startsWith("api.omegascans.org/uploads/")) {
+        return [`https://${cleaned}`];
+      }
+
+      return [cleaned];
     });
 
     const uploads = expanded.filter(
@@ -645,24 +656,24 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     return Array.from(new Set(normalized));
   }
 
-  private buildUploadUrls(paths: string[], base: string): string[] {
+  private buildUploadUrls(paths: string[], bases: string[]): string[] {
     const urls = paths.flatMap((p) => {
       const encoded = encodeURI(p);
       if (/\.(jpe?g|png|webp)$/i.test(p)) {
-        return [`${base}${encoded}`];
+        return bases.map((base) => `${base}${encoded}`);
       }
       const numberedStem = p.match(/^(.*\/)(\d+)$/);
       if (numberedStem?.[1] && numberedStem[2]) {
         const prefix = numberedStem[1];
         const num = numberedStem[2];
-        return [
+        return bases.flatMap((base) => [
           `${base}${encodeURI(`${prefix}${num} copy.jpg`)}`,
           `${base}${encodeURI(`${prefix}${num} copy.png`)}`,
           `${base}${encodeURI(`${prefix}${num} copy.webp`)}`,
           `${base}${encodeURI(`${prefix}${num}.jpg`)}`,
           `${base}${encodeURI(`${prefix}${num}.png`)}`,
           `${base}${encodeURI(`${prefix}${num}.webp`)}`,
-        ];
+        ]);
       }
       return [];
     });
@@ -716,10 +727,8 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     return unique;
   }
 
-  private async resolveUploadBase(path: string, referer: string): Promise<string> {
-    // The site serves chapter pages from the media host; prefer that consistently.
-    // This avoids API host 404s seen for some series.
-    return "https://media.omegascans.org/file/zFSsXt/";
+  private async resolveUploadBases(path: string, referer: string): Promise<string[]> {
+    return [`${API_DOMAIN}/`, MEDIA_UPLOAD_BASE];
   }
 
   private normalizeMatchedUrl(value: string): string {
@@ -774,9 +783,35 @@ export class OmegaScansExtension implements OmegaScansImplementation {
     }
 
     const normalized = urls
-      .map((url) => this.normalizeMatchedUrl(url))
-      .filter((url) => url.startsWith("https://media.omegascans.org/"))
+      .flatMap((rawUrl) => {
+        let url = this.normalizeMatchedUrl(rawUrl);
+        if (url.startsWith("/uploads/series/")) {
+          url = url.slice(1);
+        }
+
+        if (url.startsWith("uploads/series/")) {
+          if (this.isInvalidUploadPath(url)) {
+            return [];
+          }
+          return [`${API_DOMAIN}/${url}`, `${MEDIA_UPLOAD_BASE}${url}`];
+        }
+
+        if (url.startsWith("media.omegascans.org/")) {
+          return [`https://${url}`];
+        }
+
+        if (url.startsWith("api.omegascans.org/uploads/")) {
+          return [`https://${url}`];
+        }
+
+        return [url];
+      })
       .filter((url) => !this.isInvalidUploadPath(url))
+      .filter(
+        (url) =>
+          url.startsWith("https://media.omegascans.org/") ||
+          url.startsWith("https://api.omegascans.org/uploads/"),
+      )
       .filter((url) => /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url));
 
     const unique = Array.from(new Set(normalized.map((url) => encodeURI(url))));
@@ -802,21 +837,45 @@ export class OmegaScansExtension implements OmegaScansImplementation {
               origin: DOMAIN,
             },
           });
-          const statusOk = response.status >= 200 && response.status < 300;
-          const contentType =
-            this.getHeaderValue(response.headers, "content-type")?.toLowerCase() ?? "";
-          const contentLengthRaw = this.getHeaderValue(response.headers, "content-length");
-          const contentLength = contentLengthRaw ? parseInt(contentLengthRaw, 10) : Number.NaN;
-          const isImage = contentType.startsWith("image/");
-          // 120-byte JSON-like payloads can slip through as "pages"; keep only real image-sized files.
-          const hasReasonableSize = Number.isNaN(contentLength) || contentLength >= 1024;
-          return statusOk && isImage && hasReasonableSize ? url : null;
+          if (this.isLikelyValidImageResponse(response.status, response.headers)) {
+            return url;
+          }
+        } catch {
+          // Fall through to GET probe.
+        }
+
+        try {
+          const [response] = await Application.scheduleRequest({
+            url,
+            method: "GET",
+            headers: {
+              accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+              referer: `${DOMAIN}/`,
+              origin: DOMAIN,
+              range: "bytes=0-0",
+            },
+          });
+          return this.isLikelyValidImageResponse(response.status, response.headers) ? url : null;
         } catch {
           return null;
         }
       }),
     );
     return checks.filter((url): url is string => Boolean(url));
+  }
+
+  private isLikelyValidImageResponse(
+    status: number,
+    headers: Record<string, string | string[] | number | undefined> | undefined,
+  ): boolean {
+    const statusOk = status >= 200 && status < 300;
+    const contentType = this.getHeaderValue(headers, "content-type")?.toLowerCase() ?? "";
+    const contentLengthRaw = this.getHeaderValue(headers, "content-length");
+    const contentLength = contentLengthRaw ? parseInt(contentLengthRaw, 10) : Number.NaN;
+    const isImage = contentType.startsWith("image/");
+    // Tiny JSON responses can masquerade as files via CDN; keep image-like payloads.
+    const hasReasonableSize = Number.isNaN(contentLength) || contentLength >= 512;
+    return statusOk && isImage && hasReasonableSize;
   }
 
   private getHeaderValue(
