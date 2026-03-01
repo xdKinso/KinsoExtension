@@ -6,26 +6,27 @@ import {
   type Request,
   type Response,
 } from "@paperback/types";
+import { filter } from "./main";
 import type {
-  ApiResponseChapter,
-  ApiResponseChapterPages,
-  ApiResponseFilter,
-  ApiResponseManga,
-  ApiResponseMangaInfo,
+  ApiResponse,
+  ResultManga,
+  MangaItem,
+  ResultChapter,
+  ResultFilter,
+  ChapterPages,
 } from "./models";
 
 const BASE_API = "https://comix.to/api/v2";
 export class MainInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
-    request.headers = {
-      ...request.headers,
-      referer: "https://comix.to/",
-      origin: "https://comix.to",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      accept: "image/webp,image/apng,image/*,*/*;q=0.8",
+    return {
+      ...request,
+      headers: {
+        ...request.headers,
+        referer: `${BASE_API}/`,
+        "user-agent": await Application.getDefaultUserAgent(),
+      },
     };
-    return request;
   }
 
   override async interceptResponse(
@@ -33,9 +34,16 @@ export class MainInterceptor extends PaperbackInterceptor {
     response: Response,
     data: ArrayBuffer,
   ): Promise<ArrayBuffer> {
-    void request;
-    void response;
-
+    const cfMitigated = response.headers?.["cf-mitigated"];
+    if (cfMitigated === "challenge") {
+      throw new CloudflareError({
+        url: request.url,
+        method: request.method ?? "GET",
+        headers: {
+          "user-agent": await Application.getDefaultUserAgent(),
+        },
+      });
+    }
     return data;
   }
 }
@@ -43,10 +51,11 @@ export class MainInterceptor extends PaperbackInterceptor {
 export const mainRateLimiter = new BasicRateLimiter("main", {
   numberOfRequests: 5,
   bufferInterval: 1,
-  ignoreImages: false,
+  ignoreImages: true,
 });
 
 export class ApiMaker {
+  apiLink = "";
   private checkResponseError(request: Request, response: Response): void {
     switch (response.status) {
       case 200:
@@ -74,11 +83,12 @@ export class ApiMaker {
         throw new Error(`Unexpected HTTP error: ${response.status}`);
     }
   }
-  private buildApiUrl(section: string, page: number): string {
-    const hidden_gen = (Application.getState("hide_genres") as string[] | undefined) ?? [];
-    const hidden_them = (Application.getState("hide_themes") as string[] | undefined) ?? [];
-    const show_only = (Application.getState("show_only") as string[] | undefined) ?? [];
-    const limit = (Application.getState("limit") as string[] | undefined) ?? ["7"];
+  private build(section: string, page: number): string {
+    const hidden_gen = filter.getHiddenGenresSettings();
+    const hidden_them = filter.getHiddenThemesSettings();
+    const allGenres = [...hidden_gen, ...hidden_them];
+    const show_only = filter.getShowOnlySettings();
+    const limit = filter.getLimitSettings();
     const additionalInfo = ["author"];
     switch (section) {
       case "popular": {
@@ -88,8 +98,29 @@ export class ApiMaker {
         url.setQueryItem("limit", "15");
         url.setQueryItem("includes[]", additionalInfo);
         if (show_only.length > 0) url.setQueryItem("types[]", show_only);
-        if (hidden_gen.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
-        if (hidden_them.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
+        return url.toString();
+      }
+      case "trending_manga": {
+        const url = new URL(BASE_API).addPathComponent("manga");
+        url.setQueryItem("order[views_30d]", "desc");
+        url.setQueryItem("types[]", "manga");
+        url.setQueryItem("limit", "28");
+        url.setQueryItem("release_year[from]", (new Date().getFullYear() - 1).toString());
+        url.setQueryItem("includes[]", additionalInfo);
+        url.setQueryItem("page", page.toString());
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
+        return url.toString();
+      }
+      case "trending_wt": {
+        const url = new URL(BASE_API).addPathComponent("manga");
+        url.setQueryItem("order[views_30d]", "desc");
+        url.setQueryItem("types[]", ["manhwa", "manhua"]);
+        url.setQueryItem("limit", "28");
+        url.setQueryItem("release_year[from]", (new Date().getFullYear() - 1).toString());
+        url.setQueryItem("includes[]", additionalInfo);
+        url.setQueryItem("page", page.toString());
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
         return url.toString();
       }
       case "follow": {
@@ -99,7 +130,7 @@ export class ApiMaker {
         url.setQueryItem("limit", "50");
         url.setQueryItem("includes[]", additionalInfo);
         if (show_only.length > 0) url.setQueryItem("types[]", show_only);
-        if (hidden_gen.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
         return url.toString();
       }
       case "recent": {
@@ -109,7 +140,17 @@ export class ApiMaker {
         url.setQueryItem("limit", "20");
         url.setQueryItem("includes[]", additionalInfo);
         if (show_only.length > 0) url.setQueryItem("types[]", show_only);
-        if (hidden_gen.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
+        return url.toString();
+      }
+      case "completed": {
+        const url = new URL(BASE_API).addPathComponent("manga");
+        url.setQueryItem("statuses[]", "finished");
+        url.setQueryItem("order[chapter_updated_at]", "desc");
+        url.setQueryItem("page", page.toString());
+        url.setQueryItem("limit", "20");
+        if (show_only.length > 0) url.setQueryItem("types[]", show_only);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
         return url.toString();
       }
       case "updatesHot": {
@@ -119,7 +160,7 @@ export class ApiMaker {
         url.setQueryItem("limit", "20");
         url.setQueryItem("scope", "hot");
         if (show_only.length > 0) url.setQueryItem("types[]", show_only);
-        if (hidden_gen.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
         return url.toString();
       }
       case "updatesNew": {
@@ -129,7 +170,7 @@ export class ApiMaker {
         url.setQueryItem("limit", "20");
         url.setQueryItem("scope", "new");
         if (show_only.length > 0) url.setQueryItem("types[]", show_only);
-        if (hidden_gen.length > 0) url.setQueryItem("exclude_genres[]", hidden_gen);
+        if (allGenres.length > 0) url.setQueryItem("exclude_genres[]", allGenres);
         return url.toString();
       }
       default:
@@ -137,9 +178,9 @@ export class ApiMaker {
     }
   }
 
-  private async getDataFromRequest(api: string): Promise<string> {
+  private async getDataFromRequest(): Promise<string> {
     const request = {
-      url: api,
+      url: this.apiLink,
       method: "GET",
     };
     const [response, data] = await Application.scheduleRequest(request);
@@ -148,10 +189,10 @@ export class ApiMaker {
   }
 
   async getJsonMangaApi(section: string, page: number) {
-    const api = this.buildApiUrl(section, page);
-    const html = await this.getDataFromRequest(api);
+    this.apiLink = this.build(section, page);
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseManga;
+      return JSON.parse(html) as ApiResponse<ResultManga>;
     } catch {
       throw new Error("Json parse failed");
     }
@@ -159,12 +200,13 @@ export class ApiMaker {
 
   async getJsonMangaInfoApi(mangaId: string) {
     const url = new URL(BASE_API).addPathComponent("manga");
-    const additionalInfo = ["author", "artist"];
+    const additionalInfo = ["author", "artist", "genre", "theme", "demographic"];
     url.addPathComponent(mangaId);
     url.setQueryItem("includes[]", additionalInfo);
-    const html = await this.getDataFromRequest(url.toString());
+    this.apiLink = url.toString();
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseMangaInfo;
+      return JSON.parse(html) as ApiResponse<MangaItem>;
     } catch {
       throw new Error("Json parse failed");
     }
@@ -177,9 +219,10 @@ export class ApiMaker {
     url.setQueryItem("page", page.toString());
     url.setQueryItem("limit", "100");
     url.setQueryItem("order[number]", "desc");
-    const html = await this.getDataFromRequest(url.toString());
+    this.apiLink = url.toString();
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseChapter;
+      return JSON.parse(html) as ApiResponse<ResultChapter>;
     } catch {
       throw new Error("Json parse failed");
     }
@@ -200,18 +243,18 @@ export class ApiMaker {
   ) {
     const url = new URL(BASE_API).addPathComponent("manga");
     if (keyword.length > 0) url.setQueryItem("keyword", keyword);
-    if (genres.length > 0) url.setQueryItem("genres[]", genres);
-    if (themes.length > 0) url.setQueryItem("genres[]", themes);
-    if (formats.length > 0) url.setQueryItem("genres[]", formats);
+    const allGenres = [...genres, ...themes, ...formats];
+    if (allGenres.length > 0) url.setQueryItem("genres[]", allGenres);
     if (types.length > 0) url.setQueryItem("types[]", types);
     if (demographic.length > 0) url.setQueryItem("demographics[]", demographic);
     if (status.length > 0) url.setQueryItem("statuses[]", status);
     url.setQueryItem("page", page.toString());
     url.setQueryItem(`order[${sortBy}]`, orderBy);
     url.setQueryItem("genres_mode", mode);
-    const html = await this.getDataFromRequest(url.toString());
+    this.apiLink = url.toString();
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseManga;
+      return JSON.parse(html) as ApiResponse<ResultManga>;
     } catch {
       throw new Error("Json parse failed");
     }
@@ -220,9 +263,10 @@ export class ApiMaker {
   async getJsonChapPagesApi(chapterId: string) {
     const url = new URL(BASE_API).addPathComponent("chapters");
     url.addPathComponent(chapterId);
-    const html = await this.getDataFromRequest(url.toString());
+    this.apiLink = url.toString();
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseChapterPages;
+      return JSON.parse(html) as ApiResponse<ChapterPages>;
     } catch {
       throw new Error("Json parse failed");
     }
@@ -232,9 +276,10 @@ export class ApiMaker {
     const url = new URL(BASE_API).addPathComponent("terms");
     url.setQueryItem("limit", "100");
     url.setQueryItem("type", filter);
-    const html = await this.getDataFromRequest(url.toString());
+    this.apiLink = url.toString();
+    const html = await this.getDataFromRequest();
     try {
-      return JSON.parse(html) as ApiResponseFilter;
+      return JSON.parse(html) as ApiResponse<ResultFilter>;
     } catch {
       throw new Error("Json parse failed");
     }

@@ -1,11 +1,23 @@
 import type { SearchFilter } from "@paperback/types";
+import { parse } from "./main";
 import type { OptionItem } from "./models";
 
 export class globalFilters {
   genres: OptionItem[] = [];
-
   themes: OptionItem[] = [];
+  demographic: OptionItem[] = [];
+  formats: OptionItem[] = [];
 
+  async checkFilters(): Promise<void> {
+    if (
+      this.demographic.length === 0 ||
+      this.formats.length === 0 ||
+      this.themes.length === 0 ||
+      this.genres.length === 0
+    ) {
+      await this.updateFilters(true);
+    }
+  }
   contentType = [
     { id: "manga", value: "Manga" },
     { id: "manhwa", value: "Manhwa" },
@@ -45,11 +57,8 @@ export class globalFilters {
     { id: "not_yet_released", value: "Not Yet Released" },
   ];
 
-  demographic: OptionItem[] = [];
-
-  formats: OptionItem[] = [];
-
   sectionLimit = [
+    { id: "1", value: "Day" },
     { id: "7", value: "Week" },
     { id: "30", value: "1 Month" },
     { id: "90", value: "3 Month" },
@@ -57,9 +66,9 @@ export class globalFilters {
     { id: "365", value: "1 Year" },
   ];
 
-  async getFilters(parseFilterUpdate: (type: string) => Promise<OptionItem[]>) {
+  async getFilters() {
     const filters: SearchFilter[] = [];
-    await this.updateFilters(false, parseFilterUpdate);
+    await this.updateFilters(false);
     const genresHidden = this.getHiddenGenresSettings();
     const getExcludedGenreObject = Object.fromEntries(
       this.genres
@@ -168,7 +177,7 @@ export class globalFilters {
     return (Application.getState("limit") as string[] | undefined) ?? ["7"];
   }
 
-  async updateFilters(force: boolean, parseFilterUpdate: (type: string) => Promise<OptionItem[]>) {
+  async updateFilters(force: boolean) {
     const lastFilterFetch = Number(Application.getState("last-filter-fetch") ?? 0);
     const cached = lastFilterFetch + 172800 > new Date().valueOf() / 1000;
     if (cached && !force) {
@@ -181,7 +190,7 @@ export class globalFilters {
         themes === undefined ||
         formats === undefined
       ) {
-        await this.updateFilters(true, parseFilterUpdate);
+        await this.updateFilters(true);
         return;
       }
 
@@ -189,11 +198,12 @@ export class globalFilters {
       this.setDemographicFilter(JSON.parse(demographic) as OptionItem[]);
       this.setThemesFilter(JSON.parse(themes) as OptionItem[]);
       this.setFormatsFilter(JSON.parse(formats) as OptionItem[]);
+      await this.checkFilters();
     } else {
-      this.genres = await parseFilterUpdate("genre");
-      this.demographic = await parseFilterUpdate("demographic");
-      this.themes = await parseFilterUpdate("theme");
-      this.formats = await parseFilterUpdate("format");
+      this.genres = await parse.parseFilterUpdate("genre");
+      this.demographic = await parse.parseFilterUpdate("demographic");
+      this.themes = await parse.parseFilterUpdate("theme");
+      this.formats = await parse.parseFilterUpdate("format");
       Application.setState(String(new Date().valueOf() / 1000), "last-filter-fetch");
     }
   }
@@ -202,15 +212,15 @@ export class globalFilters {
     Application.setState(JSON.stringify(newValue), "genre");
   }
   private setDemographicFilter(newValue: OptionItem[]) {
-    this.genres = newValue;
+    this.demographic = newValue;
     Application.setState(JSON.stringify(newValue), "demographic");
   }
   private setThemesFilter(newValue: OptionItem[]) {
-    this.genres = newValue;
+    this.themes = newValue;
     Application.setState(JSON.stringify(newValue), "theme");
   }
   private setFormatsFilter(newValue: OptionItem[]) {
-    this.genres = newValue;
+    this.formats = newValue;
     Application.setState(JSON.stringify(newValue), "format");
   }
 }

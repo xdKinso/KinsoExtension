@@ -2,8 +2,8 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 
 export default {
   name: "ComixGallery",
-  description: "Extension that pulls content from Comix.to",
-  version: "0.0.10",
+  description: "Extension that pulls content from Comix.to.",
+  version: "0.0.11",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,
@@ -11,12 +11,13 @@ export default {
     SourceIntents.SETTINGS_FORM_PROVIDING |
     SourceIntents.DISCOVER_SECIONS_PROVIDING |
     SourceIntents.SEARCH_RESULTS_PROVIDING |
-    SourceIntents.CHAPTER_PROVIDING,
+    SourceIntents.CHAPTER_PROVIDING |
+    SourceIntents.CLOUDFLARE_BYPASS_PROVIDING,
   badges: [],
   developers: [
     {
-      name: "Kinso",
-      github: "https://github.com/Kinso",
+      name: "xdKinso",
+      github: "https://github.com/xdKinso",
     },
   ],
 } satisfies ExtensionInfo;

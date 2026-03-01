@@ -4,13 +4,15 @@ import {
   type Chapter,
   type ChapterDetails,
   type ChapterProviding,
+  type CloudflareBypassRequestProviding,
+  type Cookie,
+  CookieStorageInterceptor,
   type DiscoverSection,
   type DiscoverSectionItem,
   type DiscoverSectionProviding,
   type Extension,
   type MangaProviding,
   type PagedResults,
-  type Request,
   type SearchFilter,
   type SearchQuery,
   type SearchResultItem,
@@ -19,34 +21,45 @@ import {
   type SortingOption,
   type SourceManga,
 } from "@paperback/types";
-import { Forms } from "./forms";
+import { MainSettings } from "./forms";
 import type { Metadata } from "./models";
 import { MainInterceptor, mainRateLimiter } from "./network";
 import { JsonParser } from "./parsers";
 import { globalFilters } from "./utils";
 
-export const parse = new JsonParser();
-export const filter = new globalFilters();
 type ComixGalleryImplementation = SettingsFormProviding &
   Extension &
   DiscoverSectionProviding &
   SearchResultsProviding &
   MangaProviding &
-  ChapterProviding;
-
+  ChapterProviding &
+  CloudflareBypassRequestProviding;
+export const parse = new JsonParser();
+export const filter = new globalFilters();
 export class ComixGalleryExtension implements ComixGalleryImplementation {
   async getSettingsForm(): Promise<Form> {
-    return new Forms();
+    await filter.checkFilters();
+    return new MainSettings();
   }
 
   mainInterceptor = new MainInterceptor("main");
-
+  cookieStorageInterceptor = new CookieStorageInterceptor({
+    storage: "stateManager",
+  });
   async initialise(): Promise<void> {
     mainRateLimiter.registerInterceptor();
+    this.cookieStorageInterceptor.registerInterceptor();
     this.mainInterceptor.registerInterceptor();
   }
-
+  async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
+    for (const cookie of cookies) {
+      if (cookie.name == "cf_clearance") {
+        this.cookieStorageInterceptor.setCookie(cookie);
+      }
+    }
+  }
   async getDiscoverSections(): Promise<DiscoverSection[]> {
+    const sections: DiscoverSection[] = [];
     const get_popular: DiscoverSection = {
       id: "popular",
       title: "Popular",
@@ -62,20 +75,46 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
       title: "Recently Added",
       type: DiscoverSectionType.simpleCarousel,
     };
-
+    const get_trending_manga: DiscoverSection = {
+      id: "trending_manga",
+      title: "Trending Manga",
+      type: DiscoverSectionType.simpleCarousel,
+    };
+    const get_trending_wt: DiscoverSection = {
+      id: "trending_wt",
+      title: "Trending WebToons",
+      type: DiscoverSectionType.simpleCarousel,
+    };
+    const get_completed: DiscoverSection = {
+      id: "completed",
+      title: "Completed",
+      type: DiscoverSectionType.simpleCarousel,
+    };
     const get_updatesHot: DiscoverSection = {
       id: "updatesHot",
       title: "Latest Updates (HOT)",
       type: DiscoverSectionType.chapterUpdates,
     };
-
     const get_updatesNew: DiscoverSection = {
       id: "updatesNew",
       title: "Latest Updates (NEW)",
       type: DiscoverSectionType.chapterUpdates,
     };
-
-    return [get_popular, get_follow, get_recent, get_updatesHot, get_updatesNew];
+    type Pair<T, K> = [T, K];
+    const names: Pair<string, DiscoverSection>[] = [
+      ["popular", get_popular],
+      ["recent", get_recent],
+      ["follow", get_follow],
+      ["trending_manga", get_trending_manga],
+      ["trending_wt", get_trending_wt],
+      ["completed", get_completed],
+      ["updatesHot", get_updatesHot],
+      ["updatesNew", get_updatesNew],
+    ];
+    names.forEach(([_, section]) => {
+      sections.push(section);
+    });
+    return sections;
   }
 
   async getDiscoverSectionItems(
@@ -84,11 +123,17 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
   ): Promise<PagedResults<DiscoverSectionItem>> {
     switch (section.id) {
       case "popular":
-        return await parse.parseSectionPopular("popular");
+        return await parse.parseSection("popular", undefined);
       case "follow":
-        return await parse.parseSectionFollow("follow");
+        return await parse.parseSection("follow", undefined);
       case "recent":
-        return await parse.parseSectionRecent("recent", metadata);
+        return await parse.parseSection("recent", metadata);
+      case "trending_manga":
+        return await parse.parseSection("trending_manga", metadata);
+      case "trending_wt":
+        return await parse.parseSection("trending_wt", metadata);
+      case "completed":
+        return await parse.parseSection("completed", metadata);
       case "updatesNew":
         return await parse.parseSectionChUp("updatesNew", metadata);
       case "updatesHot":
@@ -99,7 +144,7 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
   }
 
   async getSearchFilters(): Promise<SearchFilter[]> {
-    return filter.getFilters(parse.parseFilterUpdate.bind(parse));
+    return filter.getFilters();
   }
 
   getSearchResults(
@@ -122,20 +167,6 @@ export class ComixGalleryExtension implements ComixGalleryImplementation {
   }
   getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     return parse.parseChapterDetails(chapter.chapterId);
-  }
-
-  async getImageRequest(url: string): Promise<Request> {
-    return {
-      url: url,
-      method: "GET",
-      headers: {
-        referer: "https://comix.to/",
-        origin: "https://comix.to",
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        accept: "image/webp,image/apng,image/*,*/*;q=0.8",
-      },
-    };
   }
 }
 
